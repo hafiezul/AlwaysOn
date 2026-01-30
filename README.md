@@ -13,6 +13,9 @@ If you find this app useful, consider supporting its development:
 - **Minimal Resource Usage** - <15MB memory, <0.1% CPU
 - **Remembers State** - Restores your preference on relaunch
 - **Session Timer** - Shows how long you've been "online"
+- **Launch at Login** - Automatically start when you log in
+- **Check for Updates** - Stay up to date with the latest version
+- **About Window** - View version info and check for updates
 
 ## Requirements
 
@@ -58,28 +61,32 @@ If you find this app useful, consider supporting its development:
 ### Menu Bar Interface
 
 ```
-+-----------------------------+
-| * Active                    |  <- Green = keeping you online
-+-----------------------------+
-| || Pause                 ^K |  <- Toggle on/off
-| () Session: 2:34:12         |  <- Live timer (updates while open)
-+-----------------------------+
-| (!) Quit AlwaysOn        ^Q |
-+-----------------------------+
++-------------------------------+
+| * Active              v1.1.0  |  <- Green = keeping you online
++-------------------------------+
+| || Pause                   ^K |  <- Toggle on/off
+| () Session: 2:34:12           |  <- Live timer (updates while open)
++-------------------------------+
+| [] Launch at Login            |  <- Toggle auto-start
+| <> Check for Updates          |  <- Check GitHub for updates
++-------------------------------+
+| (i) About AlwaysOn            |  <- Version info & links
+| (!) Quit AlwaysOn          ^Q |
++-------------------------------+
 
 When permission is needed:
-+-----------------------------+
-| o Inactive                  |
-+-----------------------------+
-| > Keep Online            ^K |
-+-----------------------------+
-| /!\ Accessibility Required  |
-|     Click below to grant... |
-| [=] Grant Permission        |  <- Triggers system prompt
-| [o] Open Settings...        |  <- Manual fallback
-+-----------------------------+
-| (!) Quit AlwaysOn        ^Q |
-+-----------------------------+
++-------------------------------+
+| o Inactive                    |
++-------------------------------+
+| > Keep Online              ^K |
++-------------------------------+
+| /!\ Accessibility Required    |
+|     Click below to grant...   |
+| [=] Grant Permission          |  <- Triggers system prompt
+| [o] Open Settings...          |  <- Manual fallback
++-------------------------------+
+| (!) Quit AlwaysOn          ^Q |
++-------------------------------+
 ```
 
 ### Keyboard Shortcuts
@@ -105,9 +112,20 @@ This prevents macOS from detecting you as "idle" and keeps apps like Microsoft T
 - Movement is imperceptible to users
 - Uses native macOS APIs (no hacks)
 
+## Updating the App
+
+AlwaysOn can check for updates directly from GitHub:
+
+1. Click **"Check for Updates"** in the menu, or
+2. Open **"About AlwaysOn"** and click **"Check for Updates"**
+
+If an update is available, click **"Download Update"** to open the GitHub releases page where you can download the latest version.
+
+> **Tip**: After downloading a new version, you may need to remove the old entry from Accessibility settings and re-add the new app. See Troubleshooting below.
+
 ## Privacy & Security
 
-- **No network access** - App works entirely offline
+- **No network access** - App works entirely offline (except for update checks)
 - **No data collection** - Nothing is tracked or sent
 - **Open source** - Audit the code yourself
 - **Minimal permissions** - Only Accessibility (required for input simulation)
@@ -133,6 +151,10 @@ No. AlwaysOn only simulates activity, it doesn't prevent sleep. If you want to p
 ### Why isn't it in the App Store?
 
 Apps that simulate input can't use App Sandbox, which is required for the Mac App Store.
+
+### How do I make it start automatically?
+
+Enable **"Launch at Login"** in the menu. This uses macOS's built-in Login Items feature.
 
 ## Troubleshooting
 
@@ -167,12 +189,24 @@ This typically happens after reinstalling or updating the app. macOS tracks perm
 
 > **Tip**: The app automatically checks for permission changes when you switch back to it, and polls for 30 seconds after you open Settings.
 
+### "Launch at Login" not working
+
+1. Open **System Settings** > **General** > **Login Items**
+2. Ensure AlwaysOn is listed and enabled
+3. If not, toggle the option off and on again in the app menu
+
+### Update check failed
+
+1. Check your internet connection
+2. Try again in a few moments
+3. You can always download updates manually from the [Releases page](../../releases/latest)
+
 ## Building from Source
 
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd always-on
+git clone https://github.com/hafiezul/AlwaysOn.git
+cd AlwaysOn
 
 # Open in Xcode
 open AlwaysOn.xcodeproj
@@ -193,15 +227,15 @@ To create a new release:
 
 ```bash
 # Tag the commit with a version
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.1.0
+git push origin v1.1.0
 ```
 
 GitHub Actions will automatically build the app and create a release with both ZIP and DMG downloads.
 
 ## License
 
-MIT License - See LICENSE file for details.
+MIT License - See [LICENSE](LICENSE) file for details.
 
 ## Contributing
 

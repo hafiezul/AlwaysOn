@@ -13,6 +13,9 @@
 		1000000000000004 /* PermissionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000004 /* PermissionManager.swift */; };
 		1000000000000005 /* MenuBarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000005 /* MenuBarView.swift */; };
 		1000000000000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2000000000000006 /* Assets.xcassets */; };
+		1000000000000007 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000009 /* UpdateChecker.swift */; };
+		1000000000000008 /* LaunchAtLoginManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000A /* LaunchAtLoginManager.swift */; };
+		1000000000000009 /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000B /* AboutView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -24,6 +27,9 @@
 		2000000000000006 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2000000000000007 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		2000000000000008 /* AlwaysOn.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AlwaysOn.entitlements; sourceTree = "<group>"; };
+		2000000000000009 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
+		200000000000000A /* LaunchAtLoginManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginManager.swift; sourceTree = "<group>"; };
+		200000000000000B /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		3000000000000001 /* AlwaysOn.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AlwaysOn.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -89,6 +95,8 @@
 			children = (
 				2000000000000003 /* ActivitySimulator.swift */,
 				2000000000000004 /* PermissionManager.swift */,
+				2000000000000009 /* UpdateChecker.swift */,
+				200000000000000A /* LaunchAtLoginManager.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -97,6 +105,7 @@
 			isa = PBXGroup;
 			children = (
 				2000000000000005 /* MenuBarView.swift */,
+				200000000000000B /* AboutView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -191,6 +200,9 @@
 				1000000000000003 /* ActivitySimulator.swift in Sources */,
 				1000000000000004 /* PermissionManager.swift in Sources */,
 				1000000000000005 /* MenuBarView.swift in Sources */,
+				1000000000000007 /* UpdateChecker.swift in Sources */,
+				1000000000000008 /* LaunchAtLoginManager.swift in Sources */,
+				1000000000000009 /* AboutView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
