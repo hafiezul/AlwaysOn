@@ -14,15 +14,16 @@ If you find this app useful, consider supporting its development:
 - **Remembers State** - Restores your preference on relaunch
 - **Session Timer** - Shows how long you've been "online"
 - **Launch at Login** - Automatically start when you log in
-- **Check for Updates** - Stay up to date with the latest version
-- **About Window** - View version info and check for updates
+- **Auto-Updates** - Sparkle-powered automatic updates
+- **Configurable Interval** - Choose activity timing (30s to 5min)
+- **Settings Window** - Clean sidebar navigation for all preferences
 
 ## Roadmap
 
 Here's what's planned for future versions. Want to help? [Contributions](#contributing) are welcome!
 
 ### v1.2 - Customization
-- [ ] **Configurable activity interval** - Adjust timing (30s, 45s, 60s, 90s, 120s)
+- [x] **Configurable activity interval** - Adjust timing (30s, 45s, 60s, 2min, 5min)
 - [ ] **Quick timers** - "Keep online for 1 hour" with auto-disable
 - [ ] **Activity method options** - Choose between mouse, keyboard, or alternating
 - [ ] **Global keyboard shortcut** - Toggle without opening the menu

@@ -4,6 +4,7 @@ import AppKit
 
 /// Central state management for the AlwaysOn app
 /// Keeps track of active status and coordinates with ActivitySimulator
+@MainActor
 final class AppState: ObservableObject {
     
     // MARK: - Published Properties
@@ -15,9 +16,6 @@ final class AppState: ObservableObject {
             handleActiveStateChange()
         }
     }
-    
-    /// Whether accessibility permissions are granted
-    @Published var hasAccessibilityPermission: Bool = false
     
     /// Current activity interval in seconds
     @Published var activityInterval: TimeInterval {
@@ -34,25 +32,46 @@ final class AppState: ObservableObject {
     /// Time since activation (for display purposes)
     @Published var activeSessionDuration: TimeInterval = 0
     
+    // MARK: - Permission Management
+    
+    /// Accessibility permission state (Combine-based, continuous polling)
+    let accessibilityPermission = AccessibilityPermission()
+    
+    /// Convenience accessor for permission state
+    var hasAccessibilityPermission: Bool {
+        accessibilityPermission.hasPermission
+    }
+    
     // MARK: - Private Properties
     
     private let activitySimulator = ActivitySimulator()
     private var sessionTimer: Timer?
     private var sessionStartTime: Date?
-    private var permissionCheckTimer: Timer?
-    private var permissionCheckCount: Int = 0
+    private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Constants
     
     private enum Keys {
         static let isActive = "isActive"
         static let activityInterval = "activityInterval"
+        static let hasCompletedOnboarding = "hasCompletedOnboarding"
     }
     
     private enum Defaults {
         static let activityInterval: TimeInterval = 45.0
-        static let permissionCheckInterval: TimeInterval = 2.0
-        static let maxPermissionChecks: Int = 15 // 30 seconds max (15 * 2s)
+    }
+    
+    // MARK: - Onboarding State
+    
+    /// Whether the user has completed the initial permission onboarding
+    var hasCompletedOnboarding: Bool {
+        get { UserDefaults.standard.bool(forKey: Keys.hasCompletedOnboarding) }
+        set { UserDefaults.standard.set(newValue, forKey: Keys.hasCompletedOnboarding) }
+    }
+    
+    /// Whether to show the permissions window on launch
+    var needsPermissionsOnboarding: Bool {
+        !hasCompletedOnboarding || !accessibilityPermission.hasPermission
     }
     
     // MARK: - Initialization
@@ -67,18 +86,13 @@ final class AppState: ObservableObject {
             activityInterval = Defaults.activityInterval
         }
         
-        // Check permissions on init
-        checkPermissions()
+        // Set up Combine subscriptions
+        setupPermissionObserver()
         
-        // Listen for app activation to re-check permissions
-        NotificationCenter.default.addObserver(
-            self,
-            selector: #selector(appDidBecomeActive),
-            name: NSApplication.didBecomeActiveNotification,
-            object: nil
-        )
+        // Start permission polling
+        accessibilityPermission.startPolling()
         
-        // Resume active state if was active before quit
+        // Resume active state if was active before quit (and has permission)
         if isActive && hasAccessibilityPermission {
             startActivitySimulation()
         } else if isActive && !hasAccessibilityPermission {
@@ -87,83 +101,68 @@ final class AppState: ObservableObject {
         }
     }
     
-    deinit {
-        stopPermissionPolling()
-        NotificationCenter.default.removeObserver(self)
-    }
-    
     // MARK: - Public Methods
     
     /// Toggle the active state
     func toggle() {
         if !isActive && !hasAccessibilityPermission {
-            // Trigger system prompt and start polling for result
-            PermissionManager.promptForPermission()
-            startPermissionPolling()
+            // Request permission and wait for it
+            accessibilityPermission.request()
             return
         }
         isActive.toggle()
     }
     
-    /// Check and update accessibility permission status
-    func checkPermissions() {
-        let previousState = hasAccessibilityPermission
-        hasAccessibilityPermission = PermissionManager.checkAccessibilityPermission()
-        
-        // If permission was just granted, stop polling
-        if hasAccessibilityPermission && !previousState {
-            stopPermissionPolling()
-        }
-        // If permission was just revoked, stop activity
-        else if !hasAccessibilityPermission && previousState {
-            if isActive {
-                isActive = false
-            }
-        }
-    }
-    
     /// Request permission with system prompt
     func requestPermission() {
-        PermissionManager.promptForPermission()
-        startPermissionPolling()
+        accessibilityPermission.request()
     }
     
     /// Open System Preferences to grant accessibility permission
     func openAccessibilitySettings() {
-        PermissionManager.openAccessibilitySettings()
-        // Start temporary polling after opening settings (30 seconds max)
-        startPermissionPolling()
+        accessibilityPermission.openSettings()
+    }
+    
+    /// Show the permissions window
+    func showPermissionsWindow() {
+        PermissionsWindowController.shared.show(
+            accessibilityPermission: accessibilityPermission,
+            onContinue: { [weak self] in
+                guard let self else { return }
+                self.hasCompletedOnboarding = true
+                self.accessibilityPermission.stopPolling()
+                // Start normal operation polling (less frequent when running normally)
+                self.accessibilityPermission.startPolling()
+            },
+            onQuit: {
+                NSApplication.shared.terminate(nil)
+            }
+        )
+    }
+    
+    /// Complete the permission setup (called after onboarding)
+    func completePermissionSetup() {
+        hasCompletedOnboarding = true
+        accessibilityPermission.stopPolling()
+        // Restart with normal polling
+        accessibilityPermission.startPolling()
     }
     
     // MARK: - Private Methods
     
-    @objc private func appDidBecomeActive() {
-        // Re-check permissions when app becomes active
-        checkPermissions()
-    }
-    
-    private func startPermissionPolling() {
-        // Reset counter and start/restart polling
-        permissionCheckCount = 0
-        stopPermissionPolling()
-        
-        permissionCheckTimer = Timer.scheduledTimer(withTimeInterval: Defaults.permissionCheckInterval, repeats: true) { [weak self] _ in
-            guard let self = self else { return }
-            
-            self.permissionCheckCount += 1
-            self.checkPermissions()
-            
-            // Stop polling after max checks or if permission granted
-            if self.hasAccessibilityPermission || self.permissionCheckCount >= Defaults.maxPermissionChecks {
-                self.stopPermissionPolling()
+    private func setupPermissionObserver() {
+        // React to permission state changes
+        accessibilityPermission.$hasPermission
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] (hasPermission: Bool) in
+                guard let self else { return }
+                
+                // If permission was revoked while active, stop simulation
+                if !hasPermission && self.isActive {
+                    self.isActive = false
+                }
             }
-        }
-    }
-    
-    private func stopPermissionPolling() {
-        permissionCheckTimer?.invalidate()
-        permissionCheckTimer = nil
-        permissionCheckCount = 0
+            .store(in: &cancellables)
     }
     
     private func handleActiveStateChange() {
@@ -195,8 +194,10 @@ final class AppState: ObservableObject {
     
     private func startSessionTimer() {
         sessionTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            guard let self = self, let startTime = self.sessionStartTime else { return }
-            self.activeSessionDuration = Date().timeIntervalSince(startTime)
+            Task { @MainActor in
+                guard let self = self, let startTime = self.sessionStartTime else { return }
+                self.activeSessionDuration = Date().timeIntervalSince(startTime)
+            }
         }
     }
 }

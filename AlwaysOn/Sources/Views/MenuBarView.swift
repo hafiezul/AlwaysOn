@@ -1,10 +1,9 @@
 import SwiftUI
 
 /// Main menu bar dropdown view
+/// Kept minimal - all settings live in the Settings window
 struct MenuBarView: View {
     @EnvironmentObject var appState: AppState
-    @State private var launchAtLogin = LaunchAtLoginManager.isEnabled
-    @ObservedObject private var sparkleUpdater = SparkleUpdaterManager.shared
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -30,22 +29,12 @@ struct MenuBarView: View {
             Divider()
                 .padding(.vertical, 4)
             
-            // Settings section
-            settingsSection
-            
-            Divider()
-                .padding(.vertical, 4)
-            
-            // About and Quit
-            aboutButton
+            // Settings and Quit
+            settingsButton
             quitButton
         }
         .padding(.vertical, 8)
         .frame(width: 240)
-        .onAppear {
-            // Refresh launch at login state when menu appears
-            launchAtLogin = LaunchAtLoginManager.isEnabled
-        }
     }
     
     // MARK: - View Components
@@ -158,6 +147,25 @@ struct MenuBarView: View {
             }
             .buttonStyle(.plain)
             .background(HoverBackground())
+            
+            // Show Permissions Window button
+            Button(action: {
+                appState.showPermissionsWindow()
+            }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "checkmark.shield")
+                        .frame(width: 16)
+                    Text("Setup Guide...")
+                        .foregroundColor(.secondary)
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .background(HoverBackground())
         }
     }
     
@@ -174,58 +182,18 @@ struct MenuBarView: View {
         .padding(.vertical, 6)
     }
     
-    private var settingsSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Launch at Login toggle
-            Button(action: {
-                LaunchAtLoginManager.toggle()
-                launchAtLogin = LaunchAtLoginManager.isEnabled
-            }) {
-                HStack(spacing: 8) {
-                    Image(systemName: launchAtLogin ? "checkmark.square.fill" : "square")
-                        .frame(width: 16)
-                        .foregroundColor(launchAtLogin ? .accentColor : .secondary)
-                    Text("Launch at Login")
-                    Spacer()
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .background(HoverBackground())
-            
-            // Check for Updates (Sparkle)
-            Button(action: {
-                sparkleUpdater.checkForUpdates()
-            }) {
-                HStack(spacing: 8) {
-                    Image(systemName: "arrow.triangle.2.circlepath")
-                        .frame(width: 16)
-                    Text("Check for Updates...")
-                    Spacer()
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .background(HoverBackground())
-            .disabled(!sparkleUpdater.canCheckForUpdates)
-        }
-    }
-    
-    private var aboutButton: some View {
+    private var settingsButton: some View {
         Button(action: {
-            AboutWindowController.show()
+            SettingsWindowController.shared.show(appState: appState)
         }) {
             HStack(spacing: 8) {
-                Image(systemName: "info.circle")
+                Image(systemName: "gearshape")
                     .frame(width: 16)
-                Text("About AlwaysOn")
+                Text("Settings...")
                 Spacer()
+                Text("⌘,")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
@@ -234,6 +202,7 @@ struct MenuBarView: View {
         }
         .buttonStyle(.plain)
         .background(HoverBackground())
+        .keyboardShortcut(",", modifiers: .command)
     }
     
     private var quitButton: some View {
