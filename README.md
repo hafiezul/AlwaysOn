@@ -17,16 +17,17 @@ If you find this app useful, consider supporting its development:
 - **Auto-Updates** - Sparkle-powered automatic updates
 - **Configurable Interval** - Choose activity timing (30s to 5min)
 - **Settings Window** - Clean sidebar navigation for all preferences
+- **Quick Timers** - Set auto-disable after 30min, 1h, 2h, 4h, or 8h
+- **Activity Methods** - Choose mouse, keyboard, or alternating simulation
 
 ## Roadmap
 
 Here's what's planned for future versions. Want to help? [Contributions](#contributing) are welcome!
 
-### v1.2 - Customization
+### v1.2 - Customization (Current)
 - [x] **Configurable activity interval** - Adjust timing (30s, 45s, 60s, 2min, 5min)
-- [ ] **Quick timers** - "Keep online for 1 hour" with auto-disable
-- [ ] **Activity method options** - Choose between mouse, keyboard, or alternating
-- [ ] **Global keyboard shortcut** - Toggle without opening the menu
+- [x] **Quick timers** - "Keep online for X hours" with auto-disable
+- [x] **Activity method options** - Choose between mouse, keyboard, or alternating
 
 ### v1.3 - Smart Features
 - [ ] **Work hours scheduling** - Auto-enable/disable at specific times
@@ -139,23 +140,33 @@ When permission is needed:
 
 | Shortcut | Action |
 |----------|--------|
-| `⌘K` | Toggle Keep Online |
+| `⌘K` | Toggle Keep Online (when menu is open) |
+| `⌘,` | Open Settings |
 | `⌘Q` | Quit AlwaysOn |
 
 ## How It Works
 
-AlwaysOn simulates minimal mouse activity every 45 seconds:
+AlwaysOn simulates minimal user activity at a configurable interval (default: 45 seconds):
 
+**Mouse Method (Default):**
 1. Moves the cursor by 1 pixel
 2. Immediately moves it back
 3. Repeat
 
+**Keyboard Method:**
+1. Presses and releases the Shift key
+2. Repeat
+
+**Alternating Method:**
+1. Alternates between mouse and keyboard methods
+2. Provides variety in activity simulation
+
 This prevents macOS from detecting you as "idle" and keeps workplace apps like Microsoft Teams, Slack, and Zoom showing your status as "Available" or "Active".
 
-**Why mouse movement?**
+**Why these methods?**
 - Workplace apps monitor system idle time
-- Tiny mouse movements reset the idle timer
-- Movement is imperceptible to users
+- Tiny mouse movements and key presses reset the idle timer
+- Activity is imperceptible to users
 - Uses native macOS APIs (no hacks)
 
 ## Updating the App

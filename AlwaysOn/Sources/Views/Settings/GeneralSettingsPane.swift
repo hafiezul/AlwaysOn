@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// General settings pane with launch at login, activity interval, and permission status
+/// General settings pane with launch at login, activity interval, activity method, and permission status
 struct GeneralSettingsPane: View {
     @EnvironmentObject var appState: AppState
     @State private var launchAtLogin = LaunchAtLoginManager.isEnabled
@@ -36,6 +36,29 @@ struct GeneralSettingsPane: View {
                 .pickerStyle(.menu)
                 
                 Text("How often AlwaysOn simulates activity to keep your status active.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Picker("Activity Method", selection: $appState.activityMethod) {
+                    ForEach(ActivityMethod.allCases) { method in
+                        Label(method.title, systemImage: method.systemImage)
+                            .tag(method)
+                    }
+                }
+                .pickerStyle(.menu)
+                
+                Text(appState.activityMethod.description)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                Picker("Auto-disable after", selection: $appState.defaultTimerDuration) {
+                    ForEach(QuickTimerDuration.allCases) { duration in
+                        Text(duration.title).tag(duration)
+                    }
+                }
+                .pickerStyle(.menu)
+                
+                Text("Automatically pause after the selected duration. Choose 'No limit' to stay active indefinitely.")
                     .font(.caption)
                     .foregroundColor(.secondary)
             } header: {
@@ -90,5 +113,5 @@ struct GeneralSettingsPane: View {
 #Preview {
     GeneralSettingsPane()
         .environmentObject(AppState())
-        .frame(width: 450, height: 350)
+        .frame(width: 450, height: 450)
 }

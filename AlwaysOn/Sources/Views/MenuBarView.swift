@@ -13,7 +13,7 @@ struct MenuBarView: View {
             Divider()
                 .padding(.vertical, 4)
             
-            // Main toggle button
+            // Main toggle button (Pause when active, Resume when paused)
             toggleButton
             
             // Permission section if needed
@@ -21,9 +21,19 @@ struct MenuBarView: View {
                 permissionSection
             }
             
-            // Session info when active
-            if appState.isActive {
+            // Session info when active or paused with saved duration
+            if appState.isActive || appState.activeSessionDuration > 0 {
                 sessionInfo
+                
+                // Quick timer info if active
+                if appState.isQuickTimerActive {
+                    quickTimerInfo
+                }
+            }
+            
+            // Stop Session button (only shown when paused, AFTER session info)
+            if !appState.isActive && appState.activeSessionDuration > 0 {
+                stopSessionButton
             }
             
             Divider()
@@ -34,7 +44,7 @@ struct MenuBarView: View {
             quitButton
         }
         .padding(.vertical, 8)
-        .frame(width: 240)
+        .frame(width: 260)
     }
     
     // MARK: - View Components
@@ -70,7 +80,7 @@ struct MenuBarView: View {
             HStack(spacing: 8) {
                 Image(systemName: appState.isActive ? "pause.circle" : "play.circle")
                     .frame(width: 16)
-                Text(appState.isActive ? "Pause" : "Keep Online")
+                Text(appState.isActive ? "Pause" : (appState.activeSessionDuration > 0 ? "Resume" : "Keep Online"))
                 Spacer()
                 Text("⌘K")
                     .font(.caption)
@@ -84,6 +94,26 @@ struct MenuBarView: View {
         .buttonStyle(.plain)
         .background(HoverBackground())
         .keyboardShortcut("k", modifiers: .command)
+    }
+    
+    private var stopSessionButton: some View {
+        Button(action: {
+            appState.stopSession()
+        }) {
+            HStack(spacing: 8) {
+                Image(systemName: "stop.circle")
+                    .frame(width: 16)
+                Text("Stop Session")
+                    .foregroundColor(.red)
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background(HoverBackground())
     }
     
     private var permissionSection: some View {
@@ -176,10 +206,48 @@ struct MenuBarView: View {
                 .foregroundColor(.secondary)
             Text("Session: \(formatDuration(appState.activeSessionDuration))")
                 .foregroundColor(.secondary)
+            if !appState.isActive {
+                Text("(paused)")
+                    .font(.caption)
+                    .foregroundColor(.orange)
+            }
             Spacer()
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
+    }
+    
+    private var quickTimerInfo: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                Image(systemName: "timer")
+                    .frame(width: 16)
+                    .foregroundColor(.orange)
+                Text("Auto-pause in: \(formatDuration(appState.quickTimerRemaining))")
+                    .foregroundColor(.orange)
+                Spacer()
+            }
+            
+            Button(action: {
+                appState.cancelQuickTimer()
+            }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "xmark.circle")
+                        .frame(width: 16)
+                    Text("Cancel Timer")
+                        .font(.caption)
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 4)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .background(HoverBackground())
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 2)
     }
     
     private var settingsButton: some View {

@@ -26,6 +26,8 @@
 		1000000000000012 /* UpdatesSettingsPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000013 /* UpdatesSettingsPane.swift */; };
 		1000000000000013 /* AboutSettingsPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000014 /* AboutSettingsPane.swift */; };
 		1000000000000014 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000015 /* SettingsWindowController.swift */; };
+		1000000000000015 /* ActivityMethod.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000016 /* ActivityMethod.swift */; };
+		1000000000000016 /* QuickTimerDuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000017 /* QuickTimerDuration.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -49,6 +51,8 @@
 		2000000000000013 /* UpdatesSettingsPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdatesSettingsPane.swift; sourceTree = "<group>"; };
 		2000000000000014 /* AboutSettingsPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutSettingsPane.swift; sourceTree = "<group>"; };
 		2000000000000015 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
+		2000000000000016 /* ActivityMethod.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityMethod.swift; sourceTree = "<group>"; };
+		2000000000000017 /* QuickTimerDuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickTimerDuration.swift; sourceTree = "<group>"; };
 		3000000000000001 /* AlwaysOn.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AlwaysOn.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -105,7 +109,9 @@
 		5000000000000005 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				2000000000000016 /* ActivityMethod.swift */,
 				2000000000000002 /* AppState.swift */,
+				2000000000000017 /* QuickTimerDuration.swift */,
 				2000000000000010 /* SettingsNavigationItem.swift */,
 			);
 			path = Models;
@@ -255,6 +261,8 @@
 				1000000000000012 /* UpdatesSettingsPane.swift in Sources */,
 				1000000000000013 /* AboutSettingsPane.swift in Sources */,
 				1000000000000014 /* SettingsWindowController.swift in Sources */,
+				1000000000000015 /* ActivityMethod.swift in Sources */,
+				1000000000000016 /* QuickTimerDuration.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -387,7 +395,7 @@
 				CODE_SIGN_ENTITLEMENTS = AlwaysOn/AlwaysOn.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -398,7 +406,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.alwayson.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -414,7 +422,7 @@
 				CODE_SIGN_ENTITLEMENTS = AlwaysOn/AlwaysOn.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
@@ -425,7 +433,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.1.0;
+				MARKETING_VERSION = 1.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.alwayson.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

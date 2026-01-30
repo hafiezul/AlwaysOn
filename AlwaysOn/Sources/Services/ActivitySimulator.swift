@@ -3,7 +3,7 @@ import CoreGraphics
 import AppKit
 
 /// Simulates user activity to prevent system idle and keep apps like Teams showing "Available"
-/// Uses minimal mouse movement (1 pixel) to avoid disrupting user work
+/// Supports mouse movement, keyboard activity, or alternating between both
 final class ActivitySimulator {
     
     // MARK: - Properties
@@ -11,17 +11,26 @@ final class ActivitySimulator {
     private var timer: Timer?
     private var isRunning = false
     
+    /// Current activity method
+    private var activityMethod: ActivityMethod = .mouse
+    
     /// Tracks the last movement direction to alternate between +1 and -1 pixel
     private var moveDirection: CGFloat = 1
+    
+    /// Tracks which method was used last (for alternating mode)
+    private var lastMethodWasMouse = true
     
     // MARK: - Public Methods
     
     /// Start simulating activity at the specified interval
-    /// - Parameter interval: Time in seconds between activity simulations (default: 45s)
-    func start(interval: TimeInterval = 45.0) {
+    /// - Parameters:
+    ///   - interval: Time in seconds between activity simulations (default: 45s)
+    ///   - method: The activity simulation method to use
+    func start(interval: TimeInterval = 45.0, method: ActivityMethod = .mouse) {
         guard !isRunning else { return }
         
         isRunning = true
+        activityMethod = method
         
         // Use a repeating timer on the main run loop
         timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
@@ -37,7 +46,16 @@ final class ActivitySimulator {
         simulateActivity()
         
         #if DEBUG
-        print("[ActivitySimulator] Started with interval: \(interval)s")
+        print("[ActivitySimulator] Started with interval: \(interval)s, method: \(method.title)")
+        #endif
+    }
+    
+    /// Update the activity method while running
+    /// - Parameter method: The new activity method to use
+    func updateMethod(_ method: ActivityMethod) {
+        activityMethod = method
+        #if DEBUG
+        print("[ActivitySimulator] Method updated to: \(method.title)")
         #endif
     }
     
@@ -54,9 +72,30 @@ final class ActivitySimulator {
     
     // MARK: - Private Methods
     
+    /// Performs activity simulation based on the selected method
+    private func simulateActivity() {
+        switch activityMethod {
+        case .mouse:
+            simulateMouseActivity()
+        case .keyboard:
+            simulateKeyboardActivity()
+        case .alternating:
+            if lastMethodWasMouse {
+                simulateKeyboardActivity()
+            } else {
+                simulateMouseActivity()
+            }
+            lastMethodWasMouse.toggle()
+        }
+        
+        #if DEBUG
+        print("[ActivitySimulator] Activity simulated at \(Date())")
+        #endif
+    }
+    
     /// Performs minimal mouse movement to simulate user activity
     /// Moves the cursor by 1 pixel, then back, to avoid visible movement
-    private func simulateActivity() {
+    private func simulateMouseActivity() {
         // Get current mouse location
         let currentLocation = NSEvent.mouseLocation
         
@@ -88,9 +127,24 @@ final class ActivitySimulator {
             // Alternate direction for next time
             self?.moveDirection *= -1
         }
+    }
+    
+    /// Performs keyboard activity by pressing and releasing the Shift key
+    /// Shift is used because it doesn't produce any visible output
+    private func simulateKeyboardActivity() {
+        // Shift key virtual keycode
+        let shiftKeyCode: CGKeyCode = 56
         
-        #if DEBUG
-        print("[ActivitySimulator] Activity simulated at \(Date())")
-        #endif
+        // Create key down event
+        if let keyDownEvent = CGEvent(keyboardEventSource: nil, virtualKey: shiftKeyCode, keyDown: true) {
+            keyDownEvent.post(tap: .cghidEventTap)
+        }
+        
+        // Release key after a tiny delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            if let keyUpEvent = CGEvent(keyboardEventSource: nil, virtualKey: shiftKeyCode, keyDown: false) {
+                keyUpEvent.post(tap: .cghidEventTap)
+            }
+        }
     }
 }
