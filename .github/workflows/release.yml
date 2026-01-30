@@ -12,6 +12,8 @@ jobs:
   build:
     name: Build AlwaysOn
     runs-on: macos-latest
+    env:
+      SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
 
     steps:
       - name: Checkout repository
@@ -85,9 +87,7 @@ jobs:
           ls -la artifacts/
 
       - name: Sign ZIP with Sparkle
-        if: ${{ secrets.SPARKLE_PRIVATE_KEY != '' }}
-        env:
-          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        if: env.SPARKLE_PRIVATE_KEY != ''
         run: |
           TAG_VERSION=${GITHUB_REF#refs/tags/}
           ZIP_PATH="artifacts/AlwaysOn-${TAG_VERSION}.zip"
@@ -105,7 +105,7 @@ jobs:
           echo "Sparkle signature: $ED_SIGNATURE"
 
       - name: Update appcast.xml
-        if: ${{ secrets.SPARKLE_PRIVATE_KEY != '' }}
+        if: env.SPARKLE_PRIVATE_KEY != ''
         run: |
           VERSION=${GITHUB_REF#refs/tags/v}
           TAG_VERSION=${GITHUB_REF#refs/tags/}
@@ -127,34 +127,28 @@ jobs:
           BUILD_NUMBER=$(grep -A1 'CFBundleVersion' AlwaysOn/Info.plist | grep -o '<string>[^<]*</string>' | sed 's/<[^>]*>//g')
           
           # Create new appcast entry
-          cat > appcast.xml << EOF
-          <?xml version="1.0" encoding="utf-8"?>
-          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
-            <channel>
-              <title>AlwaysOn Updates</title>
-              <description>Most recent changes with links to updates.</description>
-              <language>en</language>
-              <item>
-                <title>Version ${VERSION}</title>
-                <pubDate>${PUB_DATE}</pubDate>
-                <sparkle:version>${BUILD_NUMBER}</sparkle:version>
-                <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
-                <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-                <enclosure 
-                  url="${DOWNLOAD_URL}"
-                  sparkle:edSignature="${ED_SIGNATURE}"
-                  length="${FILE_SIZE}"
-                  type="application/octet-stream"/>
-              </item>
-            </channel>
-          </rss>
-          EOF
+          echo '<?xml version="1.0" encoding="utf-8"?>' > appcast.xml
+          echo '<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">' >> appcast.xml
+          echo '  <channel>' >> appcast.xml
+          echo '    <title>AlwaysOn Updates</title>' >> appcast.xml
+          echo '    <description>Most recent changes with links to updates.</description>' >> appcast.xml
+          echo '    <language>en</language>' >> appcast.xml
+          echo '    <item>' >> appcast.xml
+          echo "      <title>Version ${VERSION}</title>" >> appcast.xml
+          echo "      <pubDate>${PUB_DATE}</pubDate>" >> appcast.xml
+          echo "      <sparkle:version>${BUILD_NUMBER}</sparkle:version>" >> appcast.xml
+          echo "      <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>" >> appcast.xml
+          echo '      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>' >> appcast.xml
+          echo "      <enclosure url=\"${DOWNLOAD_URL}\" sparkle:edSignature=\"${ED_SIGNATURE}\" length=\"${FILE_SIZE}\" type=\"application/octet-stream\"/>" >> appcast.xml
+          echo '    </item>' >> appcast.xml
+          echo '  </channel>' >> appcast.xml
+          echo '</rss>' >> appcast.xml
           
           echo "Updated appcast.xml:"
           cat appcast.xml
 
       - name: Commit appcast.xml
-        if: ${{ secrets.SPARKLE_PRIVATE_KEY != '' }}
+        if: env.SPARKLE_PRIVATE_KEY != ''
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
