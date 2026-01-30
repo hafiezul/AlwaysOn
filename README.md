@@ -1,6 +1,6 @@
 # AlwaysOn
 
-A lightweight macOS menu bar app that keeps your Microsoft Teams status "Available" by simulating minimal user activity.
+A lightweight macOS menu bar app that keeps your status active in Microsoft Teams, Slack, Zoom, and other workplace apps by simulating minimal user activity.
 
 If you find this app useful, consider supporting its development:
 
@@ -149,10 +149,10 @@ AlwaysOn simulates minimal mouse activity every 45 seconds:
 2. Immediately moves it back
 3. Repeat
 
-This prevents macOS from detecting you as "idle" and keeps apps like Microsoft Teams showing your status as "Available".
+This prevents macOS from detecting you as "idle" and keeps workplace apps like Microsoft Teams, Slack, and Zoom showing your status as "Available" or "Active".
 
 **Why mouse movement?**
-- Teams monitors system idle time
+- Workplace apps monitor system idle time
 - Tiny mouse movements reset the idle timer
 - Movement is imperceptible to users
 - Uses native macOS APIs (no hacks)
@@ -187,7 +187,7 @@ No. The movement is 1 pixel and instantly reversed. You won't notice it.
 
 ### Does it work with Slack/Zoom/other apps?
 
-Most likely yes. Any app that uses macOS idle detection should be affected. However, some apps may have their own activity detection that this won't bypass.
+Yes. AlwaysOn works with any app that monitors macOS system idle time, including Microsoft Teams, Slack, Zoom, Discord, and most workplace communication apps. However, some apps may have their own activity detection methods (like webcam monitoring) that this won't bypass.
 
 ### Does it prevent my Mac from sleeping?
 
@@ -207,7 +207,7 @@ Enable **"Launch at Login"** in the menu. This uses macOS's built-in Login Items
 
 1. Check that Accessibility permission is granted (see [Granting Accessibility Permission](#granting-accessibility-permission))
 2. Ensure the status shows "Active" (green dot)
-3. Verify Teams isn't overriding with "Do Not Disturb"
+3. Verify your app isn't overriding with "Do Not Disturb" or custom status settings
 
 ### App doesn't appear in menu bar
 
