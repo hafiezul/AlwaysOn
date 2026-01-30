@@ -267,6 +267,38 @@ git push origin v1.1.0
 
 GitHub Actions will automatically build the app and create a release with both ZIP and DMG downloads.
 
+## Roadmap
+
+Here's what's planned for future versions. Want to help? [Contributions](#contributing) are welcome!
+
+### v1.2 - Customization
+- [ ] **Configurable activity interval** - Adjust timing (30s, 45s, 60s, 90s, 120s)
+- [ ] **Quick timers** - "Keep online for 1 hour" with auto-disable
+- [ ] **Activity method options** - Choose between mouse, keyboard, or alternating
+- [ ] **Global keyboard shortcut** - Toggle without opening the menu
+
+### v1.3 - Smart Features
+- [ ] **Work hours scheduling** - Auto-enable/disable at specific times
+- [ ] **Battery-aware mode** - Longer intervals when on battery power
+- [ ] **Presentation mode detection** - Auto-pause during screen sharing
+- [ ] **Focus mode integration** - Respect macOS Do Not Disturb
+
+### v1.4 - Distribution & UX
+- [ ] **Homebrew Cask support** - `brew install --cask alwayson`
+- [ ] **Improved auto-updates** - Download and install from within the app
+- [ ] **Menu bar icon variations** - Different status indicators
+- [ ] **Session statistics** - Track total uptime per day/week
+
+### Future Ideas
+- **Calendar integration** - Auto-pause during meetings
+- **Break reminders** - Pomodoro-style notifications
+- **Multiple profiles** - Different settings for different scenarios
+
+### Funding Goal
+- **Apple Developer Program** ($99/year) - Sign the app properly so users don't need the install-helper script!
+
+> Have an idea? [Open an issue](../../issues/new) or [start a discussion](../../discussions)!
+
 ## License
 
 MIT License - See [LICENSE](LICENSE) file for details.
