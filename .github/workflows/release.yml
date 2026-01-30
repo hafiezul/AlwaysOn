@@ -14,6 +14,11 @@ jobs:
     runs-on: macos-latest
     env:
       SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+      APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
 
     steps:
       - name: Checkout repository
@@ -26,8 +31,48 @@ jobs:
           # Use latest Xcode available on the runner
           sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
+      - name: Set up code signing
+        if: env.APPLE_CERTIFICATE_BASE64 != ''
+        run: |
+          # Create temporary keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 32)
+          
+          # Create keychain
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          
+          # Import certificate
+          echo "$APPLE_CERTIFICATE_BASE64" | base64 --decode > certificate.p12
+          security import certificate.p12 -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          rm certificate.p12
+          
+          # Set keychain for codesign
+          security list-keychain -d user -s "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          
+          # Find the signing identity
+          echo "Available signing identities:"
+          security find-identity -v -p codesigning "$KEYCHAIN_PATH"
+
       - name: Build app
         run: |
+          # Determine code signing parameters
+          if [ -n "$APPLE_CERTIFICATE_BASE64" ] && [ -n "$APPLE_TEAM_ID" ]; then
+            echo "Building with code signing enabled"
+            CODE_SIGN_IDENTITY="Developer ID Application"
+            CODE_SIGNING_REQUIRED="YES"
+            CODE_SIGNING_ALLOWED="YES"
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID"
+          else
+            echo "Building without code signing (accessibility features will not work in distribution)"
+            CODE_SIGN_IDENTITY=""
+            CODE_SIGNING_REQUIRED="NO"
+            CODE_SIGNING_ALLOWED="NO"
+            DEVELOPMENT_TEAM=""
+          fi
+          
           # Build release configuration
           xcodebuild -project AlwaysOn.xcodeproj \
             -scheme AlwaysOn \
@@ -35,9 +80,10 @@ jobs:
             -derivedDataPath build \
             -arch arm64 -arch x86_64 \
             ONLY_ACTIVE_ARCH=NO \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="$CODE_SIGN_IDENTITY" \
+            CODE_SIGNING_REQUIRED="$CODE_SIGNING_REQUIRED" \
+            CODE_SIGNING_ALLOWED="$CODE_SIGNING_ALLOWED" \
+            DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
             build
 
       - name: Download Sparkle
@@ -85,6 +131,31 @@ jobs:
 
           # List artifacts
           ls -la artifacts/
+          
+          # Copy installation helper script to artifacts
+          cp install-helper.sh artifacts/
+
+      - name: Notarize app
+        if: env.APPLE_ID != '' && env.APPLE_APP_SPECIFIC_PASSWORD != '' && env.APPLE_TEAM_ID != ''
+        run: |
+          TAG_VERSION=${GITHUB_REF#refs/tags/}
+          ZIP_PATH="artifacts/AlwaysOn-${TAG_VERSION}.zip"
+          
+          echo "Submitting app for notarization..."
+          xcrun notarytool submit "$ZIP_PATH" \
+            --apple-id "$APPLE_ID" \
+            --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" \
+            --wait
+          
+          echo "Notarization complete!"
+          
+          # Staple the notarization ticket to the DMG
+          DMG_PATH="artifacts/AlwaysOn-${TAG_VERSION}.dmg"
+          if [ -f "$DMG_PATH" ]; then
+            echo "Stapling notarization to DMG..."
+            xcrun stapler staple "$DMG_PATH" || echo "Warning: Could not staple DMG (this is normal for unsigned builds)"
+          fi
 
       - name: Sign ZIP with Sparkle
         if: env.SPARKLE_PRIVATE_KEY != ''
@@ -123,8 +194,8 @@ jobs:
           # Download URL
           DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_VERSION}/AlwaysOn-${TAG_VERSION}.zip"
           
-          # Get build number from Info.plist (CURRENT_PROJECT_VERSION)
-          BUILD_NUMBER=$(grep -A1 'CFBundleVersion' AlwaysOn/Info.plist | grep -o '<string>[^<]*</string>' | sed 's/<[^>]*>//g')
+          # Get build number from built app's Info.plist (not the source template)
+          BUILD_NUMBER=$(defaults read "$(pwd)/build/Build/Products/Release/AlwaysOn.app/Contents/Info" CFBundleVersion)
           
           # Create new appcast entry
           echo '<?xml version="1.0" encoding="utf-8"?>' > appcast.xml
@@ -156,15 +227,44 @@ jobs:
           git commit -m "Update appcast.xml for ${GITHUB_REF#refs/tags/}" || echo "No changes to commit"
           git push origin HEAD:main
 
+      - name: Create release notes
+        run: |
+          cat > release-notes.md << 'EOFNOTES'
+          ## Installation
+          
+          1. Download the DMG below
+          2. Drag to Applications folder
+          3. Right-click the app and select "Open"
+          4. Run this command to enable accessibility:
+          EOFNOTES
+          echo '   ```bash' >> release-notes.md
+          echo '   curl -fsSL https://raw.githubusercontent.com/hafiezul/AlwaysOn/main/install-helper.sh | bash' >> release-notes.md
+          echo '   ```' >> release-notes.md
+          cat >> release-notes.md << 'EOFNOTES'
+          5. Grant accessibility permission when prompted
+          
+          See the [README](https://github.com/hafiezul/AlwaysOn#installation) for full instructions.
+          EOFNOTES
+
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG_VERSION=${GITHUB_REF#refs/tags/}
-
-          # Create release with assets
+          
+          # Create release with assets and custom notes
           gh release create "$TAG_VERSION" \
             --title "$TAG_VERSION" \
+            --notes-file release-notes.md \
             --generate-notes \
             artifacts/AlwaysOn-${TAG_VERSION}.zip \
-            artifacts/AlwaysOn-${TAG_VERSION}.dmg
+            artifacts/AlwaysOn-${TAG_VERSION}.dmg \
+            artifacts/install-helper.sh
+
+      - name: Cleanup keychain
+        if: always() && env.APPLE_CERTIFICATE_BASE64 != ''
+        run: |
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          if [ -f "$KEYCHAIN_PATH" ]; then
+            security delete-keychain "$KEYCHAIN_PATH" || true
+          fi

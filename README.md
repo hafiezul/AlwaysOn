@@ -31,16 +31,31 @@ If you find this app useful, consider supporting its development:
    - **AlwaysOn-vX.X.X.zip** - Extract and move to Applications
 2. Move `AlwaysOn.app` to your Applications folder
 3. **First launch**: Right-click the app and select "Open" (required for unsigned apps)
-4. When prompted, grant Accessibility permission in System Settings
+4. **Run the installation helper script** (required for accessibility features):
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/hafiezul/AlwaysOn/main/install-helper.sh | bash
+   ```
+   Or download `install-helper.sh` from the repository and run:
+   ```bash
+   chmod +x install-helper.sh
+   ./install-helper.sh
+   ```
+5. When prompted, grant Accessibility permission in System Settings
 
-> **Note**: Since the app is not signed with an Apple Developer certificate, macOS will show a warning on first launch. This is normal for open-source apps distributed outside the App Store. After right-clicking and selecting "Open" once, subsequent launches will work normally.
+> **⚠️ Why the extra step?** macOS requires apps using accessibility features to be signed with an Apple Developer certificate ($99/year - that's a lot of coffee ☕). Since I can't afford that right now, the helper script re-signs the app locally on your machine. Takes 30 seconds and it's completely safe - this project is open source, so feel free to [inspect the script](install-helper.sh) before running it. If you'd rather skip it, just [build from source](#from-source) in Xcode!
+>
+> Want to help fund a proper certificate? [Buy me a coffee](https://buymeacoffee.com/hafiezul) ☕
 
 ### From Source
+
+Building from source is the easiest way to get full accessibility features without extra steps:
 
 1. Clone this repository
 2. Open `AlwaysOn.xcodeproj` in Xcode 15+
 3. Build and run (Cmd+R)
 4. When prompted, grant Accessibility permission in System Settings
+
+**Why build from source?** Apps built in Xcode are automatically signed with your local development certificate, so accessibility features work immediately without any manual re-signing.
 
 ### Granting Accessibility Permission
 
@@ -170,6 +185,21 @@ Enable **"Launch at Login"** in the menu. This uses macOS's built-in Login Items
 2. Try relaunching the app
 3. Check Activity Monitor for "AlwaysOn" process
 
+### Accessibility not working after installation (DMG/ZIP)
+
+If you installed from a pre-built DMG or ZIP and accessibility features aren't working, run the installation helper:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/hafiezul/AlwaysOn/main/install-helper.sh | bash
+```
+
+Or manually:
+```bash
+sudo codesign --force --deep --sign - /Applications/AlwaysOn.app
+```
+
+Then grant accessibility permission in System Settings.
+
 ### "Accessibility Required" warning won't go away
 
 This typically happens after reinstalling or updating the app. macOS tracks permissions by app binary, so a new version appears as a different app.
@@ -180,12 +210,16 @@ This typically happens after reinstalling or updating the app. macOS tracks perm
 - The new app binary needs its own permission entry
 
 **Solution:**
-1. Click **"Grant Permission"** in the app menu - this triggers the system prompt
-2. If that doesn't work, click **"Open Settings..."** to go to Accessibility settings
-3. **Remove the old entry**: Select "AlwaysOn" and click the **"-"** button
-4. **Add the new app**: Click **"+"** and select AlwaysOn from your Applications folder
-5. Ensure the checkbox is enabled
-6. Return to the app - permission will be detected automatically
+1. **Re-run the installation helper** (for DMG/ZIP installs):
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/hafiezul/AlwaysOn/main/install-helper.sh | bash
+   ```
+2. Click **"Grant Permission"** in the app menu - this triggers the system prompt
+3. If that doesn't work, click **"Open Settings..."** to go to Accessibility settings
+4. **Remove the old entry**: Select "AlwaysOn" and click the **"-"** button
+5. **Add the new app**: Click **"+"** and select AlwaysOn from your Applications folder
+6. Ensure the checkbox is enabled
+7. Return to the app - permission will be detected automatically
 
 > **Tip**: The app automatically checks for permission changes when you switch back to it, and polls for 30 seconds after you open Settings.
 
