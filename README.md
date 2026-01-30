@@ -40,11 +40,9 @@ If you find this app useful, consider supporting its development:
    chmod +x install-helper.sh
    ./install-helper.sh
    ```
-5. When prompted, grant Accessibility permission in System Settings
+5. See [Granting Accessibility Permission](#granting-accessibility-permission) below for next steps
 
 > **⚠️ Why the extra step?** macOS requires apps using accessibility features to be signed with an Apple Developer certificate ($99/year - that's a lot of coffee ☕). Since I can't afford that right now, the helper script re-signs the app locally on your machine. Takes 30 seconds and it's completely safe - this project is open source, so feel free to [inspect the script](install-helper.sh) before running it. If you'd rather skip it, just [build from source](#from-source) in Xcode!
->
-> Want to help fund a proper certificate? [Buy me a coffee](https://buymeacoffee.com/hafiezul) ☕
 
 ### From Source
 
@@ -53,7 +51,7 @@ Building from source is the easiest way to get full accessibility features witho
 1. Clone this repository
 2. Open `AlwaysOn.xcodeproj` in Xcode 15+
 3. Build and run (Cmd+R)
-4. When prompted, grant Accessibility permission in System Settings
+4. See [Granting Accessibility Permission](#granting-accessibility-permission) below for next steps
 
 **Why build from source?** Apps built in Xcode are automatically signed with your local development certificate, so accessibility features work immediately without any manual re-signing.
 
@@ -79,28 +77,28 @@ Building from source is the easiest way to get full accessibility features witho
 +-------------------------------+
 | * Active              v1.1.0  |  <- Green = keeping you online
 +-------------------------------+
-| || Pause                   ^K |  <- Toggle on/off
+| || Pause                  ⌘K |  <- Toggle on/off
 | () Session: 2:34:12           |  <- Live timer (updates while open)
 +-------------------------------+
 | [] Launch at Login            |  <- Toggle auto-start
 | <> Check for Updates          |  <- Check GitHub for updates
 +-------------------------------+
 | (i) About AlwaysOn            |  <- Version info & links
-| (!) Quit AlwaysOn          ^Q |
+| (!) Quit AlwaysOn          ⌘Q |
 +-------------------------------+
 
 When permission is needed:
 +-------------------------------+
 | o Inactive                    |
 +-------------------------------+
-| > Keep Online              ^K |
+| > Keep Online              ⌘K |
 +-------------------------------+
 | /!\ Accessibility Required    |
 |     Click below to grant...   |
 | [=] Grant Permission          |  <- Triggers system prompt
 | [o] Open Settings...          |  <- Manual fallback
 +-------------------------------+
-| (!) Quit AlwaysOn          ^Q |
+| (!) Quit AlwaysOn          ⌘Q |
 +-------------------------------+
 ```
 
@@ -175,7 +173,7 @@ Enable **"Launch at Login"** in the menu. This uses macOS's built-in Login Items
 
 ### App not keeping me online
 
-1. Check that Accessibility permission is granted
+1. Check that Accessibility permission is granted (see [Granting Accessibility Permission](#granting-accessibility-permission))
 2. Ensure the status shows "Active" (green dot)
 3. Verify Teams isn't overriding with "Do Not Disturb"
 
@@ -187,18 +185,7 @@ Enable **"Launch at Login"** in the menu. This uses macOS's built-in Login Items
 
 ### Accessibility not working after installation (DMG/ZIP)
 
-If you installed from a pre-built DMG or ZIP and accessibility features aren't working, run the installation helper:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/hafiezul/AlwaysOn/main/install-helper.sh | bash
-```
-
-Or manually:
-```bash
-sudo codesign --force --deep --sign - /Applications/AlwaysOn.app
-```
-
-Then grant accessibility permission in System Settings.
+If you installed from a pre-built DMG or ZIP and accessibility features aren't working, see the [installation helper instructions](#download-pre-built-binary-recommended) in step 4 of the installation section, then grant accessibility permission in System Settings.
 
 ### "Accessibility Required" warning won't go away
 
@@ -210,10 +197,7 @@ This typically happens after reinstalling or updating the app. macOS tracks perm
 - The new app binary needs its own permission entry
 
 **Solution:**
-1. **Re-run the installation helper** (for DMG/ZIP installs):
-   ```bash
-   curl -fsSL https://raw.githubusercontent.com/hafiezul/AlwaysOn/main/install-helper.sh | bash
-   ```
+1. **Re-run the installation helper** (for DMG/ZIP installs) - see [installation instructions](#download-pre-built-binary-recommended)
 2. Click **"Grant Permission"** in the app menu - this triggers the system prompt
 3. If that doesn't work, click **"Open Settings..."** to go to Accessibility settings
 4. **Remove the old entry**: Select "AlwaysOn" and click the **"-"** button
