@@ -19,10 +19,21 @@ A lightweight macOS menu bar app that keeps your Microsoft Teams status "Availab
 
 ## Installation
 
+### Download Pre-built Binary (Recommended)
+
+1. Download the latest release from the [Releases page](../../releases/latest):
+   - **AlwaysOn-vX.X.X.dmg** - Drag and drop installer
+   - **AlwaysOn-vX.X.X.zip** - Extract and move to Applications
+2. Move `AlwaysOn.app` to your Applications folder
+3. **First launch**: Right-click the app and select "Open" (required for unsigned apps)
+4. When prompted, grant Accessibility permission in System Settings
+
+> **Note**: Since the app is not signed with an Apple Developer certificate, macOS will show a warning on first launch. This is normal for open-source apps distributed outside the App Store. After right-clicking and selecting "Open" once, subsequent launches will work normally.
+
 ### From Source
 
 1. Clone this repository
-2. Open `AlwaysOn/AlwaysOn.xcodeproj` in Xcode 15+
+2. Open `AlwaysOn.xcodeproj` in Xcode 15+
 3. Build and run (Cmd+R)
 4. When prompted, grant Accessibility permission in System Settings
 
@@ -32,6 +43,9 @@ A lightweight macOS menu bar app that keeps your Microsoft Teams status "Availab
 2. Click the lock icon and authenticate
 3. Enable **AlwaysOn** in the list
 4. If AlwaysOn isn't listed, click "+" and add it manually
+5. Return to AlwaysOn - it will automatically detect the permission change
+
+> **Note**: If the app still shows "Accessibility Required" after granting permission, click "Re-check Permission" in the menu or simply click away and reopen the menu.
 
 ## Usage
 
@@ -117,10 +131,21 @@ Apps that simulate input can't use App Sandbox, which is required for the Mac Ap
 
 ### "Accessibility Required" warning won't go away
 
+This can happen after reinstalling or updating the app, as macOS tracks permissions by app binary.
+
+**Quick fix:**
+1. Click "Open Settings" in the app menu
+2. In System Settings, toggle AlwaysOn **off** then **on** again
+3. Click "Re-check Permission" in the app menu
+
+**If that doesn't work:**
 1. Open System Settings > Privacy & Security > Accessibility
-2. Remove AlwaysOn from the list
-3. Re-add it and ensure it's enabled
-4. Restart AlwaysOn
+2. Remove AlwaysOn from the list (select it and click "-")
+3. Click "+" and re-add AlwaysOn from your Applications folder
+4. Ensure it's enabled (checkbox is checked)
+5. Click "Re-check Permission" in the app menu
+
+> **Tip**: The app automatically detects permission changes when you switch back to it, or you can manually click "Re-check Permission" at any time.
 
 ## Building from Source
 
@@ -130,7 +155,7 @@ git clone <repository-url>
 cd always-on
 
 # Open in Xcode
-open AlwaysOn/AlwaysOn.xcodeproj
+open AlwaysOn.xcodeproj
 
 # Build and run
 # Press Cmd+R in Xcode
@@ -141,6 +166,18 @@ open AlwaysOn/AlwaysOn.xcodeproj
 - Xcode 15.0+
 - macOS 13.0+ SDK
 - Swift 5.9+
+
+### Creating a Release
+
+To create a new release:
+
+```bash
+# Tag the commit with a version
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+GitHub Actions will automatically build the app and create a release with both ZIP and DMG downloads.
 
 ## License
 

@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import AppKit
 
 /// Central state management for the AlwaysOn app
 /// Keeps track of active status and coordinates with ActivitySimulator
@@ -38,6 +39,8 @@ final class AppState: ObservableObject {
     private let activitySimulator = ActivitySimulator()
     private var sessionTimer: Timer?
     private var sessionStartTime: Date?
+    private var permissionCheckTimer: Timer?
+    private var permissionCheckCount: Int = 0
     
     // MARK: - Constants
     
@@ -48,6 +51,8 @@ final class AppState: ObservableObject {
     
     private enum Defaults {
         static let activityInterval: TimeInterval = 45.0
+        static let permissionCheckInterval: TimeInterval = 2.0
+        static let maxPermissionChecks: Int = 15 // 30 seconds max (15 * 2s)
     }
     
     // MARK: - Initialization
@@ -65,6 +70,14 @@ final class AppState: ObservableObject {
         // Check permissions on init
         checkPermissions()
         
+        // Listen for app activation to re-check permissions
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(appDidBecomeActive),
+            name: NSApplication.didBecomeActiveNotification,
+            object: nil
+        )
+        
         // Resume active state if was active before quit
         if isActive && hasAccessibilityPermission {
             startActivitySimulation()
@@ -72,6 +85,11 @@ final class AppState: ObservableObject {
             // Reset active state if permissions are missing
             isActive = false
         }
+    }
+    
+    deinit {
+        stopPermissionPolling()
+        NotificationCenter.default.removeObserver(self)
     }
     
     // MARK: - Public Methods
@@ -88,15 +106,58 @@ final class AppState: ObservableObject {
     
     /// Check and update accessibility permission status
     func checkPermissions() {
+        let previousState = hasAccessibilityPermission
         hasAccessibilityPermission = PermissionManager.checkAccessibilityPermission()
+        
+        // If permission was just granted, stop polling
+        if hasAccessibilityPermission && !previousState {
+            stopPermissionPolling()
+        }
+        // If permission was just revoked, stop activity
+        else if !hasAccessibilityPermission && previousState {
+            if isActive {
+                isActive = false
+            }
+        }
     }
     
     /// Open System Preferences to grant accessibility permission
     func openAccessibilitySettings() {
         PermissionManager.openAccessibilitySettings()
+        // Start temporary polling after opening settings (30 seconds max)
+        startPermissionPolling()
     }
     
     // MARK: - Private Methods
+    
+    @objc private func appDidBecomeActive() {
+        // Re-check permissions when app becomes active
+        checkPermissions()
+    }
+    
+    private func startPermissionPolling() {
+        // Reset counter and start/restart polling
+        permissionCheckCount = 0
+        stopPermissionPolling()
+        
+        permissionCheckTimer = Timer.scheduledTimer(withTimeInterval: Defaults.permissionCheckInterval, repeats: true) { [weak self] _ in
+            guard let self = self else { return }
+            
+            self.permissionCheckCount += 1
+            self.checkPermissions()
+            
+            // Stop polling after max checks or if permission granted
+            if self.hasAccessibilityPermission || self.permissionCheckCount >= Defaults.maxPermissionChecks {
+                self.stopPermissionPolling()
+            }
+        }
+    }
+    
+    private func stopPermissionPolling() {
+        permissionCheckTimer?.invalidate()
+        permissionCheckTimer = nil
+        permissionCheckCount = 0
+    }
     
     private func handleActiveStateChange() {
         if isActive {

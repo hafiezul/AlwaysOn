@@ -1,0 +1,86 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build AlwaysOn
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Set up Xcode
+        run: |
+          # Use latest Xcode available on the runner
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Build app
+        run: |
+          # Build release configuration
+          xcodebuild -project AlwaysOn.xcodeproj \
+            -scheme AlwaysOn \
+            -configuration Release \
+            -derivedDataPath build \
+            -arch arm64 -arch x86_64 \
+            ONLY_ACTIVE_ARCH=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+
+      - name: Prepare artifacts
+        run: |
+          # Create output directory
+          mkdir -p artifacts
+
+          # Get the app bundle path
+          APP_PATH="build/Build/Products/Release/AlwaysOn.app"
+
+          # Get version from tag
+          VERSION=${GITHUB_REF#refs/tags/}
+
+          # Create ZIP
+          cd build/Build/Products/Release
+          zip -r -y "../../../../artifacts/AlwaysOn-${VERSION}.zip" AlwaysOn.app
+          cd ../../../../
+
+          # Create DMG
+          # Create a temporary directory for DMG contents
+          mkdir -p dmg-contents
+          cp -R "$APP_PATH" dmg-contents/
+
+          # Create a symlink to Applications folder
+          ln -s /Applications dmg-contents/Applications
+
+          # Create DMG
+          hdiutil create -volname "AlwaysOn" \
+            -srcfolder dmg-contents \
+            -ov -format UDZO \
+            "artifacts/AlwaysOn-${VERSION}.dmg"
+
+          # Cleanup
+          rm -rf dmg-contents
+
+          # List artifacts
+          ls -la artifacts/
+
+      - name: Create GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+
+          # Create release with assets
+          gh release create "$VERSION" \
+            --title "AlwaysOn $VERSION" \
+            --generate-notes \
+            artifacts/AlwaysOn-${VERSION}.zip \
+            artifacts/AlwaysOn-${VERSION}.dmg

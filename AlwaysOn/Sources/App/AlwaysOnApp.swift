@@ -9,13 +9,8 @@ struct AlwaysOnApp: App {
             MenuBarView()
                 .environmentObject(appState)
         } label: {
-            Label {
-                Text("AlwaysOn")
-            } icon: {
-                Image(systemName: appState.isActive ? "circle.fill" : "circle")
-                    .foregroundColor(appState.isActive ? .green : .gray)
-            }
+            Image(systemName: appState.isActive ? "circle.fill" : "circle")
         }
-        .menuBarExtraStyle(.menu)
+        .menuBarExtraStyle(.window)
     }
 }
