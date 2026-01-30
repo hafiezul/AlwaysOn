@@ -15,16 +15,28 @@
     <key>CFBundlePackageType</key>
     <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0</string>
+    <string>$(MARKETING_VERSION)</string>
     <key>CFBundleVersion</key>
-    <string>1</string>
+    <string>$(CURRENT_PROJECT_VERSION)</string>
     <key>LSMinimumSystemVersion</key>
     <string>$(MACOSX_DEPLOYMENT_TARGET)</string>
     <key>LSUIElement</key>
     <true/>
     <key>NSHumanReadableCopyright</key>
-    <string>Copyright © 2026. All rights reserved.</string>
+    <string>Copyright © 2024 Hafiezul. All rights reserved.</string>
     <key>NSAccessibilityUsageDescription</key>
     <string>AlwaysOn needs accessibility permission to simulate mouse movement and keep your status active.</string>
+    
+    <!-- Sparkle Configuration -->
+    <key>SUFeedURL</key>
+    <string>https://raw.githubusercontent.com/hafiezul/AlwaysOn/main/appcast.xml</string>
+    <key>SUPublicEDKey</key>
+    <string>uP5rnnOev8Q7w3+WdXoV9Ja526VZ+bH1ggcY3SIbxG8=</string>
+    <key>SUEnableAutomaticChecks</key>
+    <true/>
+    <key>SUAutomaticallyUpdate</key>
+    <false/>
+    <key>SUScheduledCheckInterval</key>
+    <integer>86400</integer>
 </dict>
 </plist>

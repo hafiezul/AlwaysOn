@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>AlwaysOn Updates</title>
+    <description>Most recent changes with links to updates.</description>
+    <language>en</language>
+    <!-- 
+      This file is automatically updated by GitHub Actions when a new release is created.
+      Do not edit manually unless you know what you're doing.
+      
+      To release a new version:
+      1. Update version in Xcode project (MARKETING_VERSION and CURRENT_PROJECT_VERSION)
+      2. Create a new GitHub release with a tag like v1.1.0
+      3. GitHub Actions will build, sign, and update this appcast automatically
+    -->
+  </channel>
+</rss>

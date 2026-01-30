@@ -2,16 +2,8 @@ import SwiftUI
 
 /// About window showing app information and update status
 struct AboutView: View {
-    @State private var updateState: UpdateState = .idle
+    @ObservedObject private var sparkleUpdater = SparkleUpdaterManager.shared
     @Environment(\.openURL) private var openURL
-    
-    enum UpdateState {
-        case idle
-        case checking
-        case upToDate
-        case available(UpdateChecker.UpdateInfo)
-        case error(String)
-    }
     
     private var appVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
@@ -83,78 +75,15 @@ struct AboutView: View {
     @ViewBuilder
     private var updateSection: some View {
         VStack(spacing: 8) {
-            switch updateState {
-            case .idle:
-                Button("Check for Updates") {
-                    checkForUpdates()
-                }
-                
-            case .checking:
-                HStack(spacing: 8) {
-                    ProgressView()
-                        .scaleEffect(0.7)
-                    Text("Checking for updates...")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                
-            case .upToDate:
-                HStack(spacing: 6) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundColor(.green)
-                    Text("You're up to date!")
-                        .font(.caption)
-                }
-                
-            case .available(let info):
-                VStack(spacing: 8) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "arrow.down.circle.fill")
-                            .foregroundColor(.blue)
-                        Text("Version \(info.version) available")
-                            .font(.caption)
-                    }
-                    
-                    Button("Download Update") {
-                        openURL(info.releaseURL)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                }
-                
-            case .error(let message):
-                VStack(spacing: 4) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundColor(.yellow)
-                        Text("Update check failed")
-                            .font(.caption)
-                    }
-                    Text(message)
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
-                    
-                    Button("Retry") {
-                        checkForUpdates()
-                    }
-                    .buttonStyle(.link)
-                    .controlSize(.small)
-                }
+            Button("Check for Updates...") {
+                sparkleUpdater.checkForUpdates()
             }
-        }
-    }
-    
-    private func checkForUpdates() {
-        updateState = .checking
-        
-        UpdateChecker.checkForUpdate { result in
-            switch result {
-            case .upToDate:
-                updateState = .upToDate
-            case .updateAvailable(let info):
-                updateState = .available(info)
-            case .error(let error):
-                updateState = .error(error.localizedDescription)
+            .disabled(!sparkleUpdater.canCheckForUpdates)
+            
+            if let lastCheck = sparkleUpdater.lastUpdateCheckDate {
+                Text("Last checked: \(lastCheck, style: .relative) ago")
+                    .font(.caption2)
+                    .foregroundColor(.secondary)
             }
         }
     }

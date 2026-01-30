@@ -37,3 +37,10 @@ playground.xcworkspace
 
 # Project files
 PROGRESS.md
+
+# IDE
+.idea/
+
+# Sparkle (one-time setup files)
+Sparkle/
+Sparkle.tar.xz

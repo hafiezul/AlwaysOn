@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Set up Xcode
         run: |
@@ -36,6 +38,15 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             build
 
+      - name: Download Sparkle
+        run: |
+          # Download Sparkle release for signing tools
+          SPARKLE_VERSION="2.6.4"
+          curl -L -o Sparkle.tar.xz "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz"
+          mkdir -p Sparkle
+          tar -xf Sparkle.tar.xz -C Sparkle
+          ls -la Sparkle/bin/
+
       - name: Prepare artifacts
         run: |
           # Create output directory
@@ -44,12 +55,13 @@ jobs:
           # Get the app bundle path
           APP_PATH="build/Build/Products/Release/AlwaysOn.app"
 
-          # Get version from tag
-          VERSION=${GITHUB_REF#refs/tags/}
+          # Get version from tag (strip 'v' prefix)
+          VERSION=${GITHUB_REF#refs/tags/v}
+          TAG_VERSION=${GITHUB_REF#refs/tags/}
 
           # Create ZIP
           cd build/Build/Products/Release
-          zip -r -y "../../../../artifacts/AlwaysOn-${VERSION}.zip" AlwaysOn.app
+          zip -r -y "../../../../artifacts/AlwaysOn-${TAG_VERSION}.zip" AlwaysOn.app
           cd ../../../../
 
           # Create DMG
@@ -64,7 +76,7 @@ jobs:
           hdiutil create -volname "AlwaysOn" \
             -srcfolder dmg-contents \
             -ov -format UDZO \
-            "artifacts/AlwaysOn-${VERSION}.dmg"
+            "artifacts/AlwaysOn-${TAG_VERSION}.dmg"
 
           # Cleanup
           rm -rf dmg-contents
@@ -72,15 +84,93 @@ jobs:
           # List artifacts
           ls -la artifacts/
 
+      - name: Sign ZIP with Sparkle
+        if: ${{ secrets.SPARKLE_PRIVATE_KEY != '' }}
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          TAG_VERSION=${GITHUB_REF#refs/tags/}
+          ZIP_PATH="artifacts/AlwaysOn-${TAG_VERSION}.zip"
+          
+          # Sign the ZIP and capture the signature
+          echo "$SPARKLE_PRIVATE_KEY" > /tmp/sparkle_private_key
+          SIGNATURE=$(./Sparkle/bin/sign_update "$ZIP_PATH" -f /tmp/sparkle_private_key)
+          rm /tmp/sparkle_private_key
+          
+          # Extract just the signature value (format: sparkle:edSignature="..." length="...")
+          ED_SIGNATURE=$(echo "$SIGNATURE" | grep -o 'sparkle:edSignature="[^"]*"' | cut -d'"' -f2)
+          
+          # Save signature for appcast update
+          echo "$ED_SIGNATURE" > artifacts/signature.txt
+          echo "Sparkle signature: $ED_SIGNATURE"
+
+      - name: Update appcast.xml
+        if: ${{ secrets.SPARKLE_PRIVATE_KEY != '' }}
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          TAG_VERSION=${GITHUB_REF#refs/tags/}
+          ZIP_PATH="artifacts/AlwaysOn-${TAG_VERSION}.zip"
+          
+          # Get file size
+          FILE_SIZE=$(stat -f%z "$ZIP_PATH")
+          
+          # Get signature
+          ED_SIGNATURE=$(cat artifacts/signature.txt)
+          
+          # Get current date in RFC 822 format
+          PUB_DATE=$(date -R)
+          
+          # Download URL
+          DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_VERSION}/AlwaysOn-${TAG_VERSION}.zip"
+          
+          # Get build number from Info.plist (CURRENT_PROJECT_VERSION)
+          BUILD_NUMBER=$(grep -A1 'CFBundleVersion' AlwaysOn/Info.plist | grep -o '<string>[^<]*</string>' | sed 's/<[^>]*>//g')
+          
+          # Create new appcast entry
+          cat > appcast.xml << EOF
+          <?xml version="1.0" encoding="utf-8"?>
+          <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+            <channel>
+              <title>AlwaysOn Updates</title>
+              <description>Most recent changes with links to updates.</description>
+              <language>en</language>
+              <item>
+                <title>Version ${VERSION}</title>
+                <pubDate>${PUB_DATE}</pubDate>
+                <sparkle:version>${BUILD_NUMBER}</sparkle:version>
+                <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
+                <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
+                <enclosure 
+                  url="${DOWNLOAD_URL}"
+                  sparkle:edSignature="${ED_SIGNATURE}"
+                  length="${FILE_SIZE}"
+                  type="application/octet-stream"/>
+              </item>
+            </channel>
+          </rss>
+          EOF
+          
+          echo "Updated appcast.xml:"
+          cat appcast.xml
+
+      - name: Commit appcast.xml
+        if: ${{ secrets.SPARKLE_PRIVATE_KEY != '' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add appcast.xml
+          git commit -m "Update appcast.xml for ${GITHUB_REF#refs/tags/}" || echo "No changes to commit"
+          git push origin HEAD:main
+
       - name: Create GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION=${GITHUB_REF#refs/tags/}
+          TAG_VERSION=${GITHUB_REF#refs/tags/}
 
           # Create release with assets
-          gh release create "$VERSION" \
-            --title "$VERSION" \
+          gh release create "$TAG_VERSION" \
+            --title "$TAG_VERSION" \
             --generate-notes \
-            artifacts/AlwaysOn-${VERSION}.zip \
-            artifacts/AlwaysOn-${VERSION}.dmg
+            artifacts/AlwaysOn-${TAG_VERSION}.zip \
+            artifacts/AlwaysOn-${TAG_VERSION}.dmg
