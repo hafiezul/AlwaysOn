@@ -5,12 +5,12 @@
     <description>Most recent changes with links to updates.</description>
     <language>en</language>
     <item>
-      <title>Version 1.1.2</title>
-      <pubDate>Fri, 30 Jan 2026 08:00:31 +0000</pubDate>
-      <sparkle:version>4</sparkle:version>
-      <sparkle:shortVersionString>1.1.2</sparkle:shortVersionString>
+      <title>Version 1.2.1</title>
+      <pubDate>Fri, 30 Jan 2026 16:51:59 +0000</pubDate>
+      <sparkle:version>6</sparkle:version>
+      <sparkle:shortVersionString>1.2.1</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>
-      <enclosure url="https://github.com/hafiezul/AlwaysOn/releases/download/v1.1.2/AlwaysOn-v1.1.2.zip" sparkle:edSignature="jPHkjQmrhXAlQNM3eL7vvRbbcaZnNlsXrGjsp6jIpDoTs72x0Kk3mEZhADuvZb/MqEvSrpol2sdkSv+NiUakAQ==" length="1049060" type="application/octet-stream"/>
+      <enclosure url="https://github.com/hafiezul/AlwaysOn/releases/download/v1.2.1/AlwaysOn-v1.2.1.zip" sparkle:edSignature="Ze+Sa2sLmFpk5ks37ap9T8npTRY4P1bPAtP+0qAG0iDk+25ArN65rstrG7J1hZInMWkRRQmv1uiA+Zwzrh+5Dw==" length="1230694" type="application/octet-stream"/>
     </item>
   </channel>
 </rss>
