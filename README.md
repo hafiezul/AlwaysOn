@@ -10,6 +10,8 @@ If you find this app useful, consider supporting its development:
 
 - **Menu Bar Only** - Lives in your menu bar, no dock icon
 - **One-Click Toggle** - Enable/disable with a single click
+- **Pause/Resume** - Pause your session and resume later without losing progress
+- **Stop Session** - Completely reset and start a fresh session
 - **Minimal Resource Usage** - <15MB memory, <0.1% CPU
 - **Remembers State** - Restores your preference on relaunch
 - **Session Timer** - Shows how long you've been "online"
@@ -24,10 +26,12 @@ If you find this app useful, consider supporting its development:
 
 Here's what's planned for future versions. Want to help? [Contributions](#contributing) are welcome!
 
-### v1.2 - Customization (Current)
+### v1.2 - Customization (Completed)
 - [x] **Configurable activity interval** - Adjust timing (30s, 45s, 60s, 2min, 5min)
 - [x] **Quick timers** - "Keep online for X hours" with auto-disable
 - [x] **Activity method options** - Choose between mouse, keyboard, or alternating
+- [x] **Pause/Resume functionality** - Pause sessions and resume without losing progress
+- [x] **Stop Session control** - Explicit button to reset and start fresh
 
 ### v1.3 - Smart Features
 - [ ] **Work hours scheduling** - Auto-enable/disable at specific times
@@ -107,32 +111,42 @@ Building from source is the easiest way to get full accessibility features witho
 
 ### Menu Bar Interface
 
+**When Active:**
 ```
 +-------------------------------+
-| * Active              v1.1.0  |  <- Green = keeping you online
+| ● Active              v1.2.1  |  <- Green = keeping you online
 +-------------------------------+
-| || Pause                  ⌘K |  <- Toggle on/off
-| () Session: 2:34:12           |  <- Live timer (updates while open)
+| ⏸ Pause                  ⌘K |  <- Pause your session
+| ⏱ Session: 2:34:12           |  <- Live timer
 +-------------------------------+
-| [] Launch at Login            |  <- Toggle auto-start
-| <> Check for Updates          |  <- Check GitHub for updates
+| ⚙ Settings...            ⌘, |
+| ⏻ Quit AlwaysOn          ⌘Q |
 +-------------------------------+
-| (i) About AlwaysOn            |  <- Version info & links
-| (!) Quit AlwaysOn          ⌘Q |
-+-------------------------------+
+```
 
-When permission is needed:
+**When Paused (with saved session):**
+```
 +-------------------------------+
-| o Inactive                    |
+| ○ Inactive            v1.2.1  |
 +-------------------------------+
-| > Keep Online              ⌘K |
+| ▶ Resume                 ⌘K |  <- Resume saved session
+| ⏱ Session: 2:34:12 (paused)  |  <- Saved progress
+| ⏹ Stop Session               |  <- Reset completely
 +-------------------------------+
-| /!\ Accessibility Required    |
-|     Click below to grant...   |
-| [=] Grant Permission          |  <- Triggers system prompt
-| [o] Open Settings...          |  <- Manual fallback
+| ⚙ Settings...            ⌘, |
+| ⏻ Quit AlwaysOn          ⌘Q |
 +-------------------------------+
-| (!) Quit AlwaysOn          ⌘Q |
+```
+
+**When Inactive (fresh start):**
+```
++-------------------------------+
+| ○ Inactive            v1.2.1  |
++-------------------------------+
+| ▶ Keep Online            ⌘K |  <- Start new session
++-------------------------------+
+| ⚙ Settings...            ⌘, |
+| ⏻ Quit AlwaysOn          ⌘Q |
 +-------------------------------+
 ```
 
@@ -140,9 +154,15 @@ When permission is needed:
 
 | Shortcut | Action |
 |----------|--------|
-| `⌘K` | Toggle Keep Online (when menu is open) |
+| `⌘K` | Toggle Keep Online / Pause / Resume |
 | `⌘,` | Open Settings |
 | `⌘Q` | Quit AlwaysOn |
+
+### Session Controls
+
+**Pause** - Temporarily stop activity simulation while preserving your session timer. Use this for short breaks (lunch, meetings, etc.). Click "Resume" to continue from where you left off.
+
+**Stop Session** - Completely reset your session and clear all timers. Use this when you're done for the day or want to start tracking fresh. Next activation will be a brand new session.
 
 ## How It Works
 
