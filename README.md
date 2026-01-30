@@ -2,7 +2,9 @@
 
 A lightweight macOS menu bar app that keeps your Microsoft Teams status "Available" by simulating minimal user activity.
 
-[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black)](https://buymeacoffee.com/hafiezul)
+If you find this app useful, consider supporting its development:
+
+<a href="https://buymeacoffee.com/hafiezul" target="_blank"><img src="https://img.shields.io/badge/Buy%20Me%20A%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me A Coffee"></a>
 
 ## Features
 
@@ -39,28 +41,45 @@ A lightweight macOS menu bar app that keeps your Microsoft Teams status "Availab
 
 ### Granting Accessibility Permission
 
-1. Open **System Settings** > **Privacy & Security** > **Accessibility**
-2. Click the lock icon and authenticate
-3. Enable **AlwaysOn** in the list
-4. If AlwaysOn isn't listed, click "+" and add it manually
-5. Return to AlwaysOn - it will automatically detect the permission change
+**First time setup:**
+1. Click **"Keep Online"** or **"Grant Permission"** in the menu
+2. macOS will show a permission prompt - click **"Open System Settings"**
+3. In the Accessibility settings, enable **AlwaysOn**
+4. Return to the app - it will automatically detect the permission
 
-> **Note**: If the app still shows "Accessibility Required" after granting permission, click "Re-check Permission" in the menu or simply click away and reopen the menu.
+**Manual setup:**
+1. Open **System Settings** > **Privacy & Security** > **Accessibility**
+2. Click the **"+"** button and add AlwaysOn from your Applications folder
+3. Ensure the checkbox next to AlwaysOn is enabled
+4. Return to AlwaysOn - it will automatically detect the permission change
 
 ## Usage
 
 ### Menu Bar Interface
 
 ```
-┌─────────────────────────┐
-│ ● Active            ▸   │  ← Green = keeping you online
-├─────────────────────────┤
-│ ⏸ Pause           ⌘K   │  ← Toggle on/off
-│ ─────────────────────── │
-│ 🕐 Session: 2:34:12     │  ← Time since activated
-│ ─────────────────────── │
-│ ⏻ Quit AlwaysOn    ⌘Q   │
-└─────────────────────────┘
++-----------------------------+
+| * Active                    |  <- Green = keeping you online
++-----------------------------+
+| || Pause                 ^K |  <- Toggle on/off
+| () Session: 2:34:12         |  <- Live timer (updates while open)
++-----------------------------+
+| (!) Quit AlwaysOn        ^Q |
++-----------------------------+
+
+When permission is needed:
++-----------------------------+
+| o Inactive                  |
++-----------------------------+
+| > Keep Online            ^K |
++-----------------------------+
+| /!\ Accessibility Required  |
+|     Click below to grant... |
+| [=] Grant Permission        |  <- Triggers system prompt
+| [o] Open Settings...        |  <- Manual fallback
++-----------------------------+
+| (!) Quit AlwaysOn        ^Q |
++-----------------------------+
 ```
 
 ### Keyboard Shortcuts
@@ -131,21 +150,22 @@ Apps that simulate input can't use App Sandbox, which is required for the Mac Ap
 
 ### "Accessibility Required" warning won't go away
 
-This can happen after reinstalling or updating the app, as macOS tracks permissions by app binary.
+This typically happens after reinstalling or updating the app. macOS tracks permissions by app binary, so a new version appears as a different app.
 
-**Quick fix:**
-1. Click "Open Settings" in the app menu
-2. In System Settings, toggle AlwaysOn **off** then **on** again
-3. Click "Re-check Permission" in the app menu
+**Why this happens:**
+- macOS stores accessibility permissions per app binary
+- When you reinstall, the old permission entry points to the old (deleted) binary
+- The new app binary needs its own permission entry
 
-**If that doesn't work:**
-1. Open System Settings > Privacy & Security > Accessibility
-2. Remove AlwaysOn from the list (select it and click "-")
-3. Click "+" and re-add AlwaysOn from your Applications folder
-4. Ensure it's enabled (checkbox is checked)
-5. Click "Re-check Permission" in the app menu
+**Solution:**
+1. Click **"Grant Permission"** in the app menu - this triggers the system prompt
+2. If that doesn't work, click **"Open Settings..."** to go to Accessibility settings
+3. **Remove the old entry**: Select "AlwaysOn" and click the **"-"** button
+4. **Add the new app**: Click **"+"** and select AlwaysOn from your Applications folder
+5. Ensure the checkbox is enabled
+6. Return to the app - permission will be detected automatically
 
-> **Tip**: The app automatically detects permission changes when you switch back to it, or you can manually click "Re-check Permission" at any time.
+> **Tip**: The app automatically checks for permission changes when you switch back to it, and polls for 30 seconds after you open Settings.
 
 ## Building from Source
 

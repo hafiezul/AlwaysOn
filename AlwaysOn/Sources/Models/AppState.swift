@@ -97,8 +97,9 @@ final class AppState: ObservableObject {
     /// Toggle the active state
     func toggle() {
         if !isActive && !hasAccessibilityPermission {
-            PermissionManager.requestAccessibilityPermission()
-            checkPermissions()
+            // Trigger system prompt and start polling for result
+            PermissionManager.promptForPermission()
+            startPermissionPolling()
             return
         }
         isActive.toggle()
@@ -119,6 +120,12 @@ final class AppState: ObservableObject {
                 isActive = false
             }
         }
+    }
+    
+    /// Request permission with system prompt
+    func requestPermission() {
+        PermissionManager.promptForPermission()
+        startPermissionPolling()
     }
     
     /// Open System Preferences to grant accessibility permission

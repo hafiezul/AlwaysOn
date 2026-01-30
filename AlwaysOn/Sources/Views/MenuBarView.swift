@@ -15,7 +15,7 @@ struct MenuBarView: View {
             // Main toggle button
             toggleButton
             
-            // Permission warning if needed
+            // Permission section if needed
             if !appState.hasAccessibilityPermission {
                 permissionSection
             }
@@ -32,7 +32,7 @@ struct MenuBarView: View {
             quitButton
         }
         .padding(.vertical, 8)
-        .frame(width: 200)
+        .frame(width: 220)
     }
     
     // MARK: - View Components
@@ -77,27 +77,37 @@ struct MenuBarView: View {
     
     private var permissionSection: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Warning label
-            HStack(spacing: 8) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundColor(.yellow)
-                    .frame(width: 16)
-                Text("Accessibility Required")
+            Divider()
+                .padding(.vertical, 4)
+            
+            // Warning with explanation
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundColor(.yellow)
+                        .frame(width: 16)
+                    Text("Accessibility Required")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                    Spacer()
+                }
+                
+                Text("Click below to grant permission. If you reinstalled the app, remove the old entry in Settings first.")
                     .font(.caption)
                     .foregroundColor(.secondary)
-                Spacer()
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
             
-            // Open Settings button
+            // Grant Permission button (primary action)
             Button(action: {
-                appState.openAccessibilitySettings()
+                appState.requestPermission()
             }) {
                 HStack(spacing: 8) {
-                    Image(systemName: "gear")
+                    Image(systemName: "lock.open")
                         .frame(width: 16)
-                    Text("Open Settings")
+                    Text("Grant Permission")
                     Spacer()
                 }
                 .padding(.horizontal, 12)
@@ -108,14 +118,15 @@ struct MenuBarView: View {
             .buttonStyle(.plain)
             .background(HoverBackground())
             
-            // Re-check button
+            // Open Settings button (secondary/fallback)
             Button(action: {
-                appState.checkPermissions()
+                appState.openAccessibilitySettings()
             }) {
                 HStack(spacing: 8) {
-                    Image(systemName: "arrow.clockwise")
+                    Image(systemName: "gear")
                         .frame(width: 16)
-                    Text("Re-check Permission")
+                    Text("Open Settings...")
+                        .foregroundColor(.secondary)
                     Spacer()
                 }
                 .padding(.horizontal, 12)
