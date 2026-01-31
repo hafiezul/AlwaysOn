@@ -12,7 +12,7 @@ If you find this app useful, consider supporting its development:
 - **One-Click Toggle** - Enable/disable with a single click
 - **Pause/Resume** - Pause your session and resume later without losing progress
 - **Stop Session** - Completely reset and start a fresh session
-- **Minimal Resource Usage** - <15MB memory, <0.1% CPU
+
 - **Remembers State** - Restores your preference on relaunch
 - **Session Timer** - Shows how long you've been "online"
 - **Launch at Login** - Automatically start when you log in
@@ -45,13 +45,10 @@ Here's what's planned for future versions. Want to help? [Contributions](#contri
 - [x] **Time validation** - Start time cannot exceed end time in work schedule
 - [x] **Manual stop respect** - Manual stop during work hours prevents auto-restart until next window
 
-### v1.4 - Distribution & UX
-- [ ] **Homebrew Cask support** - `brew install --cask alwayson`
-- [ ] **Improved auto-updates** - Download and install from within the app
-- [ ] **Menu bar icon variations** - Different status indicators
-- [ ] **Session statistics** - Track total uptime per day/week
-
 ### Future Ideas
+- **Homebrew Cask support** - `brew install --cask alwayson`
+- **Menu bar icon variations** - Different status indicators (active/paused/smart-paused)
+- **Session statistics** - Track total uptime per day/week with export to CSV
 - **Calendar integration** - Auto-pause during meetings
 - **Break reminders** - Pomodoro-style notifications
 - **Multiple profiles** - Different settings for different scenarios
@@ -62,7 +59,6 @@ Here's what's planned for future versions. Want to help? [Contributions](#contri
 - **Native widgets** - WidgetKit support for quick status view in Notification Center
 - **App-specific awareness** - Only activate when work apps (Teams/Slack/Zoom) are running
 - **iCloud sync** - Sync settings across multiple Macs
-- **Session statistics export** - Export uptime data to CSV for analysis
 
 ### Funding Goal
 - **Apple Developer Program** ($99/year) - Sign the app properly so users don't need the install-helper script!

@@ -193,6 +193,7 @@ final class AppState: ObservableObject {
         setupPermissionObserver()
         setupSmartFeatureObservers()
         setupNestedObjectChangeForwarding()
+        setupNotificationCallbacks()
         
         // Start permission polling
         accessibilityPermission.startPolling()
@@ -402,6 +403,17 @@ final class AppState: ObservableObject {
         }
     }
     
+    private func setupNotificationCallbacks() {
+        // Handle quick timer resume action from notification
+        notificationManager.onQuickTimerResumeTapped = { [weak self] in
+            guard let self else { return }
+            // Resume activity if not already active
+            if !self.isActive && self.hasAccessibilityPermission {
+                self.isActive = true
+            }
+        }
+    }
+    
     // MARK: - Smart Feature Handlers
     
     private func handleWorkScheduleChange(isWithinSchedule: Bool) {
@@ -549,6 +561,11 @@ final class AppState: ObservableObject {
                         // Timer expired - disable activity
                         self.quickTimerEndTime = nil
                         self.isActive = false
+                        
+                        // Send notification if timer expired during work hours
+                        if self.workScheduleManager.schedule.isEnabled && self.workScheduleManager.isWithinSchedule {
+                            self.notificationManager.notifyQuickTimerExpired()
+                        }
                     } else {
                         self.quickTimerRemaining = remaining
                     }

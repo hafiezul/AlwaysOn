@@ -42,7 +42,21 @@ final class NotificationManager: NSObject, ObservableObject {
     private enum NotificationIdentifier: String {
         case workScheduleStarted = "com.alwayson.workschedule.started"
         case workScheduleEnded = "com.alwayson.workschedule.ended"
+        case quickTimerExpired = "com.alwayson.quicktimer.expired"
     }
+    
+    private enum NotificationAction: String {
+        case resume = "com.alwayson.action.resume"
+    }
+    
+    private enum NotificationCategory: String {
+        case quickTimerExpired = "com.alwayson.category.quicktimer"
+    }
+    
+    // MARK: - Callbacks
+    
+    /// Called when user taps the resume action on quick timer expiration notification
+    var onQuickTimerResumeTapped: (() -> Void)?
     
     // MARK: - Initialization
     
@@ -50,6 +64,9 @@ final class NotificationManager: NSObject, ObservableObject {
         self.isEnabled = UserDefaults.standard.bool(forKey: Keys.notificationsEnabled)
         super.init()
         notificationCenter.delegate = self
+        
+        // Register notification categories with actions
+        registerNotificationCategories()
         
         // Check current authorization status on init
         Task {
@@ -130,7 +147,50 @@ final class NotificationManager: NSObject, ObservableObject {
         )
     }
     
+    /// Send notification when quick timer expires during work hours
+    func notifyQuickTimerExpired() {
+        guard isEnabled && authorizationStatus == .authorized else { return }
+        
+        let content = UNMutableNotificationContent()
+        content.title = "Quick Timer Expired"
+        content.body = "Your activity timer has ended. Tap to resume keeping your status active."
+        content.sound = .default
+        content.categoryIdentifier = NotificationCategory.quickTimerExpired.rawValue
+        
+        let request = UNNotificationRequest(
+            identifier: NotificationIdentifier.quickTimerExpired.rawValue,
+            content: content,
+            trigger: nil // Deliver immediately
+        )
+        
+        notificationCenter.add(request) { error in
+            if let error = error {
+                print("NotificationManager: Failed to add quick timer notification: \(error)")
+            }
+        }
+    }
+    
     // MARK: - Private Methods
+    
+    private func registerNotificationCategories() {
+        // Create resume action for quick timer expiration
+        let resumeAction = UNNotificationAction(
+            identifier: NotificationAction.resume.rawValue,
+            title: "Resume",
+            options: [.foreground]
+        )
+        
+        // Create category with the action
+        let quickTimerCategory = UNNotificationCategory(
+            identifier: NotificationCategory.quickTimerExpired.rawValue,
+            actions: [resumeAction],
+            intentIdentifiers: [],
+            options: []
+        )
+        
+        // Register the category
+        notificationCenter.setNotificationCategories([quickTimerCategory])
+    }
     
     private func sendNotification(identifier: NotificationIdentifier, title: String, body: String) {
         let content = UNMutableNotificationContent()
@@ -162,5 +222,31 @@ extension NotificationManager: UNUserNotificationCenterDelegate {
     ) {
         // Show notifications even when app is in foreground
         completionHandler([.banner, .sound])
+    }
+    
+    nonisolated func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
+        // Handle notification actions
+        let actionIdentifier = response.actionIdentifier
+        let notificationIdentifier = response.notification.request.identifier
+        
+        Task { @MainActor in
+            // Check if this is the quick timer expiration notification and resume action was tapped
+            if notificationIdentifier == NotificationIdentifier.quickTimerExpired.rawValue &&
+               actionIdentifier == NotificationAction.resume.rawValue {
+                self.onQuickTimerResumeTapped?()
+            }
+            
+            // Also handle when user taps the notification body (not a specific action)
+            if notificationIdentifier == NotificationIdentifier.quickTimerExpired.rawValue &&
+               actionIdentifier == UNNotificationDefaultActionIdentifier {
+                self.onQuickTimerResumeTapped?()
+            }
+        }
+        
+        completionHandler()
     }
 }
