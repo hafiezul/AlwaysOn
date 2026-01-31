@@ -29,7 +29,7 @@
     
     <!-- Sparkle Configuration -->
     <key>SUFeedURL</key>
-    <string>https://raw.githubusercontent.com/hafiezul/AlwaysOn/main/appcast.xml</string>
+    <string>https://github.com/hafiezul/AlwaysOn/releases/latest/download/appcast.xml</string>
     <key>SUPublicEDKey</key>
     <string>uP5rnnOev8Q7w3+WdXoV9Ja526VZ+bH1ggcY3SIbxG8=</string>
     <key>SUEnableAutomaticChecks</key>

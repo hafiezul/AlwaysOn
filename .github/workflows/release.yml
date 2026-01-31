@@ -31,6 +31,20 @@ jobs:
           # Use latest Xcode available on the runner
           sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 
+      - name: Set version from tag
+        run: |
+          # Extract version from tag (strip 'v' prefix)
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "TAG_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          
+          # Generate build number from git commit count (always increases)
+          BUILD_NUMBER=$(git rev-list --count HEAD)
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> $GITHUB_ENV
+          
+          echo "Marketing Version: $VERSION"
+          echo "Build Number: $BUILD_NUMBER"
+
       - name: Set up code signing
         if: env.APPLE_CERTIFICATE_BASE64 != ''
         run: |
@@ -73,7 +87,7 @@ jobs:
             DEVELOPMENT_TEAM=""
           fi
           
-          # Build release configuration
+          # Build release configuration with version from tag
           xcodebuild -project AlwaysOn.xcodeproj \
             -scheme AlwaysOn \
             -configuration Release \
@@ -84,6 +98,8 @@ jobs:
             CODE_SIGNING_REQUIRED="$CODE_SIGNING_REQUIRED" \
             CODE_SIGNING_ALLOWED="$CODE_SIGNING_ALLOWED" \
             DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
+            MARKETING_VERSION="$VERSION" \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
             build
 
       - name: Download Sparkle
@@ -102,10 +118,6 @@ jobs:
 
           # Get the app bundle path
           APP_PATH="build/Build/Products/Release/AlwaysOn.app"
-
-          # Get version from tag (strip 'v' prefix)
-          VERSION=${GITHUB_REF#refs/tags/v}
-          TAG_VERSION=${GITHUB_REF#refs/tags/}
 
           # Create ZIP
           cd build/Build/Products/Release
@@ -138,7 +150,6 @@ jobs:
       - name: Notarize app
         if: env.APPLE_ID != '' && env.APPLE_APP_SPECIFIC_PASSWORD != '' && env.APPLE_TEAM_ID != ''
         run: |
-          TAG_VERSION=${GITHUB_REF#refs/tags/}
           ZIP_PATH="artifacts/AlwaysOn-${TAG_VERSION}.zip"
           
           echo "Submitting app for notarization..."
@@ -160,7 +171,6 @@ jobs:
       - name: Sign ZIP with Sparkle
         if: env.SPARKLE_PRIVATE_KEY != ''
         run: |
-          TAG_VERSION=${GITHUB_REF#refs/tags/}
           ZIP_PATH="artifacts/AlwaysOn-${TAG_VERSION}.zip"
           
           # Sign the ZIP and capture the signature
@@ -178,8 +188,6 @@ jobs:
       - name: Update appcast.xml
         if: env.SPARKLE_PRIVATE_KEY != ''
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          TAG_VERSION=${GITHUB_REF#refs/tags/}
           ZIP_PATH="artifacts/AlwaysOn-${TAG_VERSION}.zip"
           
           # Get file size
@@ -194,38 +202,26 @@ jobs:
           # Download URL
           DOWNLOAD_URL="https://github.com/${{ github.repository }}/releases/download/${TAG_VERSION}/AlwaysOn-${TAG_VERSION}.zip"
           
-          # Get build number from built app's Info.plist (not the source template)
-          BUILD_NUMBER=$(defaults read "$(pwd)/build/Build/Products/Release/AlwaysOn.app/Contents/Info" CFBundleVersion)
+          # Create new appcast entry (will be uploaded as release asset)
+          echo '<?xml version="1.0" encoding="utf-8"?>' > artifacts/appcast.xml
+          echo '<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">' >> artifacts/appcast.xml
+          echo '  <channel>' >> artifacts/appcast.xml
+          echo '    <title>AlwaysOn Updates</title>' >> artifacts/appcast.xml
+          echo '    <description>Most recent changes with links to updates.</description>' >> artifacts/appcast.xml
+          echo '    <language>en</language>' >> artifacts/appcast.xml
+          echo '    <item>' >> artifacts/appcast.xml
+          echo "      <title>Version ${VERSION}</title>" >> artifacts/appcast.xml
+          echo "      <pubDate>${PUB_DATE}</pubDate>" >> artifacts/appcast.xml
+          echo "      <sparkle:version>${BUILD_NUMBER}</sparkle:version>" >> artifacts/appcast.xml
+          echo "      <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>" >> artifacts/appcast.xml
+          echo '      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>' >> artifacts/appcast.xml
+          echo "      <enclosure url=\"${DOWNLOAD_URL}\" sparkle:edSignature=\"${ED_SIGNATURE}\" length=\"${FILE_SIZE}\" type=\"application/octet-stream\"/>" >> artifacts/appcast.xml
+          echo '    </item>' >> artifacts/appcast.xml
+          echo '  </channel>' >> artifacts/appcast.xml
+          echo '</rss>' >> artifacts/appcast.xml
           
-          # Create new appcast entry
-          echo '<?xml version="1.0" encoding="utf-8"?>' > appcast.xml
-          echo '<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">' >> appcast.xml
-          echo '  <channel>' >> appcast.xml
-          echo '    <title>AlwaysOn Updates</title>' >> appcast.xml
-          echo '    <description>Most recent changes with links to updates.</description>' >> appcast.xml
-          echo '    <language>en</language>' >> appcast.xml
-          echo '    <item>' >> appcast.xml
-          echo "      <title>Version ${VERSION}</title>" >> appcast.xml
-          echo "      <pubDate>${PUB_DATE}</pubDate>" >> appcast.xml
-          echo "      <sparkle:version>${BUILD_NUMBER}</sparkle:version>" >> appcast.xml
-          echo "      <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>" >> appcast.xml
-          echo '      <sparkle:minimumSystemVersion>13.0</sparkle:minimumSystemVersion>' >> appcast.xml
-          echo "      <enclosure url=\"${DOWNLOAD_URL}\" sparkle:edSignature=\"${ED_SIGNATURE}\" length=\"${FILE_SIZE}\" type=\"application/octet-stream\"/>" >> appcast.xml
-          echo '    </item>' >> appcast.xml
-          echo '  </channel>' >> appcast.xml
-          echo '</rss>' >> appcast.xml
-          
-          echo "Updated appcast.xml:"
-          cat appcast.xml
-
-      - name: Commit appcast.xml
-        if: env.SPARKLE_PRIVATE_KEY != ''
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add appcast.xml
-          git commit -m "Update appcast.xml for ${GITHUB_REF#refs/tags/}" || echo "No changes to commit"
-          git push origin HEAD:main
+          echo "Generated appcast.xml:"
+          cat artifacts/appcast.xml
 
       - name: Create release notes
         run: |
@@ -250,16 +246,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          TAG_VERSION=${GITHUB_REF#refs/tags/}
-          
           # Create release with assets and custom notes
+          # Include appcast.xml as a release asset (accessible via /releases/latest/download/appcast.xml)
           gh release create "$TAG_VERSION" \
             --title "$TAG_VERSION" \
             --notes-file release-notes.md \
             --generate-notes \
             artifacts/AlwaysOn-${TAG_VERSION}.zip \
             artifacts/AlwaysOn-${TAG_VERSION}.dmg \
-            artifacts/install-helper.sh
+            artifacts/install-helper.sh \
+            artifacts/appcast.xml
 
       - name: Cleanup keychain
         if: always() && env.APPLE_CERTIFICATE_BASE64 != ''
