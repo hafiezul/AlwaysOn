@@ -95,23 +95,15 @@ Building from source is the easiest way to get full accessibility features witho
 
 ### Menu Bar Interface
 
-**When Active:**
+![Active](screenshots/active.png) 
+![Paused](screenshots/paused.png)
+![Inactive](screenshots/inactive.png)
 
-![When Active - Menu showing active state with green indicator](screenshots/active.png)
+### Settings
 
-*Green dot = keeping you online • Pause your session • Live timer*
-
-**When Paused (with saved session):**
-
-![When Paused - Menu showing paused state with resume option](screenshots/paused.png)
-
-*Resume saved session • Saved progress • Reset completely*
-
-**When Inactive (fresh start):**
-
-![When Inactive - Menu showing start option](screenshots/inactive.png)
-
-*Start new session*
+![General](screenshots/settings-general.png) 
+![Schedule](screenshots/settings-schedule.png)
+![Advanced](screenshots/settings-advanced.png)
 
 ### Keyboard Shortcuts
 
@@ -120,22 +112,6 @@ Building from source is the easiest way to get full accessibility features witho
 | `⌘K` | Toggle Keep Online / Pause / Resume |
 | `⌘,` | Open Settings |
 | `⌘Q` | Quit AlwaysOn |
-
-### Settings Window
-
-Access settings via `⌘,` or the Settings menu item:
-
-**General Tab** - Core preferences like activity interval, activity method, quick timers, and launch at login
-
-![Settings - General Tab](screenshots/settings-general.png)
-
-**Schedule Tab** - Configure work hours for automatic enable/disable
-
-![Settings - Schedule Tab](screenshots/settings-schedule.png)
-
-**Advanced Tab** - Focus mode integration, presentation detection, and notifications
-
-![Settings - Advanced Tab](screenshots/settings-advanced.png)
 
 ## How It Works
 
