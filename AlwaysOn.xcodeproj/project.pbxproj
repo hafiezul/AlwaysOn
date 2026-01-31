@@ -28,6 +28,12 @@
 		1000000000000014 /* SettingsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000015 /* SettingsWindowController.swift */; };
 		1000000000000015 /* ActivityMethod.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000016 /* ActivityMethod.swift */; };
 		1000000000000016 /* QuickTimerDuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000017 /* QuickTimerDuration.swift */; };
+		1000000000000017 /* WorkSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000018 /* WorkSchedule.swift */; };
+		1000000000000018 /* WorkScheduleManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000019 /* WorkScheduleManager.swift */; };
+		100000000000001A /* FocusModeMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000001B /* FocusModeMonitor.swift */; };
+		100000000000001B /* PresentationDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000001C /* PresentationDetector.swift */; };
+		100000000000001C /* SmartFeaturesSettingsPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000001D /* SmartFeaturesSettingsPane.swift */; };
+		100000000000001D /* NotificationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000001E /* NotificationManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -53,6 +59,12 @@
 		2000000000000015 /* SettingsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsWindowController.swift; sourceTree = "<group>"; };
 		2000000000000016 /* ActivityMethod.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityMethod.swift; sourceTree = "<group>"; };
 		2000000000000017 /* QuickTimerDuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickTimerDuration.swift; sourceTree = "<group>"; };
+		2000000000000018 /* WorkSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkSchedule.swift; sourceTree = "<group>"; };
+		2000000000000019 /* WorkScheduleManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkScheduleManager.swift; sourceTree = "<group>"; };
+		200000000000001B /* FocusModeMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusModeMonitor.swift; sourceTree = "<group>"; };
+		200000000000001C /* PresentationDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresentationDetector.swift; sourceTree = "<group>"; };
+		200000000000001D /* SmartFeaturesSettingsPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartFeaturesSettingsPane.swift; sourceTree = "<group>"; };
+		200000000000001E /* NotificationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationManager.swift; sourceTree = "<group>"; };
 		3000000000000001 /* AlwaysOn.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AlwaysOn.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -113,6 +125,7 @@
 				2000000000000002 /* AppState.swift */,
 				2000000000000017 /* QuickTimerDuration.swift */,
 				2000000000000010 /* SettingsNavigationItem.swift */,
+				2000000000000018 /* WorkSchedule.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -122,12 +135,16 @@
 			children = (
 				200000000000000D /* AccessibilityPermission.swift */,
 				2000000000000003 /* ActivitySimulator.swift */,
+				200000000000001B /* FocusModeMonitor.swift */,
 				200000000000000A /* LaunchAtLoginManager.swift */,
+				200000000000001E /* NotificationManager.swift */,
 				2000000000000004 /* PermissionManager.swift */,
 				200000000000000F /* PermissionsWindowController.swift */,
+				200000000000001C /* PresentationDetector.swift */,
 				2000000000000015 /* SettingsWindowController.swift */,
 				200000000000000C /* SparkleUpdaterManager.swift */,
 				2000000000000009 /* UpdateChecker.swift */,
+				2000000000000019 /* WorkScheduleManager.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -148,6 +165,7 @@
 				2000000000000014 /* AboutSettingsPane.swift */,
 				2000000000000012 /* GeneralSettingsPane.swift */,
 				2000000000000011 /* SettingsView.swift */,
+				200000000000001D /* SmartFeaturesSettingsPane.swift */,
 				2000000000000013 /* UpdatesSettingsPane.swift */,
 			);
 			path = Settings;
@@ -263,6 +281,12 @@
 				1000000000000014 /* SettingsWindowController.swift in Sources */,
 				1000000000000015 /* ActivityMethod.swift in Sources */,
 				1000000000000016 /* QuickTimerDuration.swift in Sources */,
+				1000000000000017 /* WorkSchedule.swift in Sources */,
+				1000000000000018 /* WorkScheduleManager.swift in Sources */,
+				100000000000001A /* FocusModeMonitor.swift in Sources */,
+				100000000000001B /* PresentationDetector.swift in Sources */,
+				100000000000001C /* SmartFeaturesSettingsPane.swift in Sources */,
+				100000000000001D /* NotificationManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -29,6 +29,9 @@ struct SettingsView: View {
         case .general:
             GeneralSettingsPane()
                 .environmentObject(appState)
+        case .smartFeatures:
+            SmartFeaturesSettingsPane()
+                .environmentObject(appState)
         case .updates:
             UpdatesSettingsPane()
         case .about:

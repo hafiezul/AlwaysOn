@@ -21,6 +21,10 @@ If you find this app useful, consider supporting its development:
 - **Settings Window** - Clean sidebar navigation for all preferences
 - **Quick Timers** - Set auto-disable after 30min, 1h, 2h, 4h, or 8h
 - **Activity Methods** - Choose mouse, keyboard, or alternating simulation
+- **Work Hours Schedule** - Auto-enable/disable during your work hours
+- **Focus Mode Integration** - Respects macOS Do Not Disturb
+- **Presentation Detection** - Auto-pause during screen sharing
+- **Schedule Notifications** - Optional alerts when work hours start/end
 
 ## Roadmap
 
@@ -34,10 +38,12 @@ Here's what's planned for future versions. Want to help? [Contributions](#contri
 - [x] **Stop Session control** - Explicit button to reset and start fresh
 
 ### v1.3 - Smart Features
-- [ ] **Work hours scheduling** - Auto-enable/disable at specific times
-- [ ] **Battery-aware mode** - Longer intervals when on battery power
-- [ ] **Presentation mode detection** - Auto-pause during screen sharing
-- [ ] **Focus mode integration** - Respect macOS Do Not Disturb
+- [x] **Work hours scheduling** - Auto-enable/disable at specific times
+- [x] **Presentation mode detection** - Auto-pause during screen sharing
+- [x] **Focus mode integration** - Respect macOS Do Not Disturb
+- [x] **Work schedule notifications** - Optional notifications when schedule starts/ends
+- [x] **Time validation** - Start time cannot exceed end time in work schedule
+- [x] **Manual stop respect** - Manual stop during work hours prevents auto-restart until next window
 
 ### v1.4 - Distribution & UX
 - [ ] **Homebrew Cask support** - `brew install --cask alwayson`
@@ -49,6 +55,14 @@ Here's what's planned for future versions. Want to help? [Contributions](#contri
 - **Calendar integration** - Auto-pause during meetings
 - **Break reminders** - Pomodoro-style notifications
 - **Multiple profiles** - Different settings for different scenarios
+- **Randomized intervals** - Vary activity timing within a range for more natural behavior
+- **URL scheme automation** - `x-alwayson://start`, `x-alwayson://stop` for scripting
+- **Shortcuts.app support** - Native macOS Shortcuts integration
+- **WiFi location awareness** - Different behavior on work vs home network
+- **Native widgets** - WidgetKit support for quick status view in Notification Center
+- **App-specific awareness** - Only activate when work apps (Teams/Slack/Zoom) are running
+- **iCloud sync** - Sync settings across multiple Macs
+- **Session statistics export** - Export uptime data to CSV for analysis
 
 ### Funding Goal
 - **Apple Developer Program** ($99/year) - Sign the app properly so users don't need the install-helper script!
