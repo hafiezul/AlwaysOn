@@ -8,62 +8,36 @@ If you find this app useful, consider supporting its development:
 
 ## Features
 
-- **Menu Bar Only** - Lives in your menu bar, no dock icon
-- **One-Click Toggle** - Enable/disable with a single click
-- **Pause/Resume** - Pause your session and resume later without losing progress
-- **Stop Session** - Completely reset and start a fresh session
-
-- **Remembers State** - Restores your preference on relaunch
-- **Session Timer** - Shows how long you've been "online"
-- **Launch at Login** - Automatically start when you log in
-- **Auto-Updates** - Sparkle-powered automatic updates
-- **Configurable Interval** - Choose activity timing (30s to 5min)
-- **Settings Window** - Clean sidebar navigation for all preferences
-- **Quick Timers** - Set auto-disable after 30min, 1h, 2h, 4h, or 8h
-- **Activity Methods** - Choose mouse, keyboard, or alternating simulation
-- **Work Hours Schedule** - Auto-enable/disable during your work hours
-- **Focus Mode Integration** - Respects macOS Do Not Disturb
-- **Presentation Detection** - Auto-pause during screen sharing
-- **Schedule Notifications** - Optional alerts when work hours start/end
+| Core | Advanced |
+|------|----------|
+| **Menu Bar Only** - No dock icon, lives in menu bar | **Work Hours** - Auto-enable/disable on schedule |
+| **One-Click Toggle** - Start/stop instantly | **Focus Mode** - Respects Do Not Disturb |
+| **Session Timer** - Track time "online" | **Presentation Detection** - Auto-pause during screen sharing |
+| **Pause/Resume** - Pause without losing progress | **Quick Timers** - Auto-disable after 30min-8h |
+| **Stop Session** - Reset completely | **Configurable Interval** - 30s to 5min timing |
+| **Launch at Login** - Auto-start on boot | **Activity Methods** - Mouse, keyboard, or alternating |
+| **Auto-Updates** - Sparkle-powered updates | **Schedule Notifications** - Alerts for work hours |
+| **Settings Window** - Sidebar navigation | - |
 
 ## Roadmap
 
-Here's what's planned for future versions. Want to help? [Contributions](#contributing) are welcome!
+<details>
+<summary><b>Completed</b> - Click to expand</summary>
 
-### v1.2 - Customization (Completed)
-- [x] **Configurable activity interval** - Adjust timing (30s, 45s, 60s, 2min, 5min)
-- [x] **Quick timers** - "Keep online for X hours" with auto-disable
-- [x] **Activity method options** - Choose between mouse, keyboard, or alternating
-- [x] **Pause/Resume functionality** - Pause sessions and resume without losing progress
-- [x] **Stop Session control** - Explicit button to reset and start fresh
+**v1.2** - Configurable interval, quick timers, activity methods, pause/resume, stop session  
+**v1.3** - Work hours scheduling, presentation detection, focus mode integration, notifications
+</details>
 
-### v1.3 - Smart Features
-- [x] **Work hours scheduling** - Auto-enable/disable at specific times
-- [x] **Presentation mode detection** - Auto-pause during screen sharing
-- [x] **Focus mode integration** - Respect macOS Do Not Disturb
-- [x] **Work schedule notifications** - Optional notifications when schedule starts/ends
-- [x] **Time validation** - Start time cannot exceed end time in work schedule
-- [x] **Manual stop respect** - Manual stop during work hours prevents auto-restart until next window
+<details>
+<summary><b>Future Ideas</b> - Click to expand</summary>
 
-### Future Ideas
-- **Homebrew Cask support** - `brew install --cask alwayson`
-- **Menu bar icon variations** - Different status indicators (active/paused/smart-paused)
-- **Session statistics** - Track total uptime per day/week with export to CSV
-- **Calendar integration** - Auto-pause during meetings
-- **Break reminders** - Pomodoro-style notifications
-- **Multiple profiles** - Different settings for different scenarios
-- **Randomized intervals** - Vary activity timing within a range for more natural behavior
-- **URL scheme automation** - `x-alwayson://start`, `x-alwayson://stop` for scripting
-- **Shortcuts.app support** - Native macOS Shortcuts integration
-- **WiFi location awareness** - Different behavior on work vs home network
-- **Native widgets** - WidgetKit support for quick status view in Notification Center
-- **App-specific awareness** - Only activate when work apps (Teams/Slack/Zoom) are running
-- **iCloud sync** - Sync settings across multiple Macs
+- Homebrew Cask support, menu bar icon variations, session statistics, calendar integration
+- Break reminders, multiple profiles, randomized intervals, URL scheme automation
+- Shortcuts.app support, WiFi location awareness, native widgets, app-specific awareness, iCloud sync
+</details>
 
-### Funding Goal
-- **Apple Developer Program** ($99/year) - Sign the app properly so users don't need the install-helper script!
-
-> Have an idea? [Open an issue](../../issues/new) or [start a discussion](../../discussions)!
+**Funding Goal** - Apple Developer Program ($99/year) to properly sign the app  
+*Have an idea? [Open an issue](../../issues/new) or [start a discussion](../../discussions)!*
 
 ## Requirements
 
@@ -122,43 +96,22 @@ Building from source is the easiest way to get full accessibility features witho
 ### Menu Bar Interface
 
 **When Active:**
-```
-+-------------------------------+
-| ● Active              v1.2.1  |  <- Green = keeping you online
-+-------------------------------+
-| ⏸ Pause                  ⌘K |  <- Pause your session
-| ⏱ Session: 2:34:12           |  <- Live timer
-+-------------------------------+
-| ⚙ Settings...            ⌘, |
-| ⏻ Quit AlwaysOn          ⌘Q |
-+-------------------------------+
-```
+
+![When Active - Menu showing active state with green indicator](screenshots/active.png)
+
+*Green dot = keeping you online • Pause your session • Live timer*
 
 **When Paused (with saved session):**
-```
-+-------------------------------+
-| ○ Inactive            v1.2.1  |
-+-------------------------------+
-| ▶ Resume                 ⌘K |  <- Resume saved session
-| ⏱ Session: 2:34:12 (paused)  |  <- Saved progress
-| ⏹ Stop Session               |  <- Reset completely
-+-------------------------------+
-| ⚙ Settings...            ⌘, |
-| ⏻ Quit AlwaysOn          ⌘Q |
-+-------------------------------+
-```
+
+![When Paused - Menu showing paused state with resume option](screenshots/paused.png)
+
+*Resume saved session • Saved progress • Reset completely*
 
 **When Inactive (fresh start):**
-```
-+-------------------------------+
-| ○ Inactive            v1.2.1  |
-+-------------------------------+
-| ▶ Keep Online            ⌘K |  <- Start new session
-+-------------------------------+
-| ⚙ Settings...            ⌘, |
-| ⏻ Quit AlwaysOn          ⌘Q |
-+-------------------------------+
-```
+
+![When Inactive - Menu showing start option](screenshots/inactive.png)
+
+*Start new session*
 
 ### Keyboard Shortcuts
 
@@ -168,11 +121,21 @@ Building from source is the easiest way to get full accessibility features witho
 | `⌘,` | Open Settings |
 | `⌘Q` | Quit AlwaysOn |
 
-### Session Controls
+### Settings Window
 
-**Pause** - Temporarily stop activity simulation while preserving your session timer. Use this for short breaks (lunch, meetings, etc.). Click "Resume" to continue from where you left off.
+Access settings via `⌘,` or the Settings menu item:
 
-**Stop Session** - Completely reset your session and clear all timers. Use this when you're done for the day or want to start tracking fresh. Next activation will be a brand new session.
+**General Tab** - Core preferences like activity interval, activity method, quick timers, and launch at login
+
+![Settings - General Tab](screenshots/settings-general.png)
+
+**Schedule Tab** - Configure work hours for automatic enable/disable
+
+![Settings - Schedule Tab](screenshots/settings-schedule.png)
+
+**Advanced Tab** - Focus mode integration, presentation detection, and notifications
+
+![Settings - Advanced Tab](screenshots/settings-advanced.png)
 
 ## How It Works
 
