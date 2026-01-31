@@ -37,7 +37,7 @@ struct UpdatesSettingsPane: View {
                     Spacer()
                     
                     if let lastCheck = sparkleUpdater.lastUpdateCheckDate {
-                        Text("Last checked: \(lastCheck, style: .relative) ago")
+                        Text("Last checked: \(formattedLastCheck(lastCheck))")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -72,6 +72,32 @@ struct UpdatesSettingsPane: View {
             get: { updater.automaticallyDownloadsUpdates },
             set: { updater.automaticallyDownloadsUpdates = $0 }
         )
+    }
+    
+    // MARK: - Formatting
+    
+    /// Formats the last check date as a static, human-readable string
+    private func formattedLastCheck(_ date: Date) -> String {
+        let now = Date()
+        let interval = now.timeIntervalSince(date)
+        
+        if interval < 60 {
+            return "Just now"
+        } else if interval < 3600 {
+            let minutes = Int(interval / 60)
+            return "\(minutes) minute\(minutes == 1 ? "" : "s") ago"
+        } else if interval < 86400 {
+            let hours = Int(interval / 3600)
+            return "\(hours) hour\(hours == 1 ? "" : "s") ago"
+        } else if interval < 604800 {
+            let days = Int(interval / 86400)
+            return "\(days) day\(days == 1 ? "" : "s") ago"
+        } else {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .medium
+            formatter.timeStyle = .short
+            return formatter.string(from: date)
+        }
     }
 }
 

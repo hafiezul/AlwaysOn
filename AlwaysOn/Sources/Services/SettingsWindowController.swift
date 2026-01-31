@@ -14,6 +14,11 @@ final class SettingsWindowController {
     private var windowController: NSWindowController?
     private weak var appState: AppState?
     
+    /// Access to the settings window
+    var window: NSWindow? {
+        windowController?.window
+    }
+    
     private init() {}
     
     // MARK: - Public Methods
@@ -60,5 +65,15 @@ final class SettingsWindowController {
     func close() {
         windowController?.close()
         windowController = nil
+    }
+    
+    /// Temporarily lower the window level to allow other windows to appear above
+    func temporarilyLowerWindowLevel() {
+        window?.level = .normal
+    }
+    
+    /// Restore the window level to floating
+    func restoreWindowLevel() {
+        window?.level = .floating
     }
 }

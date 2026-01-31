@@ -205,14 +205,16 @@ This prevents macOS from detecting you as "idle" and keeps workplace apps like M
 
 ## Updating the App
 
-AlwaysOn can check for updates directly from GitHub:
+AlwaysOn checks for updates via Sparkle, but **automatic updates may not work** due to code signing limitations. Without an Apple Developer Program membership ($99/year), the app cannot be properly code signed, and macOS/Sparkle will reject unsigned updates as a security measure.
 
-1. Click **"Check for Updates"** in the menu, or
-2. Open **"About AlwaysOn"** and click **"Check for Updates"**
+**To update manually:**
 
-If an update is available, click **"Download Update"** to open the GitHub releases page where you can download the latest version.
+1. Visit the [Releases page](../../releases/latest)
+2. Download the latest DMG or ZIP
+3. Replace your existing app in the Applications folder
+4. Re-run the [installation helper script](#download-pre-built-binary-recommended) if needed
 
-> **Tip**: After downloading a new version, you may need to remove the old entry from Accessibility settings and re-add the new app. See Troubleshooting below.
+> **Tip**: After updating, you may need to remove the old entry from Accessibility settings and re-add the new app. See Troubleshooting below.
 
 ## Privacy & Security
 
