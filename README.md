@@ -28,8 +28,9 @@ If you find this app useful, consider supporting its development:
 <details>
 <summary><b>Completed</b> - Click to expand</summary>
 
-**v1.2** - Configurable interval, quick timers, activity methods, pause/resume, stop session  
+**v1.2** - Configurable interval, quick timers, activity methods, pause/resume, stop session
 **v1.3** - Work hours scheduling, presentation detection, focus mode integration, notifications
+**v1.3.1** - Enhanced installation helper
 </details>
 
 <details>
@@ -79,6 +80,15 @@ Building from source is the easiest way to get full accessibility features witho
 3. Build and run (Cmd+R)
 4. See [Granting Accessibility Permission](#granting-accessibility-permission) below for next steps
 
+```bash
+git clone https://github.com/hafiezul/AlwaysOn.git
+cd AlwaysOn
+open AlwaysOn.xcodeproj
+# Press Cmd+R in Xcode
+```
+
+**Build Requirements:** Xcode 15.0+, macOS 13.0+ SDK, Swift 5.9+
+
 **Why build from source?** Apps built in Xcode are automatically signed with your local development certificate, so accessibility features work immediately without any manual re-signing.
 
 ### Granting Accessibility Permission
@@ -96,18 +106,6 @@ Building from source is the easiest way to get full accessibility features witho
 4. Return to AlwaysOn - it will automatically detect the permission change
 
 ## Usage
-
-### Menu Bar Interface
-
-![Active](screenshots/active.png) 
-![Paused](screenshots/paused.png)
-![Inactive](screenshots/inactive.png)
-
-### Settings
-
-![General](screenshots/settings-general.png) 
-![Schedule](screenshots/settings-schedule.png)
-![Advanced](screenshots/settings-advanced.png)
 
 ### Keyboard Shortcuts
 
@@ -136,12 +134,6 @@ AlwaysOn simulates minimal user activity at a configurable interval (default: 45
 
 This prevents macOS from detecting you as "idle" and keeps workplace apps like Microsoft Teams, Slack, and Zoom showing your status as "Available" or "Active".
 
-**Why these methods?**
-- Workplace apps monitor system idle time
-- Tiny mouse movements and key presses reset the idle timer
-- Activity is imperceptible to users
-- Uses native macOS APIs (no hacks)
-
 ## Updating the App
 
 AlwaysOn supports two update modes:
@@ -158,11 +150,9 @@ AlwaysOn supports two update modes:
 
 The release notes will explicitly tell you whether a build is signed or unsigned.
 
-> **Tip**: After updating, you may need to remove the old entry from Accessibility settings and re-add the new app. See Troubleshooting below.
-
 ## Privacy & Security
 
-- **No network access** - App works entirely offline (except for update checks)
+- **No network access** except for optional update checks on signed builds
 - **No data collection** - Nothing is tracked or sent
 - **Open source** - Audit the code yourself
 - **Minimal permissions** - Only Accessibility (required for input simulation)
@@ -175,15 +165,15 @@ macOS requires Accessibility permission for any app that simulates keyboard or m
 
 ### Will this affect my actual mouse usage?
 
-No. The movement is 1 pixel and instantly reversed. You won't notice it.
+No. The movement is 1 pixel and instantly reversed.
 
 ### Does it work with Slack/Zoom/other apps?
 
-Yes. AlwaysOn works with any app that monitors macOS system idle time, including Microsoft Teams, Slack, Zoom, Discord, and most workplace communication apps. However, some apps may have their own activity detection methods (like webcam monitoring) that this won't bypass.
+Yes. AlwaysOn works with any app that monitors macOS system idle time, including Microsoft Teams, Slack, Zoom, Discord, and most workplace communication apps.
 
 ### Does it prevent my Mac from sleeping?
 
-No. AlwaysOn only simulates activity, it doesn't prevent sleep. If you want to prevent sleep, use a separate tool like `caffeinate`.
+No. AlwaysOn only simulates activity, it doesn't prevent sleep.
 
 ### Why isn't it in the App Store?
 
@@ -244,26 +234,6 @@ This typically happens after reinstalling or updating the app. macOS tracks perm
 3. If the build is unsigned, use the manual check in Settings or download updates directly from the [Releases page](../../releases/latest)
 4. If the build is signed, Sparkle update checks should work normally
 
-## Building from Source
-
-```bash
-# Clone the repository
-git clone https://github.com/hafiezul/AlwaysOn.git
-cd AlwaysOn
-
-# Open in Xcode
-open AlwaysOn.xcodeproj
-
-# Build and run
-# Press Cmd+R in Xcode
-```
-
-### Build Requirements
-
-- Xcode 15.0+
-- macOS 13.0+ SDK
-- Swift 5.9+
-
 ## License
 
 MIT License - See [LICENSE](LICENSE) file for details.
@@ -275,7 +245,3 @@ Contributions are welcome! Please:
 1. Fork the repository
 2. Create a feature branch
 3. Submit a pull request
-
-## Acknowledgments
-
-Inspired by the need to appear "available" while focusing on deep work.
