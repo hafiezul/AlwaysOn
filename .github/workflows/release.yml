@@ -19,6 +19,8 @@ jobs:
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       APPLE_ID: ${{ secrets.APPLE_ID }}
       APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+      SPARKLE_VERSION: 2.8.1
+      SPARKLE_ARCHIVE_SHA256: 5cddb7695674ef7704268f38eccaee80e3accbf19e61c1689efff5b6116d85be
 
     steps:
       - name: Checkout repository
@@ -30,6 +32,19 @@ jobs:
         run: |
           # Use latest Xcode available on the runner
           sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+
+      - name: Decide release mode
+        run: |
+          if [ -n "$SPARKLE_PRIVATE_KEY" ] && [ -n "$APPLE_CERTIFICATE_BASE64" ] && [ -n "$APPLE_CERTIFICATE_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ] && [ -n "$APPLE_ID" ] && [ -n "$APPLE_APP_SPECIFIC_PASSWORD" ]; then
+            echo "RELEASE_MODE=signed" >> $GITHUB_ENV
+            echo "UPDATE_MODE=sparkle" >> $GITHUB_ENV
+            echo "Release mode: signed"
+          else
+            echo "RELEASE_MODE=unsigned" >> $GITHUB_ENV
+            echo "UPDATE_MODE=manual" >> $GITHUB_ENV
+            echo "Release mode: unsigned"
+            echo "::warning::Apple signing/notarization secrets are missing. Publishing an unsigned manual-update release."
+          fi
 
       - name: Set version from tag
         run: |
@@ -46,7 +61,7 @@ jobs:
           echo "Build Number: $BUILD_NUMBER"
 
       - name: Set up code signing
-        if: env.APPLE_CERTIFICATE_BASE64 != ''
+        if: env.RELEASE_MODE == 'signed'
         run: |
           # Create temporary keychain
           KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
@@ -72,41 +87,44 @@ jobs:
 
       - name: Build app
         run: |
-          # Determine code signing parameters
-          if [ -n "$APPLE_CERTIFICATE_BASE64" ] && [ -n "$APPLE_TEAM_ID" ]; then
-            echo "Building with code signing enabled"
-            CODE_SIGN_IDENTITY="Developer ID Application"
-            CODE_SIGNING_REQUIRED="YES"
-            CODE_SIGNING_ALLOWED="YES"
-            DEVELOPMENT_TEAM="$APPLE_TEAM_ID"
+          if [ "$RELEASE_MODE" = "signed" ]; then
+            xcodebuild -project AlwaysOn.xcodeproj \
+              -scheme AlwaysOn \
+              -configuration Release \
+              -derivedDataPath build \
+              -arch arm64 -arch x86_64 \
+              ONLY_ACTIVE_ARCH=NO \
+              ALWAYSON_UPDATE_MODE="$UPDATE_MODE" \
+              CODE_SIGN_IDENTITY="Developer ID Application" \
+              CODE_SIGNING_REQUIRED="YES" \
+              CODE_SIGNING_ALLOWED="YES" \
+              DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+              MARKETING_VERSION="$VERSION" \
+              CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+              build
           else
-            echo "Building without code signing (accessibility features will not work in distribution)"
-            CODE_SIGN_IDENTITY=""
-            CODE_SIGNING_REQUIRED="NO"
-            CODE_SIGNING_ALLOWED="NO"
-            DEVELOPMENT_TEAM=""
+            xcodebuild -project AlwaysOn.xcodeproj \
+              -scheme AlwaysOn \
+              -configuration Release \
+              -derivedDataPath build \
+              -arch arm64 -arch x86_64 \
+              ONLY_ACTIVE_ARCH=NO \
+              ALWAYSON_UPDATE_MODE="$UPDATE_MODE" \
+              CODE_SIGN_IDENTITY="" \
+              CODE_SIGNING_REQUIRED="NO" \
+              CODE_SIGNING_ALLOWED="NO" \
+              DEVELOPMENT_TEAM="" \
+              MARKETING_VERSION="$VERSION" \
+              CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+              build
           fi
-          
-          # Build release configuration with version from tag
-          xcodebuild -project AlwaysOn.xcodeproj \
-            -scheme AlwaysOn \
-            -configuration Release \
-            -derivedDataPath build \
-            -arch arm64 -arch x86_64 \
-            ONLY_ACTIVE_ARCH=NO \
-            CODE_SIGN_IDENTITY="$CODE_SIGN_IDENTITY" \
-            CODE_SIGNING_REQUIRED="$CODE_SIGNING_REQUIRED" \
-            CODE_SIGNING_ALLOWED="$CODE_SIGNING_ALLOWED" \
-            DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
-            MARKETING_VERSION="$VERSION" \
-            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
-            build
 
       - name: Download Sparkle
+        if: env.RELEASE_MODE == 'signed'
         run: |
           # Download Sparkle release for signing tools
-          SPARKLE_VERSION="2.6.4"
           curl -L -o Sparkle.tar.xz "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz"
+          echo "${SPARKLE_ARCHIVE_SHA256}  Sparkle.tar.xz" | shasum -a 256 -c -
           mkdir -p Sparkle
           tar -xf Sparkle.tar.xz -C Sparkle
           ls -la Sparkle/bin/
@@ -141,14 +159,15 @@ jobs:
           # Cleanup
           rm -rf dmg-contents
 
+          # Create a helper script bound to this release version
+          sed "s/__ALWAYSON_EXPECTED_VERSION__/${TAG_VERSION#v}/g" install-helper.sh > artifacts/install-helper.sh
+          chmod +x artifacts/install-helper.sh
+
           # List artifacts
           ls -la artifacts/
-          
-          # Copy installation helper script to artifacts
-          cp install-helper.sh artifacts/
 
       - name: Notarize app
-        if: env.APPLE_ID != '' && env.APPLE_APP_SPECIFIC_PASSWORD != '' && env.APPLE_TEAM_ID != ''
+        if: env.RELEASE_MODE == 'signed'
         run: |
           ZIP_PATH="artifacts/AlwaysOn-${TAG_VERSION}.zip"
           
@@ -165,11 +184,11 @@ jobs:
           DMG_PATH="artifacts/AlwaysOn-${TAG_VERSION}.dmg"
           if [ -f "$DMG_PATH" ]; then
             echo "Stapling notarization to DMG..."
-            xcrun stapler staple "$DMG_PATH" || echo "Warning: Could not staple DMG (this is normal for unsigned builds)"
+            xcrun stapler staple "$DMG_PATH" || echo "Warning: Could not staple DMG"
           fi
 
       - name: Sign ZIP with Sparkle
-        if: env.SPARKLE_PRIVATE_KEY != ''
+        if: env.RELEASE_MODE == 'signed'
         run: |
           ZIP_PATH="artifacts/AlwaysOn-${TAG_VERSION}.zip"
           
@@ -186,7 +205,7 @@ jobs:
           echo "Sparkle signature: $ED_SIGNATURE"
 
       - name: Update appcast.xml
-        if: env.SPARKLE_PRIVATE_KEY != ''
+        if: env.RELEASE_MODE == 'signed'
         run: |
           ZIP_PATH="artifacts/AlwaysOn-${TAG_VERSION}.zip"
           
@@ -218,10 +237,25 @@ jobs:
           echo "      <enclosure url=\"${DOWNLOAD_URL}\" sparkle:edSignature=\"${ED_SIGNATURE}\" length=\"${FILE_SIZE}\" type=\"application/octet-stream\"/>" >> artifacts/appcast.xml
           echo '    </item>' >> artifacts/appcast.xml
           echo '  </channel>' >> artifacts/appcast.xml
-          echo '</rss>' >> artifacts/appcast.xml
-          
-          echo "Generated appcast.xml:"
-          cat artifacts/appcast.xml
+           echo '</rss>' >> artifacts/appcast.xml
+           
+           echo "Generated appcast.xml:"
+           cat artifacts/appcast.xml
+
+      - name: Generate artifact checksums
+        run: |
+          cd artifacts
+          FILES=(
+            "AlwaysOn-${TAG_VERSION}.zip"
+            "AlwaysOn-${TAG_VERSION}.dmg"
+            install-helper.sh
+          )
+
+          if [ "$RELEASE_MODE" = "signed" ] && [ -f appcast.xml ]; then
+            FILES+=(appcast.xml)
+          fi
+
+          shasum -a 256 "${FILES[@]}" > SHA256SUMS.txt
 
       - name: Create release notes
         run: |
@@ -230,15 +264,30 @@ jobs:
           
           1. Download the DMG below
           2. Drag to Applications folder
-          3. Right-click the app and select "Open"
-          4. Run this command to enable accessibility:
+          3. Launch the app
+          4. If Accessibility access is still blocked, download `install-helper.sh` and `SHA256SUMS.txt` from this same release
+          5. Verify the helper, then run it locally:
           EOFNOTES
+          if [ "$RELEASE_MODE" = "signed" ]; then
+            cat >> release-notes.md << 'EOFNOTES'
+
+          This release is signed and notarized. Sparkle in-app updates are enabled.
+          EOFNOTES
+          else
+            cat >> release-notes.md << 'EOFNOTES'
+
+          This release is unsigned. In-app Sparkle updates are disabled on purpose, and updates must be installed manually from GitHub Releases.
+          EOFNOTES
+          fi
+
           echo '   ```bash' >> release-notes.md
-          echo '   curl -fsSL https://raw.githubusercontent.com/hafiezul/AlwaysOn/main/install-helper.sh | bash' >> release-notes.md
+          echo '   grep '\'' install-helper.sh$'\'' SHA256SUMS.txt | shasum -a 256 -c' >> release-notes.md
+          echo '   chmod +x install-helper.sh' >> release-notes.md
+          echo '   ./install-helper.sh' >> release-notes.md
           echo '   ```' >> release-notes.md
           cat >> release-notes.md << 'EOFNOTES'
-          5. Grant accessibility permission when prompted
-          
+          6. Grant accessibility permission when prompted
+
           See the [README](https://github.com/hafiezul/AlwaysOn#installation) for full instructions.
           EOFNOTES
 
@@ -246,16 +295,26 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          RELEASE_TITLE="$TAG_VERSION"
+          RELEASE_FLAGS=""
+
+          if [ "$RELEASE_MODE" = "unsigned" ]; then
+            RELEASE_TITLE="$TAG_VERSION (unsigned)"
+          fi
+
           # Create release with assets and custom notes
-          # Include appcast.xml as a release asset (accessible via /releases/latest/download/appcast.xml)
           gh release create "$TAG_VERSION" \
-            --title "$TAG_VERSION" \
+            --title "$RELEASE_TITLE" \
             --notes-file release-notes.md \
             --generate-notes \
             artifacts/AlwaysOn-${TAG_VERSION}.zip \
             artifacts/AlwaysOn-${TAG_VERSION}.dmg \
             artifacts/install-helper.sh \
-            artifacts/appcast.xml
+            artifacts/SHA256SUMS.txt
+
+          if [ "$RELEASE_MODE" = "signed" ] && [ -f artifacts/appcast.xml ]; then
+            gh release upload "$TAG_VERSION" artifacts/appcast.xml --clobber
+          fi
 
       - name: Cleanup keychain
         if: always() && env.APPLE_CERTIFICATE_BASE64 != ''

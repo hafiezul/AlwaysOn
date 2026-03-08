@@ -23,18 +23,24 @@ final class SparkleUpdaterManager: NSObject, ObservableObject {
     
     // MARK: - Sparkle Components
     
-    private var updaterController: SPUStandardUpdaterController!
+    private var updaterController: SPUStandardUpdaterController?
     private var windowObserver: NSObjectProtocol?
     
     /// Direct access to the updater for advanced operations
-    var updater: SPUUpdater {
-        updaterController.updater
+    var updater: SPUUpdater? {
+        updaterController?.updater
+    }
+
+    var isEnabled: Bool {
+        UpdateChecker.currentMode.usesSparkle
     }
     
     // MARK: - Initialization
     
     private override init() {
         super.init()
+
+        guard isEnabled else { return }
         
         // Initialize the updater controller with self as userDriverDelegate
         // to handle window focus when update UI is shown
@@ -61,19 +67,21 @@ final class SparkleUpdaterManager: NSObject, ObservableObject {
     
     /// Check for updates (user-initiated)
     func checkForUpdates() {
-        guard canCheckForUpdates else { return }
+        guard isEnabled, canCheckForUpdates, let updaterController else { return }
         updaterController.checkForUpdates(nil)
     }
     
     /// Check for updates in background (no UI unless update found)
     func checkForUpdatesInBackground() {
-        guard canCheckForUpdates else { return }
+        guard isEnabled, canCheckForUpdates, let updater else { return }
         updater.checkForUpdatesInBackground()
     }
     
     // MARK: - Private Methods
     
     private func setupObservation() {
+        guard let updater else { return }
+
         // Observe canCheckForUpdates
         updater.publisher(for: \.canCheckForUpdates)
             .receive(on: DispatchQueue.main)
@@ -141,7 +149,7 @@ struct CheckForUpdatesView: View {
         Button("Check for Updates...") {
             updaterManager.checkForUpdates()
         }
-        .disabled(!updaterManager.canCheckForUpdates)
+        .disabled(!updaterManager.isEnabled || !updaterManager.canCheckForUpdates)
     }
 }
 

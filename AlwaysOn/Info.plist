@@ -26,6 +26,8 @@
     <string>Copyright © 2024 Hafiezul. All rights reserved.</string>
     <key>NSAccessibilityUsageDescription</key>
     <string>AlwaysOn needs accessibility permission to simulate mouse movement and keep your status active.</string>
+    <key>AlwaysOnUpdateMode</key>
+    <string>$(ALWAYSON_UPDATE_MODE)</string>
     
     <!-- Sparkle Configuration -->
     <key>SUFeedURL</key>

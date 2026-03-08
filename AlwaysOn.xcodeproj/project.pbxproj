@@ -414,6 +414,7 @@
 		9000000000000003 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYSON_UPDATE_MODE = manual;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = AlwaysOn/AlwaysOn.entitlements;
@@ -441,6 +442,7 @@
 		9000000000000004 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYSON_UPDATE_MODE = manual;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = AlwaysOn/AlwaysOn.entitlements;
@@ -493,8 +495,8 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/sparkle-project/Sparkle";
 			requirement = {
-				kind = upToNextMajorVersion;
-				minimumVersion = 2.6.0;
+				kind = exactVersion;
+				version = 2.8.1;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="AlwaysOn/Resources/Assets.xcassets/AppIcon.appiconset/icon_128x128@2x.png" width="128" alt="AlwaysOn icon">
+</p>
+
 # AlwaysOn
 
 A lightweight macOS menu bar app that keeps your status active in Microsoft Teams, Slack, Zoom, and other workplace apps by simulating minimal user activity.
@@ -16,7 +20,7 @@ If you find this app useful, consider supporting its development:
 | **Pause/Resume** - Pause without losing progress | **Quick Timers** - Auto-disable after 30min-8h |
 | **Stop Session** - Reset completely | **Configurable Interval** - 30s to 5min timing |
 | **Launch at Login** - Auto-start on boot | **Activity Methods** - Mouse, keyboard, or alternating |
-| **Auto-Updates** - Sparkle-powered updates | **Schedule Notifications** - Alerts for work hours |
+| **Updates** - Sparkle on signed builds, manual on unsigned builds | **Schedule Notifications** - Alerts for work hours |
 | **Settings Window** - Sidebar navigation | - |
 
 ## Roadmap
@@ -31,7 +35,7 @@ If you find this app useful, consider supporting its development:
 <details>
 <summary><b>Future Ideas</b> - Click to expand</summary>
 
-- Homebrew Cask support, menu bar icon variations, session statistics, calendar integration
+- Homebrew Cask support (convenience only; not a code-signing workaround), menu bar icon variations, session statistics, calendar integration
 - Break reminders, multiple profiles, randomized intervals, URL scheme automation
 - Shortcuts.app support, WiFi location awareness, native widgets, app-specific awareness, iCloud sync
 </details>
@@ -52,19 +56,19 @@ If you find this app useful, consider supporting its development:
    - **AlwaysOn-vX.X.X.dmg** - Drag and drop installer
    - **AlwaysOn-vX.X.X.zip** - Extract and move to Applications
 2. Move `AlwaysOn.app` to your Applications folder
-3. **First launch**: Right-click the app and select "Open" (required for unsigned apps)
-4. **Run the installation helper script** (required for accessibility features):
+3. Launch `AlwaysOn.app`
+4. If macOS still refuses Accessibility access for that release, **download the version-matched installation helper** from the same release page as your app:
+   - Download `install-helper.sh`
+   - Download `SHA256SUMS.txt`
+   - Verify the helper before running it:
    ```bash
-   curl -fsSL https://raw.githubusercontent.com/hafiezul/AlwaysOn/main/install-helper.sh | bash
-   ```
-   Or download `install-helper.sh` from the repository and run:
-   ```bash
+   grep ' install-helper.sh$' SHA256SUMS.txt | shasum -a 256 -c
    chmod +x install-helper.sh
    ./install-helper.sh
    ```
 5. See [Granting Accessibility Permission](#granting-accessibility-permission) below for next steps
 
-> **⚠️ Why the extra step?** macOS requires apps using accessibility features to be signed with an Apple Developer certificate ($99/year - that's a lot of coffee ☕). Since I can't afford that right now, the helper script re-signs the app locally on your machine. Takes 30 seconds and it's completely safe - this project is open source, so feel free to [inspect the script](install-helper.sh) before running it. If you'd rather skip it, just [build from source](#from-source) in Xcode!
+> **⚠️ Helper script fallback:** Releases may be signed or unsigned depending on whether Apple signing is available for that build. If macOS refuses Accessibility access for a specific release, only use the helper that shipped with that exact release, verify it against `SHA256SUMS.txt`, and review it before running it. If you'd rather skip it, just [build from source](#from-source) in Xcode.
 
 ### From Source
 
@@ -140,14 +144,19 @@ This prevents macOS from detecting you as "idle" and keeps workplace apps like M
 
 ## Updating the App
 
-AlwaysOn checks for updates via Sparkle, but **automatic updates may not work** due to code signing limitations. Without an Apple Developer Program membership ($99/year), the app cannot be properly code signed, and macOS/Sparkle will reject unsigned updates as a security measure.
+AlwaysOn supports two update modes:
+
+- **Signed releases**: Sparkle in-app updates are enabled.
+- **Unsigned releases**: Sparkle is disabled on purpose, and updates must be installed manually from GitHub Releases.
 
 **To update manually:**
 
 1. Visit the [Releases page](../../releases/latest)
 2. Download the latest DMG or ZIP
 3. Replace your existing app in the Applications folder
-4. Re-run the [installation helper script](#download-pre-built-binary-recommended) if needed
+4. Re-run the version-matched [installation helper script](#download-pre-built-binary-recommended) only if Accessibility access breaks after the upgrade
+
+The release notes will explicitly tell you whether a build is signed or unsigned.
 
 > **Tip**: After updating, you may need to remove the old entry from Accessibility settings and re-add the new app. See Troubleshooting below.
 
@@ -232,7 +241,8 @@ This typically happens after reinstalling or updating the app. macOS tracks perm
 
 1. Check your internet connection
 2. Try again in a few moments
-3. You can always download updates manually from the [Releases page](../../releases/latest)
+3. If the build is unsigned, use the manual check in Settings or download updates directly from the [Releases page](../../releases/latest)
+4. If the build is signed, Sparkle update checks should work normally
 
 ## Building from Source
 

@@ -1,5 +1,19 @@
 import Foundation
 
+enum AppUpdateMode: String {
+    case manual
+    case sparkle
+
+    static var current: AppUpdateMode {
+        let rawValue = Bundle.main.object(forInfoDictionaryKey: "AlwaysOnUpdateMode") as? String
+        return AppUpdateMode(rawValue: rawValue ?? "") ?? .manual
+    }
+
+    var usesSparkle: Bool {
+        self == .sparkle
+    }
+}
+
 /// Handles checking for app updates from GitHub releases
 final class UpdateChecker {
     
@@ -20,6 +34,7 @@ final class UpdateChecker {
     enum UpdateError: LocalizedError {
         case invalidURL
         case networkError(Error)
+        case invalidResponse
         case parseError
         case noReleases
         
@@ -29,6 +44,8 @@ final class UpdateChecker {
                 return "Invalid GitHub API URL"
             case .networkError(let error):
                 return "Network error: \(error.localizedDescription)"
+            case .invalidResponse:
+                return "Update server returned an invalid response"
             case .parseError:
                 return "Failed to parse release information"
             case .noReleases:
@@ -43,6 +60,19 @@ final class UpdateChecker {
         static let owner = "hafiezul"
         static let repo = "AlwaysOn"
         static let apiURL = "https://api.github.com/repos/\(owner)/\(repo)/releases/latest"
+        static let releasesPageURL = "https://github.com/\(owner)/\(repo)/releases/latest"
+    }
+
+    private struct GitHubRelease: Decodable {
+        let tagName: String
+        let htmlURL: URL
+        let body: String?
+
+        enum CodingKeys: String, CodingKey {
+            case tagName = "tag_name"
+            case htmlURL = "html_url"
+            case body
+        }
     }
     
     // MARK: - Properties
@@ -50,6 +80,14 @@ final class UpdateChecker {
     /// Current app version from bundle
     static var currentVersion: String {
         Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
+    }
+
+    static var currentMode: AppUpdateMode {
+        AppUpdateMode.current
+    }
+
+    static var releasesPageURL: URL {
+        URL(string: Constants.releasesPageURL)!
     }
     
     // MARK: - Public Methods
@@ -74,6 +112,12 @@ final class UpdateChecker {
                     completion(.error(UpdateError.networkError(error)))
                     return
                 }
+
+                guard let httpResponse = response as? HTTPURLResponse,
+                      (200...299).contains(httpResponse.statusCode) else {
+                    completion(.error(UpdateError.invalidResponse))
+                    return
+                }
                 
                 guard let data = data else {
                     completion(.error(UpdateError.parseError))
@@ -81,27 +125,20 @@ final class UpdateChecker {
                 }
                 
                 do {
-                    guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-                        completion(.error(UpdateError.parseError))
+                    let release = try JSONDecoder().decode(GitHubRelease.self, from: data)
+                    guard release.htmlURL.scheme == "https" else {
+                        completion(.error(UpdateError.invalidResponse))
                         return
                     }
-                    
-                    guard let tagName = json["tag_name"] as? String,
-                          let htmlURLString = json["html_url"] as? String,
-                          let releaseURL = URL(string: htmlURLString) else {
-                        completion(.error(UpdateError.noReleases))
-                        return
-                    }
-                    
-                    let releaseNotes = json["body"] as? String
-                    let latestVersion = normalizeVersion(tagName)
+
+                    let latestVersion = normalizeVersion(release.tagName)
                     let current = normalizeVersion(currentVersion)
                     
                     if isVersion(latestVersion, newerThan: current) {
                         let info = UpdateInfo(
                             version: latestVersion,
-                            releaseURL: releaseURL,
-                            releaseNotes: releaseNotes
+                            releaseURL: release.htmlURL,
+                            releaseNotes: release.body
                         )
                         completion(.updateAvailable(info))
                     } else {
