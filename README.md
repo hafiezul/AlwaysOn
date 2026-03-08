@@ -60,16 +60,13 @@ If you find this app useful, consider supporting its development:
 3. Launch `AlwaysOn.app`
 4. If macOS still refuses Accessibility access for that release, **download the version-matched installation helper** from the same release page as your app:
    - Download `install-helper.sh`
-   - Download `SHA256SUMS.txt`
-   - Verify the helper before running it:
+   - Run it:
    ```bash
-   grep ' install-helper.sh$' SHA256SUMS.txt | shasum -a 256 -c
    chmod +x install-helper.sh
    ./install-helper.sh
    ```
+   - After the script completes: remove the old AlwaysOn entry from **System Settings > Privacy & Security > Accessibility**, then relaunch the app
 5. See [Granting Accessibility Permission](#granting-accessibility-permission) below for next steps
-
-> **⚠️ Helper script fallback:** Releases may be signed or unsigned depending on whether Apple signing is available for that build. If macOS refuses Accessibility access for a specific release, only use the helper that shipped with that exact release, verify it against `SHA256SUMS.txt`, and review it before running it. If you'd rather skip it, just [build from source](#from-source) in Xcode.
 
 ### From Source
 
@@ -184,6 +181,16 @@ Apps that simulate input can't use App Sandbox, which is required for the Mac Ap
 Enable **"Launch at Login"** in the menu. This uses macOS's built-in Login Items feature.
 
 ## Troubleshooting
+
+### "Apple could not verify" warning after moving to Applications
+
+macOS Gatekeeper quarantines the app when copied from a download location. Run:
+
+```bash
+xattr -r -d com.apple.quarantine /Applications/AlwaysOn.app
+```
+
+Then launch the app normally.
 
 ### App not keeping me online
 
