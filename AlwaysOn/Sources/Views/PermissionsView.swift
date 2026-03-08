@@ -97,9 +97,6 @@ struct PermissionsView: View {
             // Grant Permission button
             Button(action: {
                 accessibilityPermission.request()
-                Task {
-                    await accessibilityPermission.waitForPermission()
-                }
             }) {
                 HStack(spacing: 8) {
                     if accessibilityPermission.hasPermission {

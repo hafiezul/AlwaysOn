@@ -25,6 +25,7 @@ final class SparkleUpdaterManager: NSObject, ObservableObject {
     
     private var updaterController: SPUStandardUpdaterController?
     private var windowObserver: NSObjectProtocol?
+    private var sparkleWindowCloseObserver: NSObjectProtocol?
     
     /// Direct access to the updater for advanced operations
     var updater: SPUUpdater? {
@@ -58,9 +59,8 @@ final class SparkleUpdaterManager: NSObject, ObservableObject {
     }
     
     deinit {
-        if let observer = windowObserver {
-            NotificationCenter.default.removeObserver(observer)
-        }
+        removeObserver(&windowObserver)
+        removeObserver(&sparkleWindowCloseObserver)
     }
     
     // MARK: - Public Methods
@@ -167,7 +167,7 @@ extension SparkleUpdaterManager: SPUStandardUserDriverDelegate {
         
         // Find and bring Sparkle's update window to the front after a brief delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            self.findAndFocusSparkleWindow()
+            self.findAndFocusSparkleWindow(attempt: 0)
         }
     }
     
@@ -182,7 +182,7 @@ extension SparkleUpdaterManager: SPUStandardUserDriverDelegate {
     }
     
     /// Find Sparkle's update window and bring it to front
-    private func findAndFocusSparkleWindow() {
+    private func findAndFocusSparkleWindow(attempt: Int) {
         // Find all candidate windows (visible, can become key, not settings)
         let candidateWindows = NSApp.windows.filter { window in
             guard window.isVisible, window.canBecomeKey else { return false }
@@ -209,19 +209,33 @@ extension SparkleUpdaterManager: SPUStandardUserDriverDelegate {
         }
         
         if let window = sparkleWindow {
-            window.level = .modalPanel
-            window.makeKeyAndOrderFront(nil)
-            window.orderFrontRegardless()
-            
-            // Restore settings window level when Sparkle window closes
-            NotificationCenter.default.addObserver(
+            bringWindowToFront(window)
+            observeSparkleWindowClose(for: window)
+            return
+        }
+
+        guard attempt < 4 else {
+            restoreSettingsWindowLevel()
+            return
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            self.findAndFocusSparkleWindow(attempt: attempt + 1)
+        }
+    }
+
+    private func observeSparkleWindowClose(for window: NSWindow) {
+        removeObserver(&sparkleWindowCloseObserver)
+
+        sparkleWindowCloseObserver = NotificationCenter.default.addObserver(
                 forName: NSWindow.willCloseNotification,
                 object: window,
                 queue: .main
             ) { [weak self] _ in
-                self?.restoreSettingsWindowLevel()
+                guard let self else { return }
+                self.removeObserver(&self.sparkleWindowCloseObserver)
+                self.restoreSettingsWindowLevel()
             }
-        }
     }
     
     /// Restore the settings window level after Sparkle window is dismissed
@@ -229,5 +243,11 @@ extension SparkleUpdaterManager: SPUStandardUserDriverDelegate {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             SettingsWindowController.shared.restoreWindowLevel()
         }
+    }
+
+    private func removeObserver(_ observer: inout NSObjectProtocol?) {
+        guard let token = observer else { return }
+        NotificationCenter.default.removeObserver(token)
+        observer = nil
     }
 }

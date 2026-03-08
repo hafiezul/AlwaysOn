@@ -16,7 +16,6 @@ final class AccessibilityPermission: ObservableObject {
     // MARK: - Private Properties
     
     private var timerCancellable: AnyCancellable?
-    private var permissionCancellable: AnyCancellable?
     
     // MARK: - Constants
     
@@ -88,28 +87,6 @@ final class AccessibilityPermission: ObservableObject {
     func stopPolling() {
         timerCancellable?.cancel()
         timerCancellable = nil
-        permissionCancellable?.cancel()
-        permissionCancellable = nil
-    }
-    
-    /// Asynchronously wait for permission to be granted
-    /// Starts polling and returns when permission is granted
-    func waitForPermission() async {
-        startPolling()
-        
-        // If already have permission, return immediately
-        guard !hasPermission else { return }
-        
-        await withCheckedContinuation { continuation in
-            permissionCancellable = $hasPermission
-                .dropFirst() // Skip current value
-                .filter { $0 == true } // Only continue when granted
-                .first() // Take only the first "granted" event
-                .sink { [weak self] _ in
-                    self?.permissionCancellable?.cancel()
-                    continuation.resume()
-                }
-        }
     }
     
     /// Perform a single permission check and update state
