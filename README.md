@@ -26,19 +26,37 @@ If you find this app useful, consider supporting its development:
 ## Roadmap
 
 <details>
-<summary><b>Completed</b> - Click to expand</summary>
-
-**v1.2** - Configurable interval, quick timers, activity methods, pause/resume, stop session
-**v1.3** - Work hours scheduling, presentation detection, focus mode integration, notifications
-**v1.3.1** - Enhanced installation helper
-</details>
-
-<details>
 <summary><b>Future Ideas</b> - Click to expand</summary>
 
-- Homebrew Cask support (convenience only; not a code-signing workaround), menu bar icon variations, session statistics, calendar integration
-- Break reminders, multiple profiles, randomized intervals, URL scheme automation
-- Shortcuts.app support, WiFi location awareness, native widgets, app-specific awareness, iCloud sync
+**Distribution & Updates**
+- Homebrew Cask support
+- Notarized signed release (requires Apple Developer Program)
+- Auto-update on unsigned builds via GitHub Releases polling
+
+**Customization**
+- Multiple named profiles (e.g. "Work", "Meetings", "Focus")
+- Randomized activity intervals (harder to fingerprint)
+- Custom hotkey bindings
+- Menu bar icon themes and color variations
+- Activity method per-profile override
+
+**Smart Automation**
+- Calendar integration — auto-enable before meetings, auto-disable after
+- WiFi location awareness — enable only on work networks
+- App-specific awareness — trigger only when certain apps are in foreground
+- Battery-saver mode — increase interval when on battery to reduce CPU wake
+- Screen lock detection — auto-pause when screen locks
+- Shortcuts.app / AppleScript / URL scheme support for external automation
+
+**Stats & Logging**
+- Session statistics (time kept online, activity count)
+- Activity history export (CSV/JSON)
+- Native menu bar Today widget
+
+**Sync & Multi-machine**
+- iCloud sync for settings and profiles
+- Multiple Mac profile switching
+
 </details>
 
 **Funding Goal** - Apple Developer Program ($99/year) to properly sign the app  
