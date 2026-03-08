@@ -20,7 +20,7 @@ final class AppState: ObservableObject {
     /// Current activity interval in seconds
     @Published var activityInterval: TimeInterval {
         didSet {
-            UserDefaults.standard.set(activityInterval, forKey: Keys.activityInterval)
+            syncActiveProfileSettings()
             if isActive {
                 // Restart simulator with new (possibly adjusted) interval
                 restartActivitySimulatorWithCurrentSettings()
@@ -31,7 +31,7 @@ final class AppState: ObservableObject {
     /// Current activity simulation method
     @Published var activityMethod: ActivityMethod {
         didSet {
-            UserDefaults.standard.set(activityMethod.rawValue, forKey: Keys.activityMethod)
+            syncActiveProfileSettings()
             if isActive {
                 activitySimulator.updateMethod(activityMethod)
             }
@@ -44,7 +44,7 @@ final class AppState: ObservableObject {
     /// Default timer duration setting
     @Published var defaultTimerDuration: QuickTimerDuration {
         didSet {
-            UserDefaults.standard.set(defaultTimerDuration.id, forKey: Keys.defaultTimerDuration)
+            syncActiveProfileSettings()
         }
     }
     
@@ -82,7 +82,10 @@ final class AppState: ObservableObject {
     // MARK: - Smart Features (v1.3)
     
     /// Work schedule manager for auto-enable/disable during work hours
-    let workScheduleManager = WorkScheduleManager()
+    let workScheduleManager: WorkScheduleManager
+
+    /// Named profile manager for profile-scoped settings
+    let profileManager: ProfileManager
     
     /// Focus mode monitor to respect Do Not Disturb
     let focusModeMonitor = FocusModeMonitor()
@@ -119,6 +122,12 @@ final class AppState: ObservableObject {
     /// Whether the user manually stopped/paused during current work window
     /// This prevents auto-restart until the next work schedule window begins
     private var userManuallyStopped: Bool = false
+
+    /// Prevent profile application from rewriting the active profile recursively
+    private var isApplyingProfile = false
+
+    /// Keep profile switches inactive even if the new schedule is currently active
+    private var suppressScheduleAutoStart = false
     
     // MARK: - Constants
     
@@ -155,24 +164,20 @@ final class AppState: ObservableObject {
     // MARK: - Initialization
     
     init() {
+        let defaults = UserDefaults.standard
+        ProfileManager.migrateIfNeeded(defaults: defaults)
+
+        let profileManager = ProfileManager(defaults: defaults)
+        let initialProfile = profileManager.activeProfile ?? Profile.makeDefault(from: defaults)
+
+        self.profileManager = profileManager
+        self.workScheduleManager = WorkScheduleManager(schedule: initialProfile.workSchedule)
+
         // Restore persisted state
-        self.isActive = UserDefaults.standard.bool(forKey: Keys.isActive)
-        self.activityInterval = UserDefaults.standard.double(forKey: Keys.activityInterval)
-        
-        // Restore activity method
-        if let methodRaw = UserDefaults.standard.string(forKey: Keys.activityMethod),
-           let method = ActivityMethod(rawValue: methodRaw) {
-            self.activityMethod = method
-        } else {
-            self.activityMethod = Defaults.activityMethod
-        }
-        
-        // Restore default timer duration
-        if let durationId = UserDefaults.standard.string(forKey: Keys.defaultTimerDuration) {
-            self.defaultTimerDuration = QuickTimerDuration.from(id: durationId)
-        } else {
-            self.defaultTimerDuration = Defaults.defaultTimerDuration
-        }
+        self.isActive = defaults.bool(forKey: Keys.isActive)
+        self.activityInterval = initialProfile.activityInterval > 0 ? initialProfile.activityInterval : Defaults.activityInterval
+        self.activityMethod = initialProfile.activityMethod
+        self.defaultTimerDuration = initialProfile.defaultTimerDuration
         
         // Set default interval if not previously set
         if activityInterval == 0 {
@@ -180,12 +185,12 @@ final class AppState: ObservableObject {
         }
         
         // Restore quick timer if still valid
-        if let savedEndTime = UserDefaults.standard.object(forKey: Keys.quickTimerEndTime) as? Date {
+        if let savedEndTime = defaults.object(forKey: Keys.quickTimerEndTime) as? Date {
             if savedEndTime > Date() {
                 self.quickTimerEndTime = savedEndTime
             } else {
                 // Timer expired while app was closed
-                UserDefaults.standard.removeObject(forKey: Keys.quickTimerEndTime)
+                defaults.removeObject(forKey: Keys.quickTimerEndTime)
             }
         }
         
@@ -194,6 +199,7 @@ final class AppState: ObservableObject {
         setupSmartFeatureObservers()
         setupNestedObjectChangeForwarding()
         setupNotificationCallbacks()
+        setupProfileSync()
         
         // Start permission polling
         accessibilityPermission.startPolling()
@@ -262,10 +268,33 @@ final class AppState: ObservableObject {
         pausedSessionDuration = 0
         pausedQuickTimerEndTime = nil
         quickTimerEndTime = nil
+        quickTimerRemaining = 0
         activeSessionDuration = 0
+        clearSmartPause()
+        isActive = false
+    }
+
+    func applyProfile(_ profile: Profile) {
+        isApplyingProfile = true
+        suppressScheduleAutoStart = true
+        defer {
+            isApplyingProfile = false
+            suppressScheduleAutoStart = false
+        }
+
+        activityInterval = profile.activityInterval > 0 ? profile.activityInterval : Defaults.activityInterval
+        activityMethod = profile.activityMethod
+        defaultTimerDuration = profile.defaultTimerDuration
+        workScheduleManager.schedule = profile.workSchedule
+        userManuallyStopped = false
+        quickTimerEndTime = nil
+        quickTimerRemaining = 0
+    }
+
+    func clearSmartPause() {
         isSmartPaused = false
         smartPauseReason = nil
-        isActive = false
+        wasActiveBeforeSmartPause = false
     }
     
     /// Start with a quick timer duration
@@ -289,6 +318,7 @@ final class AppState: ObservableObject {
     /// Cancel the quick timer but keep activity running
     func cancelQuickTimer() {
         quickTimerEndTime = nil
+        quickTimerRemaining = 0
     }
     
     /// Request permission with system prompt
@@ -368,6 +398,13 @@ final class AppState: ObservableObject {
                 self?.objectWillChange.send()
             }
             .store(in: &cancellables)
+
+        profileManager.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] (_: Void) in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
         
         notificationManager.objectWillChange
             .receive(on: DispatchQueue.main)
@@ -413,6 +450,21 @@ final class AppState: ObservableObject {
             }
         }
     }
+
+    private func setupProfileSync() {
+        workScheduleManager.$schedule
+            .dropFirst()
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] (_: WorkSchedule) in
+                self?.syncActiveProfileSettings()
+            }
+            .store(in: &cancellables)
+    }
+
+    private func syncActiveProfileSettings() {
+        guard !isApplyingProfile else { return }
+        profileManager.updateProfileSettings(profileManager.activeProfileId, from: self)
+    }
     
     // MARK: - Smart Feature Handlers
     
@@ -423,6 +475,8 @@ final class AppState: ObservableObject {
             // Entering work hours - this is a new work window
             // Reset the manual stop flag so automation works for this new window
             userManuallyStopped = false
+
+            guard !suppressScheduleAutoStart else { return }
             
             // Auto-enable if not already active
             if !isActive && hasAccessibilityPermission {

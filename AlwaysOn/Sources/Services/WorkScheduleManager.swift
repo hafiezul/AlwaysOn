@@ -10,7 +10,7 @@ final class WorkScheduleManager: ObservableObject {
     /// Current work schedule configuration
     @Published var schedule: WorkSchedule {
         didSet {
-            saveSchedule()
+            handleScheduleChange()
         }
     }
     
@@ -22,12 +22,6 @@ final class WorkScheduleManager: ObservableObject {
     private var checkTimer: Timer?
     private let checkInterval: TimeInterval = 60 // Check every minute
     
-    // MARK: - Constants
-    
-    private enum Keys {
-        static let workSchedule = "workSchedule"
-    }
-    
     // MARK: - Callbacks
     
     /// Called when schedule state changes (enters or exits work hours)
@@ -35,14 +29,8 @@ final class WorkScheduleManager: ObservableObject {
     
     // MARK: - Initialization
     
-    init() {
-        // Load saved schedule or use default
-        if let data = UserDefaults.standard.data(forKey: Keys.workSchedule),
-           let savedSchedule = try? JSONDecoder().decode(WorkSchedule.self, from: data) {
-            self.schedule = savedSchedule
-        } else {
-            self.schedule = .default
-        }
+    init(schedule: WorkSchedule = .default) {
+        self.schedule = schedule
         
         // Initial check
         updateScheduleState()
@@ -122,10 +110,13 @@ final class WorkScheduleManager: ObservableObject {
             self.scheduleNextMinuteCheck()
         }
     }
-    
-    private func saveSchedule() {
-        if let data = try? JSONEncoder().encode(schedule) {
-            UserDefaults.standard.set(data, forKey: Keys.workSchedule)
+
+    private func handleScheduleChange() {
+        if schedule.isEnabled {
+            startMonitoring()
+        } else {
+            stopMonitoring()
+            updateScheduleState()
         }
     }
     

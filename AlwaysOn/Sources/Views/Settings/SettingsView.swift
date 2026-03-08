@@ -4,6 +4,10 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var appState: AppState
     @State private var selectedItem: SettingsNavigationItem = .general
+
+    init(initialSelection: SettingsNavigationItem = .general) {
+        _selectedItem = State(initialValue: initialSelection)
+    }
     
     var body: some View {
         NavigationSplitView {
@@ -34,6 +38,9 @@ struct SettingsView: View {
                 .environmentObject(appState)
         case .updates:
             UpdatesSettingsPane()
+        case .profiles:
+            ProfilesSettingsPane()
+                .environmentObject(appState)
         case .about:
             AboutSettingsPane()
         }

@@ -20,6 +20,7 @@ If you find this app useful, consider supporting its development:
 | **Pause/Resume** - Pause without losing progress | **Quick Timers** - Auto-disable after 30min-8h |
 | **Stop Session** - Reset completely | **Configurable Interval** - 30s to 5min timing |
 | **Launch at Login** - Auto-start on boot | **Activity Methods** - Mouse, keyboard, or alternating |
+| **Named Profiles** - Separate work, meeting, and focus setups | **Profile Switching** - Stops current session and applies the new profile cleanly |
 | **Updates** - Sparkle on signed builds, manual on unsigned builds | **Schedule Notifications** - Alerts for work hours |
 | **Settings Window** - Sidebar navigation | - |
 
@@ -34,7 +35,6 @@ If you find this app useful, consider supporting its development:
 - Auto-update on unsigned builds via GitHub Releases polling
 
 **Customization**
-- Multiple named profiles (e.g. "Work", "Meetings", "Focus")
 - Randomized activity intervals (harder to fingerprint)
 - Custom hotkey bindings
 - Menu bar icon themes and color variations
@@ -121,6 +121,13 @@ open AlwaysOn.xcodeproj
 4. Return to AlwaysOn - it will automatically detect the permission change
 
 ## Usage
+
+### Named Profiles
+
+- Profiles store `Activity Interval`, `Activity Method`, `Auto-disable after`, and `Work Hours Schedule` separately.
+- Focus Mode detection, presentation detection, onboarding state, Accessibility permission, and launch-at-login remain global device settings.
+- Switching profiles always saves the current profile's settings, stops the current session, clears quick timers and smart-pause state, and leaves the newly selected profile inactive.
+- Manage profiles from the menu bar profile picker or from `Settings > Profiles`.
 
 ### Keyboard Shortcuts
 

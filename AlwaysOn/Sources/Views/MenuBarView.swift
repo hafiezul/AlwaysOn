@@ -12,6 +12,11 @@ struct MenuBarView: View {
             
             Divider()
                 .padding(.vertical, 4)
+
+            profileMenu
+            
+            Divider()
+                .padding(.vertical, 4)
             
             // Main toggle button (Pause when active, Resume when paused)
             toggleButton
@@ -94,6 +99,40 @@ struct MenuBarView: View {
         .buttonStyle(.plain)
         .background(HoverBackground())
         .keyboardShortcut("k", modifiers: .command)
+    }
+
+    private var profileMenu: some View {
+        Menu {
+            ForEach(appState.profileManager.profiles) { profile in
+                Button {
+                    appState.profileManager.switchProfile(profile.id, in: appState)
+                } label: {
+                    Label(profile.name, systemImage: profile.id == appState.profileManager.activeProfileId ? "checkmark" : "circle")
+                }
+            }
+
+            Divider()
+
+            Button("Manage Profiles...") {
+                SettingsWindowController.shared.show(appState: appState, selectedItem: .profiles)
+            }
+        } label: {
+            HStack(spacing: 8) {
+                Image(systemName: "person.2")
+                    .frame(width: 16)
+                Text(appState.profileManager.activeProfile?.name ?? "Profile")
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background(HoverBackground())
     }
     
     private var stopSessionButton: some View {

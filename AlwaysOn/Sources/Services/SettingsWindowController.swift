@@ -12,6 +12,7 @@ final class SettingsWindowController {
     // MARK: - Properties
     
     private var windowController: NSWindowController?
+    private var hostingController: NSHostingController<AnyView>?
     private weak var appState: AppState?
     
     /// Access to the settings window
@@ -25,21 +26,23 @@ final class SettingsWindowController {
     
     /// Show the settings window
     /// - Parameter appState: The app state to inject into the view
-    func show(appState: AppState) {
+    func show(appState: AppState, selectedItem: SettingsNavigationItem = .general) {
         self.appState = appState
+        let rootView = AnyView(
+            SettingsView(initialSelection: selectedItem)
+                .environmentObject(appState)
+        )
         
         // If window exists and is visible, just bring it to front
         if let existingWindow = windowController?.window, existingWindow.isVisible {
+            hostingController?.rootView = rootView
             existingWindow.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
             return
         }
         
-        // Create the settings view with environment object
-        let settingsView = SettingsView()
-            .environmentObject(appState)
-        
-        let hostingController = NSHostingController(rootView: settingsView)
+        let hostingController = NSHostingController(rootView: rootView)
+        self.hostingController = hostingController
         
         // Create window with appropriate style
         let window = NSWindow(contentViewController: hostingController)
@@ -65,6 +68,7 @@ final class SettingsWindowController {
     func close() {
         windowController?.close()
         windowController = nil
+        hostingController = nil
     }
     
     /// Temporarily lower the window level to allow other windows to appear above
