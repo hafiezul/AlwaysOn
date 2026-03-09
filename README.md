@@ -10,55 +10,13 @@ If you find this app useful, consider supporting its development:
 
 <a href="https://buymeacoffee.com/hafiezul" target="_blank"><img src="https://img.shields.io/badge/Buy%20Me%20A%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me A Coffee"></a>
 
-## Features
+## What it does
 
-| Core | Advanced |
-|------|----------|
-| **Menu Bar Only** - No dock icon, lives in menu bar | **Work Hours** - Auto-enable/disable on schedule |
-| **One-Click Toggle** - Start/stop instantly | **Quick Timers** - Auto-disable after 30min-8h |
-| **Session Timer** - Track time "online" | **Configurable Interval** - 30s to 5min timing |
-| **Session Source Awareness** - Menu bar shows when a session came from Work Hours or a Quick Timer | **Override Notifications** - Alerts when automation stops a session or a profile switch ends it |
-| **Pause/Resume** - Pause without losing progress | **Activity Methods** - Mouse, keyboard, or alternating |
-| **Stop Session** - Reset completely | **Named Profiles** - Separate work, meeting, and focus setups |
-| **Launch at Login** - Auto-start on boot | **Profile Switching** - Stops current session and applies the new profile cleanly |
-| **Updates** - Sparkle on signed builds, manual on unsigned builds | **Schedule Notifications** - Alerts for work hours |
-| **Settings Window** - Sidebar navigation | - |
-
-## Roadmap
-
-<details>
-<summary><b>Future Ideas</b> - Click to expand</summary>
-
-**Distribution & Updates**
-- Homebrew Cask support
-- Notarized signed release (requires Apple Developer Program)
-
-**Customization**
-- Randomized activity intervals (harder to fingerprint)
-- Custom hotkey bindings
-- Menu bar icon themes and color variations
-
-**Smart Automation**
-- Calendar integration — auto-enable before meetings, auto-disable after
-- WiFi location awareness — enable only on work networks
-- App-specific awareness — trigger only when certain apps are in foreground
-- Battery-saver mode — increase interval when on battery to reduce CPU wake
-- Screen lock detection — auto-pause when screen locks
-- Shortcuts.app / AppleScript / URL scheme support for external automation
-
-**Stats & Logging**
-- Session statistics (time kept online, activity count)
-- Activity history export (CSV/JSON)
-- Native menu bar Today widget
-
-**Sync & Multi-machine**
-- iCloud sync for settings and profiles
-- Multiple Mac profile switching
-
-</details>
-
-**Funding Goal** - Apple Developer Program ($99/year) to properly sign the app  
-*Have an idea? [Open an issue](../../issues/new) or [start a discussion](../../discussions)!*
+- Lives in the menu bar with no Dock icon.
+- Starts, pauses, resumes, or stops activity simulation in one click.
+- Supports mouse, keyboard, or alternating activity methods.
+- Includes quick timers, work hours, launch at login, and named profiles.
+- Shows where a session came from, such as a manual start, quick timer, or work schedule.
 
 ## Requirements
 
@@ -67,75 +25,53 @@ If you find this app useful, consider supporting its development:
 
 ## Installation
 
-### Download Pre-built Binary (Recommended)
+### Pre-built app
 
 1. Download the latest release from the [Releases page](../../releases/latest):
-   - **AlwaysOn-vX.X.X.dmg** - Drag and drop installer
-   - **AlwaysOn-vX.X.X.zip** - Extract and move to Applications
-2. Move `AlwaysOn.app` to your Applications folder
+   - `AlwaysOn-vX.X.X.dmg` for drag-and-drop install
+   - `AlwaysOn-vX.X.X.zip` for manual extraction
+2. Move `AlwaysOn.app` to `/Applications`
 3. Launch `AlwaysOn.app`
-4. If macOS still refuses Accessibility access for that release, **download the version-matched installation helper** from the same release page as your app:
-   - Download `install-helper.sh`
-   - Run it:
-   ```bash
-   chmod +x install-helper.sh
-   ./install-helper.sh
-   ```
-   - After the script completes: remove the old AlwaysOn entry from **System Settings > Privacy & Security > Accessibility**, then relaunch the app
-5. See [Granting Accessibility Permission](#granting-accessibility-permission) below for next steps
+4. If Accessibility still fails for that release, download the matching `install-helper.sh` from the same release and run:
+
+```bash
+chmod +x install-helper.sh
+./install-helper.sh
+```
+
+5. Remove the old AlwaysOn entry from **System Settings > Privacy & Security > Accessibility**, then relaunch the app
 
 ### From Source
 
-Building from source is the easiest way to get full accessibility features without extra steps:
+Building from source is the simplest way to avoid extra signing steps.
 
 1. Clone this repository
 2. Open `AlwaysOn.xcodeproj` in Xcode 15+
 3. Build and run (Cmd+R)
-4. See [Granting Accessibility Permission](#granting-accessibility-permission) below for next steps
+4. Grant Accessibility permission when prompted
 
 ```bash
 git clone https://github.com/hafiezul/AlwaysOn.git
 cd AlwaysOn
 open AlwaysOn.xcodeproj
-# Press Cmd+R in Xcode
 ```
 
-**Build Requirements:** Xcode 15.0+, macOS 13.0+ SDK, Swift 5.9+
+Build requirements: Xcode 15+, macOS 13+ SDK, Swift 5.9+
 
-**Why build from source?** Apps built in Xcode are automatically signed with your local development certificate, so accessibility features work immediately without any manual re-signing.
+## First-run setup
 
-### Granting Accessibility Permission
-
-**First time setup:**
 1. Click **"Keep Online"** or **"Grant Permission"** in the menu
-2. macOS will show a permission prompt - click **"Open System Settings"**
+2. Click **"Open System Settings"** when macOS prompts you
 3. In the Accessibility settings, enable **AlwaysOn**
-4. Return to the app - it will automatically detect the permission
-
-**Manual setup:**
-1. Open **System Settings** > **Privacy & Security** > **Accessibility**
-2. Click the **"+"** button and add AlwaysOn from your Applications folder
-3. Ensure the checkbox next to AlwaysOn is enabled
-4. Return to AlwaysOn - it will automatically detect the permission change
+4. Return to the app and it will detect the permission automatically
 
 ## Usage
 
-### Named Profiles
-
-- Profiles store `Activity Interval`, `Activity Method`, `Auto-disable after`, and `Work Hours Schedule` separately.
-- Onboarding state, Accessibility permission, notifications, and launch-at-login remain global device settings.
-- Switching profiles always saves the current profile's settings, stops the current session, clears quick timers, and leaves the newly selected profile inactive.
-- If a profile switch ends an active or paused session, AlwaysOn sends a notification so the override is visible instead of silent.
-- Manage profiles from the menu bar profile picker or from `Settings > Profiles`.
-
-### Session Labels and Automation Feedback
-
-- Manual starts stay unlabeled because that is the default expected state.
-- Work Hours only auto-start when AlwaysOn is fully inactive, and they only auto-stop sessions that were started by Work Hours.
-- Work Hours auto-start sessions show `via Work Schedule` in the menu, including the active profile name when available.
-- Quick Timer starts show `via Quick Timer` in the menu.
-- Pausing a session preserves the source label; fully stopping the session clears it.
-- Automatic schedule end already notifies when Work Hours stop the session, and profile switches now notify when they stop a session.
+- Use the menu bar icon to start, pause, resume, or stop a session.
+- Pick an activity method and interval in Settings.
+- Use quick timers for short sessions or Work Hours for scheduled automation.
+- Create profiles for different setups such as work, meetings, or focus time.
+- If automation stops a session, AlwaysOn shows a notification so the change is visible.
 
 ### Keyboard Shortcuts
 
@@ -149,43 +85,26 @@ open AlwaysOn.xcodeproj
 
 AlwaysOn simulates minimal user activity at a configurable interval (default: 45 seconds):
 
-**Mouse Method (Default):**
-1. Moves the cursor by 1 pixel
-2. Immediately moves it back
-3. Repeat
+- Mouse: move the cursor by 1 pixel, then move it back.
+- Keyboard: press and release the Shift key.
+- Alternating: switch between mouse and keyboard methods.
 
-**Keyboard Method:**
-1. Presses and releases the Shift key
-2. Repeat
+This keeps macOS from marking you idle, which helps workplace apps keep your status as active.
 
-**Alternating Method:**
-1. Alternates between mouse and keyboard methods
-2. Provides variety in activity simulation
+## Updates
 
-This prevents macOS from detecting you as "idle" and keeps workplace apps like Microsoft Teams, Slack, and Zoom showing your status as "Available" or "Active".
+- Signed releases support Sparkle in-app updates.
+- Unsigned releases must be updated manually from [GitHub Releases](../../releases/latest).
+- If Accessibility breaks after an upgrade, re-run the version-matched `install-helper.sh`.
 
-## Updating the App
-
-AlwaysOn supports two update modes:
-
-- **Signed releases**: Sparkle in-app updates are enabled.
-- **Unsigned releases**: Sparkle is disabled on purpose, and updates must be installed manually from GitHub Releases.
-
-**To update manually:**
-
-1. Visit the [Releases page](../../releases/latest)
-2. Download the latest DMG or ZIP
-3. Replace your existing app in the Applications folder
-4. Re-run the version-matched [installation helper script](#download-pre-built-binary-recommended) only if Accessibility access breaks after the upgrade
-
-The release notes will explicitly tell you whether a build is signed or unsigned.
+Release notes state whether a build is signed or unsigned.
 
 ## Privacy & Security
 
-- **No network access** except for optional update checks on signed builds
-- **No data collection** - Nothing is tracked or sent
-- **Open source** - Audit the code yourself
-- **Minimal permissions** - Only Accessibility (required for input simulation)
+- No data collection
+- No network access except optional update checks on signed builds
+- Only Accessibility permission is required
+- Fully open source
 
 ## FAQ
 
@@ -209,70 +128,43 @@ No. AlwaysOn only simulates activity, it doesn't prevent sleep.
 
 Apps that simulate input can't use App Sandbox, which is required for the Mac App Store.
 
-### How do I make it start automatically?
-
-Enable **"Launch at Login"** in the menu. This uses macOS's built-in Login Items feature.
-
 ## Troubleshooting
 
-### "Apple could not verify" warning after moving to Applications
+### macOS says the app could not be verified
 
-macOS Gatekeeper quarantines the app when copied from a download location. Run:
+Run:
 
 ```bash
 xattr -r -d com.apple.quarantine /Applications/AlwaysOn.app
 ```
 
-Then launch the app normally.
+Then launch the app again.
 
-### App not keeping me online
+### Accessibility still is not working
 
-1. Check that Accessibility permission is granted (see [Granting Accessibility Permission](#granting-accessibility-permission))
-2. Ensure the status shows "Active" (green dot)
-3. Verify your messaging app isn't overriding presence with a custom status setting
+1. Re-run the version-matched `install-helper.sh` if you installed from a DMG or ZIP
+2. Open **System Settings > Privacy & Security > Accessibility**
+3. Remove the old AlwaysOn entry if one exists
+4. Add `AlwaysOn.app` again and enable it
+5. Relaunch the app
 
-### App doesn't appear in menu bar
+### The app is not keeping me online
 
-1. Check if your menu bar is full (icons may be hidden)
-2. Try relaunching the app
-3. Check Activity Monitor for "AlwaysOn" process
+1. Confirm Accessibility permission is enabled
+2. Confirm AlwaysOn shows an active session
+3. Check whether your chat app is forcing a custom presence state
 
-### Accessibility not working after installation (DMG/ZIP)
+### The app does not appear in the menu bar
 
-If you installed from a pre-built DMG or ZIP and accessibility features aren't working, see the [installation helper instructions](#download-pre-built-binary-recommended) in step 4 of the installation section, then grant accessibility permission in System Settings.
+1. Check whether the menu bar is crowded and the icon is hidden
+2. Relaunch the app
+3. Check Activity Monitor for `AlwaysOn`
 
-### "Accessibility Required" warning won't go away
-
-This typically happens after reinstalling or updating the app. macOS tracks permissions by app binary, so a new version appears as a different app.
-
-**Why this happens:**
-- macOS stores accessibility permissions per app binary
-- When you reinstall, the old permission entry points to the old (deleted) binary
-- The new app binary needs its own permission entry
-
-**Solution:**
-1. **Re-run the installation helper** (for DMG/ZIP installs) - see [installation instructions](#download-pre-built-binary-recommended)
-2. Click **"Grant Permission"** in the app menu - this triggers the system prompt
-3. If that doesn't work, click **"Open Settings..."** to go to Accessibility settings
-4. **Remove the old entry**: Select "AlwaysOn" and click the **"-"** button
-5. **Add the new app**: Click **"+"** and select AlwaysOn from your Applications folder
-6. Ensure the checkbox is enabled
-7. Return to the app - permission will be detected automatically
-
-> **Tip**: The app automatically checks for permission changes when you switch back to it, and polls for 30 seconds after you open Settings.
-
-### "Launch at Login" not working
+### Launch at Login is not working
 
 1. Open **System Settings** > **General** > **Login Items**
 2. Ensure AlwaysOn is listed and enabled
 3. If not, toggle the option off and on again in the app menu
-
-### Update check failed
-
-1. Check your internet connection
-2. Try again in a few moments
-3. If the build is unsigned, use the manual check in Settings or download updates directly from the [Releases page](../../releases/latest)
-4. If the build is signed, Sparkle update checks should work normally
 
 ## License
 
@@ -280,8 +172,4 @@ MIT License - See [LICENSE](LICENSE) file for details.
 
 ## Contributing
 
-Contributions are welcome! Please:
-
-1. Fork the repository
-2. Create a feature branch
-3. Submit a pull request
+Contributions are welcome. Open an issue, start a discussion, or submit a pull request.
