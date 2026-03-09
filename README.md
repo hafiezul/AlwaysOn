@@ -33,13 +33,11 @@ If you find this app useful, consider supporting its development:
 **Distribution & Updates**
 - Homebrew Cask support
 - Notarized signed release (requires Apple Developer Program)
-- Auto-update on unsigned builds via GitHub Releases polling
 
 **Customization**
 - Randomized activity intervals (harder to fingerprint)
 - Custom hotkey bindings
 - Menu bar icon themes and color variations
-- Activity method per-profile override
 
 **Smart Automation**
 - Calendar integration — auto-enable before meetings, auto-disable after
