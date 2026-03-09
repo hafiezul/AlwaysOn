@@ -49,9 +49,8 @@ final class ProfileManager: ObservableObject {
         updateProfileSettings(activeProfileId, from: appState)
         let wasActive = appState.isActive || appState.activeSessionDuration > 0
 
-        // Priority: Manual user action > Profile switch > Calendar > WiFi > Work Schedule
+        // Priority: Manual user action > Profile switch > Work Schedule
         appState.stopSession()
-        appState.clearSmartPause()
 
         activeProfileId = id
         persist()

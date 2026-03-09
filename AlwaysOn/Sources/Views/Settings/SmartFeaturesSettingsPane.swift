@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Settings pane for Smart Features (v1.3)
+/// Settings pane for schedule automation
 struct SmartFeaturesSettingsPane: View {
     @EnvironmentObject var appState: AppState
     
@@ -90,49 +90,6 @@ struct SmartFeaturesSettingsPane: View {
                 Label("Work Hours Schedule", systemImage: "calendar.badge.clock")
             }
             
-            // Focus Mode Integration Section
-            Section {
-                Toggle("Respect Focus Mode", isOn: focusModeEnabledBinding)
-                
-                if appState.focusModeMonitor.isEnabled {
-                    // Status
-                    HStack {
-                        Image(systemName: appState.focusModeMonitor.statusIcon)
-                            .foregroundColor(appState.focusModeMonitor.isFocusModeActive ? .purple : .secondary)
-                        Text(appState.focusModeMonitor.statusDescription)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
-                Text("Automatically pause activity when macOS Focus or Do Not Disturb is active.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            } header: {
-                Label("Focus Mode Integration", systemImage: "moon.fill")
-            }
-            
-            // Presentation Mode Section
-            Section {
-                Toggle("Detect Presentations", isOn: presentationEnabledBinding)
-                
-                if appState.presentationDetector.isEnabled {
-                    // Status
-                    HStack {
-                        Image(systemName: appState.presentationDetector.statusIcon)
-                            .foregroundColor(appState.presentationDetector.isPresentationActive ? .blue : .secondary)
-                        Text(appState.presentationDetector.statusDescription)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                
-                Text("Automatically pause during screen sharing or when external displays are mirrored.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            } header: {
-                Label("Presentation Mode Detection", systemImage: "rectangle.on.rectangle")
-            }
         }
         .formStyle(.grouped)
     }
@@ -143,20 +100,6 @@ struct SmartFeaturesSettingsPane: View {
         Binding(
             get: { appState.workScheduleManager.schedule.isEnabled },
             set: { appState.workScheduleManager.schedule.isEnabled = $0 }
-        )
-    }
-    
-    private var focusModeEnabledBinding: Binding<Bool> {
-        Binding(
-            get: { appState.focusModeMonitor.isEnabled },
-            set: { appState.focusModeMonitor.isEnabled = $0 }
-        )
-    }
-    
-    private var presentationEnabledBinding: Binding<Bool> {
-        Binding(
-            get: { appState.presentationDetector.isEnabled },
-            set: { appState.presentationDetector.isEnabled = $0 }
         )
     }
     

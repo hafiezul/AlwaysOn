@@ -4,13 +4,41 @@ import SwiftUI
 struct AlwaysOnApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @StateObject private var appState = AppState()
+
+    private var menuBarIconName: String {
+        if appState.isActive {
+            return "circle.fill"
+        } else {
+            return "circle"
+        }
+    }
+
+    private var menuBarTimerText: String? {
+        guard appState.isQuickTimerActive else { return nil }
+
+        let remaining = appState.quickTimerRemaining
+        guard remaining > 0 else { return nil }
+
+        if remaining < 60 {
+            return "\(Int(remaining))s"
+        }
+
+        return "\(Int((remaining / 60).rounded()))m"
+    }
     
     var body: some Scene {
         MenuBarExtra {
             MenuBarView()
                 .environmentObject(appState)
         } label: {
-            Image(systemName: appState.isActive ? "circle.fill" : "circle")
+            HStack(spacing: 3) {
+                Image(systemName: menuBarIconName)
+
+                if let timerText = menuBarTimerText {
+                    Text(timerText)
+                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                }
+            }
         }
         .menuBarExtraStyle(.window)
     }

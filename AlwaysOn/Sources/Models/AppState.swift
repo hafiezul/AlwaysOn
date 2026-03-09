@@ -84,7 +84,7 @@ final class AppState: ObservableObject {
         accessibilityPermission.hasPermission
     }
     
-    // MARK: - Smart Features (v1.3)
+    // MARK: - Automation
     
     /// Work schedule manager for auto-enable/disable during work hours
     let workScheduleManager: WorkScheduleManager
@@ -92,20 +92,8 @@ final class AppState: ObservableObject {
     /// Named profile manager for profile-scoped settings
     let profileManager: ProfileManager
     
-    /// Focus mode monitor to respect Do Not Disturb
-    let focusModeMonitor = FocusModeMonitor()
-    
-    /// Presentation detector to pause during screen sharing
-    let presentationDetector = PresentationDetector()
-    
     /// Notification manager for work schedule events
     let notificationManager = NotificationManager()
-    
-    /// Whether activity is paused due to smart features (Focus, Presentation, etc.)
-    @Published private(set) var isSmartPaused: Bool = false
-    
-    /// Reason for smart pause (for UI display)
-    @Published private(set) var smartPauseReason: String?
 
     /// How the current or paused session was started
     @Published private(set) var sessionSource: SessionSource?
@@ -123,9 +111,6 @@ final class AppState: ObservableObject {
     
     /// Saved quick timer end time when paused (for pause/resume functionality)
     private var pausedQuickTimerEndTime: Date?
-    
-    /// Whether activity was active before smart pause
-    private var wasActiveBeforeSmartPause: Bool = false
     
     /// Whether the user manually stopped/paused during current work window
     /// This prevents auto-restart until the next work schedule window begins
@@ -217,7 +202,7 @@ final class AppState: ObservableObject {
         
         // Set up Combine subscriptions
         setupPermissionObserver()
-        setupSmartFeatureObservers()
+        setupAutomationObservers()
         setupNestedObjectChangeForwarding()
         setupNotificationCallbacks()
         setupProfileSync()
@@ -273,9 +258,6 @@ final class AppState: ObservableObject {
                 }
             }
             
-            // Clear smart pause when user manually toggles
-            isSmartPaused = false
-            smartPauseReason = nil
         }
         
         isActive.toggle()
@@ -293,7 +275,6 @@ final class AppState: ObservableObject {
         quickTimerEndTime = nil
         quickTimerRemaining = 0
         activeSessionDuration = 0
-        clearSmartPause()
         isActive = false
     }
 
@@ -314,12 +295,6 @@ final class AppState: ObservableObject {
         quickTimerRemaining = 0
     }
 
-    func clearSmartPause() {
-        isSmartPaused = false
-        smartPauseReason = nil
-        wasActiveBeforeSmartPause = false
-    }
-    
     /// Start with a quick timer duration
     func startWithQuickTimer(_ duration: QuickTimerDuration) {
         if !hasAccessibilityPermission {
@@ -403,20 +378,6 @@ final class AppState: ObservableObject {
         // When nested ObservableObjects change, SwiftUI doesn't automatically detect it
         // because it only observes one level deep. We need to manually forward changes.
         
-        focusModeMonitor.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] (_: Void) in
-                self?.objectWillChange.send()
-            }
-            .store(in: &cancellables)
-        
-        presentationDetector.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] (_: Void) in
-                self?.objectWillChange.send()
-            }
-            .store(in: &cancellables)
-        
         workScheduleManager.objectWillChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] (_: Void) in
@@ -439,28 +400,12 @@ final class AppState: ObservableObject {
             .store(in: &cancellables)
     }
     
-    private func setupSmartFeatureObservers() {
+    private func setupAutomationObservers() {
         // Work Schedule: Auto-enable/disable based on schedule
         workScheduleManager.onScheduleStateChanged = { [weak self] (isWithinSchedule: Bool) in
             guard let self else { return }
             Task { @MainActor in
                 self.handleWorkScheduleChange(isWithinSchedule: isWithinSchedule)
-            }
-        }
-        
-        // Focus Mode: Pause when Focus is active
-        focusModeMonitor.onFocusModeChanged = { [weak self] (isFocusActive: Bool) in
-            guard let self else { return }
-            Task { @MainActor in
-                self.handleFocusModeChange(isFocusActive: isFocusActive)
-            }
-        }
-        
-        // Presentation Mode: Pause during presentations
-        presentationDetector.onPresentationStateChanged = { [weak self] (isPresentationActive: Bool) in
-            guard let self else { return }
-            Task { @MainActor in
-                self.handlePresentationModeChange(isPresentationActive: isPresentationActive)
             }
         }
     }
@@ -492,7 +437,7 @@ final class AppState: ObservableObject {
         profileManager.updateProfileSettings(profileManager.activeProfileId, from: self)
     }
     
-    // MARK: - Smart Feature Handlers
+    // MARK: - Automation Handlers
     
     private func handleWorkScheduleChange(isWithinSchedule: Bool) {
         guard workScheduleManager.schedule.isEnabled else { return }
@@ -528,44 +473,6 @@ final class AppState: ObservableObject {
         }
     }
     
-    private func handleFocusModeChange(isFocusActive: Bool) {
-        guard focusModeMonitor.isEnabled else { return }
-        
-        if isFocusActive && isActive && !isSmartPaused {
-            // Smart pause due to Focus mode
-            wasActiveBeforeSmartPause = true
-            isSmartPaused = true
-            smartPauseReason = "Focus mode active"
-            activitySimulator.stop()
-        } else if !isFocusActive && isSmartPaused && smartPauseReason == "Focus mode active" {
-            // Resume from smart pause
-            isSmartPaused = false
-            smartPauseReason = nil
-            if wasActiveBeforeSmartPause && isActive {
-                restartActivitySimulatorWithCurrentSettings()
-            }
-        }
-    }
-    
-    private func handlePresentationModeChange(isPresentationActive: Bool) {
-        guard presentationDetector.isEnabled else { return }
-        
-        if isPresentationActive && isActive && !isSmartPaused {
-            // Smart pause due to presentation
-            wasActiveBeforeSmartPause = true
-            isSmartPaused = true
-            smartPauseReason = presentationDetector.presentationReason ?? "Presentation mode"
-            activitySimulator.stop()
-        } else if !isPresentationActive && isSmartPaused && (smartPauseReason?.contains("Presentation") == true || smartPauseReason?.contains("mirror") == true || smartPauseReason?.contains("Screen") == true) {
-            // Resume from smart pause
-            isSmartPaused = false
-            smartPauseReason = nil
-            if wasActiveBeforeSmartPause && isActive {
-                restartActivitySimulatorWithCurrentSettings()
-            }
-        }
-    }
-    
     private func restartActivitySimulatorWithCurrentSettings() {
         activitySimulator.stop()
         activitySimulator.start(interval: activityInterval, method: activityMethod)
@@ -584,9 +491,6 @@ final class AppState: ObservableObject {
             isActive = false
             return
         }
-        
-        // Don't start if smart paused
-        guard !isSmartPaused else { return }
         
         activitySimulator.start(interval: activityInterval, method: activityMethod)
         

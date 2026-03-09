@@ -3,7 +3,7 @@ import Foundation
 /// Navigation items for the Settings window sidebar
 enum SettingsNavigationItem: String, CaseIterable, Identifiable {
     case general
-    case smartFeatures
+    case automation
     case updates
     case profiles
     case about
@@ -13,7 +13,7 @@ enum SettingsNavigationItem: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .general: return "General"
-        case .smartFeatures: return "Smart Features"
+        case .automation: return "Schedule"
         case .updates: return "Updates"
         case .profiles: return "Profiles"
         case .about: return "About"
@@ -23,7 +23,7 @@ enum SettingsNavigationItem: String, CaseIterable, Identifiable {
     var systemImage: String {
         switch self {
         case .general: return "gear"
-        case .smartFeatures: return "wand.and.stars"
+        case .automation: return "calendar.badge.clock"
         case .updates: return "arrow.triangle.2.circlepath"
         case .profiles: return "person.2"
         case .about: return "info.circle"

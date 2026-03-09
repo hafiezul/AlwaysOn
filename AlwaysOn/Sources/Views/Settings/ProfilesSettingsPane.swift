@@ -15,7 +15,7 @@ struct ProfilesSettingsPane: View {
                     Text("Profiles")
                         .font(.title2)
                         .fontWeight(.semibold)
-                    Text("Switch settings by context. Profile switches always stop the current session and clear timer and smart-pause state.")
+                    Text("Switch settings by context. Profile switches always stop the current session and clear any running timer.")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
                 }
@@ -37,7 +37,7 @@ struct ProfilesSettingsPane: View {
             }
             .listStyle(.inset)
 
-            Text("Per-profile settings: activity interval, activity method, auto-disable timer, and work hours schedule. Focus Mode, presentation detection, onboarding, permissions, and launch at login stay global.")
+            Text("Per-profile settings: activity interval, activity method, auto-disable timer, and work hours schedule. Onboarding, permissions, notifications, and launch at login stay global.")
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
@@ -186,7 +186,6 @@ struct ProfilesSettingsPane: View {
 
         if wasActive, let fallbackProfile = appState.profileManager.activeProfile {
             appState.stopSession()
-            appState.clearSmartPause()
             appState.applyProfile(fallbackProfile)
         }
     }

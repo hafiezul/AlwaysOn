@@ -33,7 +33,7 @@ struct SettingsView: View {
         case .general:
             GeneralSettingsPane()
                 .environmentObject(appState)
-        case .smartFeatures:
+        case .automation:
             SmartFeaturesSettingsPane()
                 .environmentObject(appState)
         case .updates:
