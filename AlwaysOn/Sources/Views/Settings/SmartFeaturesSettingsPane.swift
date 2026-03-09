@@ -83,7 +83,7 @@ struct SmartFeaturesSettingsPane: View {
                     }
                 }
                 
-                Text("Automatically enable AlwaysOn during your work hours and disable outside of them.")
+                Text("Automatically enable AlwaysOn during your work hours. Manual starts and stops always win, and schedule end only stops schedule-started sessions.")
                     .font(.caption)
                     .foregroundColor(.secondary)
             } header: {

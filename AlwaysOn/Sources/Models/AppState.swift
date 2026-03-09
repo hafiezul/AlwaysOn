@@ -112,10 +112,6 @@ final class AppState: ObservableObject {
     /// Saved quick timer end time when paused (for pause/resume functionality)
     private var pausedQuickTimerEndTime: Date?
     
-    /// Whether the user manually stopped/paused during current work window
-    /// This prevents auto-restart until the next work schedule window begins
-    private var userManuallyStopped: Bool = false
-
     /// Prevent profile application from rewriting the active profile recursively
     private var isApplyingProfile = false
 
@@ -165,6 +161,15 @@ final class AppState: ObservableObject {
         case .workSchedule(let name):
             return name.isEmpty ? "via Work Schedule" : "via Work Schedule · \(name)"
         }
+    }
+
+    private var hasActiveOrPausedSession: Bool {
+        isActive || pausedSessionDuration > 0 || activeSessionDuration > 0
+    }
+
+    private var isScheduleControlledSession: Bool {
+        guard case .workSchedule = sessionSource else { return false }
+        return true
     }
     
     // MARK: - Initialization
@@ -233,11 +238,7 @@ final class AppState: ObservableObject {
             // PAUSING - Save current session state
             pausedSessionDuration = activeSessionDuration
             pausedQuickTimerEndTime = quickTimerEndTime
-            // Mark that user manually stopped during this work window
-            userManuallyStopped = true
         } else {
-            // RESUMING - User is manually resuming, clear the manual stop flag
-            userManuallyStopped = false
             sessionSource = .manual
             
             // Restore saved session state if there was a saved session
@@ -265,8 +266,6 @@ final class AppState: ObservableObject {
     
     /// Stop session completely (full reset)
     func stopSession() {
-        // Mark that user manually stopped during this work window
-        userManuallyStopped = true
         sessionSource = nil
         
         // Clear all session state
@@ -290,7 +289,6 @@ final class AppState: ObservableObject {
         activityMethod = profile.activityMethod
         defaultTimerDuration = profile.defaultTimerDuration
         workScheduleManager.schedule = profile.workSchedule
-        userManuallyStopped = false
         quickTimerEndTime = nil
         quickTimerRemaining = 0
     }
@@ -443,33 +441,19 @@ final class AppState: ObservableObject {
         guard workScheduleManager.schedule.isEnabled else { return }
         
         if isWithinSchedule {
-            // Entering work hours - this is a new work window
-            // Reset the manual stop flag so automation works for this new window
-            userManuallyStopped = false
-
             guard !suppressScheduleAutoStart else { return }
             
-            // Auto-enable if not already active
-            if !isActive && hasAccessibilityPermission {
+            // Auto-enable only when there is no active or paused session to preserve manual control.
+            if !hasActiveOrPausedSession && hasAccessibilityPermission {
                 sessionSource = .workSchedule(profileName: profileManager.activeProfile?.name ?? "")
                 isActive = true
                 notificationManager.notifyWorkScheduleStarted()
             }
         } else {
-            // Exiting work hours - STOP the session (full reset, not pause)
-            // This gives users a fresh start for the next work window
-            // Handle both active sessions AND paused sessions (where pausedSessionDuration > 0)
-            let hadActiveOrPausedSession = isActive || pausedSessionDuration > 0
+            guard isScheduleControlledSession && hasActiveOrPausedSession else { return }
             
-            // Note: stopSession() sets userManuallyStopped=true, but we override it below
-            // because this was automatic, not user-initiated
             stopSession()
-            userManuallyStopped = false
-            
-            // Only send notification if there was actually a session to end
-            if hadActiveOrPausedSession {
-                notificationManager.notifyWorkScheduleEnded()
-            }
+            notificationManager.notifyWorkScheduleEnded()
         }
     }
     

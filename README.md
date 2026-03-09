@@ -131,6 +131,7 @@ open AlwaysOn.xcodeproj
 ### Session Labels and Automation Feedback
 
 - Manual starts stay unlabeled because that is the default expected state.
+- Work Hours only auto-start when AlwaysOn is fully inactive, and they only auto-stop sessions that were started by Work Hours.
 - Work Hours auto-start sessions show `via Work Schedule` in the menu, including the active profile name when available.
 - Quick Timer starts show `via Quick Timer` in the menu.
 - Pausing a session preserves the source label; fully stopping the session clears it.
