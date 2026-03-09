@@ -17,6 +17,7 @@ If you find this app useful, consider supporting its development:
 | **Menu Bar Only** - No dock icon, lives in menu bar | **Work Hours** - Auto-enable/disable on schedule |
 | **One-Click Toggle** - Start/stop instantly | **Focus Mode** - Respects Do Not Disturb |
 | **Session Timer** - Track time "online" | **Presentation Detection** - Auto-pause during screen sharing |
+| **Session Source Awareness** - Menu bar shows when a session came from Work Hours or a Quick Timer | **Override Notifications** - Alerts when automation stops a session or a profile switch ends it |
 | **Pause/Resume** - Pause without losing progress | **Quick Timers** - Auto-disable after 30min-8h |
 | **Stop Session** - Reset completely | **Configurable Interval** - 30s to 5min timing |
 | **Launch at Login** - Auto-start on boot | **Activity Methods** - Mouse, keyboard, or alternating |
@@ -127,7 +128,16 @@ open AlwaysOn.xcodeproj
 - Profiles store `Activity Interval`, `Activity Method`, `Auto-disable after`, and `Work Hours Schedule` separately.
 - Focus Mode detection, presentation detection, onboarding state, Accessibility permission, and launch-at-login remain global device settings.
 - Switching profiles always saves the current profile's settings, stops the current session, clears quick timers and smart-pause state, and leaves the newly selected profile inactive.
+- If a profile switch ends an active or paused session, AlwaysOn sends a notification so the override is visible instead of silent.
 - Manage profiles from the menu bar profile picker or from `Settings > Profiles`.
+
+### Session Labels and Automation Feedback
+
+- Manual starts stay unlabeled because that is the default expected state.
+- Work Hours auto-start sessions show `via Work Schedule` in the menu, including the active profile name when available.
+- Quick Timer starts show `via Quick Timer` in the menu.
+- Pausing a session preserves the source label; fully stopping the session clears it.
+- Automatic schedule end already notifies when Work Hours stop the session, and profile switches now notify when they stop a session.
 
 ### Keyboard Shortcuts
 

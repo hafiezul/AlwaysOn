@@ -6,6 +6,11 @@ import AppKit
 /// Keeps track of active status and coordinates with ActivitySimulator
 @MainActor
 final class AppState: ObservableObject {
+    enum SessionSource {
+        case manual
+        case workSchedule(profileName: String)
+        case quickTimer
+    }
     
     // MARK: - Published Properties
     
@@ -101,6 +106,9 @@ final class AppState: ObservableObject {
     
     /// Reason for smart pause (for UI display)
     @Published private(set) var smartPauseReason: String?
+
+    /// How the current or paused session was started
+    @Published private(set) var sessionSource: SessionSource?
     
     // MARK: - Private Properties
     
@@ -160,6 +168,19 @@ final class AppState: ObservableObject {
     }
     
     // MARK: - Computed Properties
+
+    var sessionSourceLabel: String? {
+        guard (isActive || activeSessionDuration > 0), let source = sessionSource else { return nil }
+
+        switch source {
+        case .manual:
+            return nil
+        case .quickTimer:
+            return "via Quick Timer"
+        case .workSchedule(let name):
+            return name.isEmpty ? "via Work Schedule" : "via Work Schedule · \(name)"
+        }
+    }
     
     // MARK: - Initialization
     
@@ -232,6 +253,7 @@ final class AppState: ObservableObject {
         } else {
             // RESUMING - User is manually resuming, clear the manual stop flag
             userManuallyStopped = false
+            sessionSource = .manual
             
             // Restore saved session state if there was a saved session
             if pausedSessionDuration > 0 {
@@ -263,6 +285,7 @@ final class AppState: ObservableObject {
     func stopSession() {
         // Mark that user manually stopped during this work window
         userManuallyStopped = true
+        sessionSource = nil
         
         // Clear all session state
         pausedSessionDuration = 0
@@ -303,6 +326,8 @@ final class AppState: ObservableObject {
             accessibilityPermission.request()
             return
         }
+
+        sessionSource = .quickTimer
         
         if let seconds = duration.seconds {
             quickTimerEndTime = Date().addingTimeInterval(seconds)
@@ -446,6 +471,7 @@ final class AppState: ObservableObject {
             guard let self else { return }
             // Resume activity if not already active
             if !self.isActive && self.hasAccessibilityPermission {
+                self.sessionSource = .manual
                 self.isActive = true
             }
         }
@@ -480,6 +506,7 @@ final class AppState: ObservableObject {
             
             // Auto-enable if not already active
             if !isActive && hasAccessibilityPermission {
+                sessionSource = .workSchedule(profileName: profileManager.activeProfile?.name ?? "")
                 isActive = true
                 notificationManager.notifyWorkScheduleStarted()
             }
@@ -614,6 +641,7 @@ final class AppState: ObservableObject {
                     if remaining <= 0 {
                         // Timer expired - disable activity
                         self.quickTimerEndTime = nil
+                        self.sessionSource = nil
                         self.isActive = false
                         
                         // Send notification if timer expired during work hours

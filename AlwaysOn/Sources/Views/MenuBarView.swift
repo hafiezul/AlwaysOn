@@ -239,18 +239,27 @@ struct MenuBarView: View {
     }
     
     private var sessionInfo: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "clock")
-                .frame(width: 16)
-                .foregroundColor(.secondary)
-            Text("Session: \(formatDuration(appState.activeSessionDuration))")
-                .foregroundColor(.secondary)
-            if !appState.isActive {
-                Text("(paused)")
-                    .font(.caption)
-                    .foregroundColor(.orange)
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 8) {
+                Image(systemName: "clock")
+                    .frame(width: 16)
+                    .foregroundColor(.secondary)
+                Text("Session: \(formatDuration(appState.activeSessionDuration))")
+                    .foregroundColor(.secondary)
+                if !appState.isActive {
+                    Text("(paused)")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                }
+                Spacer()
             }
-            Spacer()
+
+            if let label = appState.sessionSourceLabel {
+                Text(label)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.leading, 24)
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)

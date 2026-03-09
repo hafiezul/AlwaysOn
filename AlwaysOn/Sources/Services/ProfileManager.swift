@@ -47,6 +47,7 @@ final class ProfileManager: ObservableObject {
         guard let newProfile = profiles.first(where: { $0.id == id }) else { return }
 
         updateProfileSettings(activeProfileId, from: appState)
+        let wasActive = appState.isActive || appState.activeSessionDuration > 0
 
         // Priority: Manual user action > Profile switch > Calendar > WiFi > Work Schedule
         appState.stopSession()
@@ -56,6 +57,10 @@ final class ProfileManager: ObservableObject {
         persist()
 
         appState.applyProfile(newProfile)
+
+        if wasActive {
+            appState.notificationManager.notifyProfileSwitchedDuringSession(newProfileName: newProfile.name)
+        }
     }
 
     func addProfile(_ profile: Profile) {

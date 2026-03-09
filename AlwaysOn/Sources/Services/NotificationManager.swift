@@ -43,6 +43,7 @@ final class NotificationManager: NSObject, ObservableObject {
         case workScheduleStarted = "com.alwayson.workschedule.started"
         case workScheduleEnded = "com.alwayson.workschedule.ended"
         case quickTimerExpired = "com.alwayson.quicktimer.expired"
+        case profileSwitched = "com.alwayson.profile.switched"
     }
     
     private enum NotificationAction: String {
@@ -168,6 +169,16 @@ final class NotificationManager: NSObject, ObservableObject {
                 print("NotificationManager: Failed to add quick timer notification: \(error)")
             }
         }
+    }
+
+    func notifyProfileSwitchedDuringSession(newProfileName: String) {
+        guard isEnabled && authorizationStatus == .authorized else { return }
+
+        sendNotification(
+            identifier: .profileSwitched,
+            title: "Profile Switched",
+            body: "Switched to \"\(newProfileName)\". Previous session was stopped."
+        )
     }
     
     // MARK: - Private Methods
