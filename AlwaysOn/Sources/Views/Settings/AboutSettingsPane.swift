@@ -5,11 +5,11 @@ struct AboutSettingsPane: View {
     @Environment(\.openURL) private var openURL
     
     private var appVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
+        Bundle.main.appVersion
     }
     
     private var buildNumber: String {
-        Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
+        Bundle.main.buildNumber
     }
     
     private var copyrightYear: String {
@@ -49,21 +49,21 @@ struct AboutSettingsPane: View {
             // Links
             HStack(spacing: 24) {
                 Button {
-                    openURL(URL(string: "https://github.com/hafiezul/AlwaysOn")!)
+                    openURL(AppUpdateRepository.repositoryURL)
                 } label: {
                     Label("GitHub", systemImage: "link")
                 }
                 .buttonStyle(.link)
                 
                 Button {
-                    openURL(URL(string: "https://github.com/hafiezul/AlwaysOn/issues")!)
+                    openURL(AppUpdateRepository.issuesURL)
                 } label: {
                     Label("Report Issue", systemImage: "exclamationmark.bubble")
                 }
                 .buttonStyle(.link)
                 
                 Button {
-                    openURL(URL(string: "https://github.com/hafiezul/AlwaysOn/releases")!)
+                    openURL(AppUpdateRepository.releasesPageURL)
                 } label: {
                     Label("Releases", systemImage: "tag")
                 }

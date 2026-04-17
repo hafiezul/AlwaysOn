@@ -42,24 +42,14 @@ final class ProfileManager: ObservableObject {
         profiles.first { $0.id == activeProfileId }
     }
 
-    func switchProfile(_ id: UUID, in appState: AppState) {
-        guard id != activeProfileId else { return }
-        guard let newProfile = profiles.first(where: { $0.id == id }) else { return }
-
-        updateProfileSettings(activeProfileId, from: appState)
-        let wasActive = appState.isActive || appState.activeSessionDuration > 0
-
-        // Priority: Manual user action > Profile switch > Work Schedule
-        appState.stopSession()
+    func switchProfile(to id: UUID) -> Profile? {
+        guard id != activeProfileId else { return nil }
+        guard let newProfile = profiles.first(where: { $0.id == id }) else { return nil }
 
         activeProfileId = id
         persist()
 
-        appState.applyProfile(newProfile)
-
-        if wasActive {
-            appState.notificationManager.notifyProfileSwitchedDuringSession(newProfileName: newProfile.name)
-        }
+        return newProfile
     }
 
     func addProfile(_ profile: Profile) {
@@ -89,13 +79,19 @@ final class ProfileManager: ObservableObject {
         persist()
     }
 
-    func updateProfileSettings(_ id: UUID, from appState: AppState) {
+    func updateProfileSettings(
+        _ id: UUID,
+        activityInterval: TimeInterval,
+        activityMethod: ActivityMethod,
+        defaultTimerDuration: QuickTimerDuration,
+        workSchedule: WorkSchedule
+    ) {
         guard let index = profiles.firstIndex(where: { $0.id == id }) else { return }
 
-        profiles[index].activityInterval = appState.activityInterval
-        profiles[index].activityMethodId = appState.activityMethod.rawValue
-        profiles[index].defaultTimerDurationId = appState.defaultTimerDuration.id
-        profiles[index].workSchedule = appState.workScheduleManager.schedule
+        profiles[index].activityInterval = activityInterval
+        profiles[index].activityMethodId = activityMethod.rawValue
+        profiles[index].defaultTimerDurationId = defaultTimerDuration.id
+        profiles[index].workSchedule = workSchedule
         persist()
     }
 
@@ -111,18 +107,18 @@ final class ProfileManager: ObservableObject {
 
         let defaultProfile = Profile.makeDefault(from: defaults)
 
-        if let profileData = try? JSONEncoder().encode([defaultProfile]) {
-            defaults.set(profileData, forKey: Keys.profiles)
-        }
+        defaults.set(encodeProfiles([defaultProfile]), forKey: Keys.profiles)
         defaults.set(defaultProfile.id.uuidString, forKey: Keys.activeProfileId)
         defaults.set(true, forKey: Keys.profilesMigrated)
     }
 
     private func persist() {
-        if let profileData = try? JSONEncoder().encode(profiles) {
-            defaults.set(profileData, forKey: Keys.profiles)
-        }
+        defaults.set(Self.encodeProfiles(profiles), forKey: Keys.profiles)
 
         defaults.set(activeProfileId.uuidString, forKey: Keys.activeProfileId)
+    }
+
+    private static func encodeProfiles(_ profiles: [Profile]) -> Data {
+        try! JSONEncoder().encode(profiles)
     }
 }

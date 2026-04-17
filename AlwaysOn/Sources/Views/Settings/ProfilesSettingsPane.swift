@@ -105,11 +105,11 @@ struct ProfilesSettingsPane: View {
         .contentShape(Rectangle())
         .onTapGesture {
             guard editingProfileId != profile.id else { return }
-            appState.profileManager.switchProfile(profile.id, in: appState)
+            appState.switchProfile(profile.id)
         }
         .contextMenu {
             Button("Activate") {
-                appState.profileManager.switchProfile(profile.id, in: appState)
+                appState.switchProfile(profile.id)
             }
             .disabled(isActive)
 

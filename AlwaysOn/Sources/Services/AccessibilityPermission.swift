@@ -3,8 +3,7 @@ import Combine
 import ApplicationServices
 import AppKit
 
-/// Manages accessibility permission with Combine-based reactive state
-/// Inspired by Ice's permission handling pattern
+/// Observable accessibility permission state for onboarding UI.
 @MainActor
 final class AccessibilityPermission: ObservableObject {
     
@@ -34,7 +33,6 @@ final class AccessibilityPermission: ObservableObject {
     // MARK: - Initialization
     
     init() {
-        // Check permission immediately on init
         hasPermission = checkPermission()
     }
     
@@ -52,8 +50,7 @@ final class AccessibilityPermission: ObservableObject {
     func request() {
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
         _ = AXIsProcessTrustedWithOptions(options)
-        
-        // If the system dialog was suppressed (e.g., stale entry), open settings
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             guard let self else { return }
             if !self.checkPermission() {
@@ -69,14 +66,13 @@ final class AccessibilityPermission: ObservableObject {
         }
     }
     
-    /// Start continuous polling for permission changes (1-second interval)
+    /// Starts polling so the UI updates after permission changes in Settings.
     func startPolling() {
-        // Don't start if already polling
         guard timerCancellable == nil else { return }
-        
+
         timerCancellable = Timer.publish(every: 1.0, on: .main, in: .common)
             .autoconnect()
-            .merge(with: Just(.now)) // Check immediately
+            .merge(with: Just(.now))
             .sink { [weak self] _ in
                 guard let self else { return }
                 self.hasPermission = self.checkPermission()

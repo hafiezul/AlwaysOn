@@ -14,13 +14,31 @@ final class SettingsWindowController {
     private var windowController: NSWindowController?
     private var hostingController: NSHostingController<AnyView>?
     private weak var appState: AppState?
+    private var sparkleWillShowObserver: NSObjectProtocol?
+    private var sparkleDidCloseObserver: NSObjectProtocol?
     
     /// Access to the settings window
     var window: NSWindow? {
         windowController?.window
     }
     
-    private init() {}
+    private init() {
+        sparkleWillShowObserver = NotificationCenter.default.addObserver(
+            forName: .sparkleUpdateWindowWillShow,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.temporarilyLowerWindowLevel()
+        }
+
+        sparkleDidCloseObserver = NotificationCenter.default.addObserver(
+            forName: .sparkleUpdateWindowDidClose,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.restoreWindowLevel()
+        }
+    }
     
     // MARK: - Public Methods
     
@@ -55,11 +73,11 @@ final class SettingsWindowController {
         
         // Set window level to floating so it stays on top of menu bar
         window.level = .floating
-        
+
         // Store reference and show
         windowController = NSWindowController(window: window)
         windowController?.showWindow(nil)
-        
+
         // Activate the app to bring window to front
         NSApp.activate(ignoringOtherApps: true)
     }
@@ -79,5 +97,15 @@ final class SettingsWindowController {
     /// Restore the window level to floating
     func restoreWindowLevel() {
         window?.level = .floating
+    }
+
+    deinit {
+        if let sparkleWillShowObserver {
+            NotificationCenter.default.removeObserver(sparkleWillShowObserver)
+        }
+
+        if let sparkleDidCloseObserver {
+            NotificationCenter.default.removeObserver(sparkleDidCloseObserver)
+        }
     }
 }

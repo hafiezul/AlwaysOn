@@ -108,25 +108,8 @@ final class SparkleUpdaterManager: NSObject, ObservableObject {
     
     /// Check if window is a Sparkle update window and bring it to front
     private func handleSparkleWindowIfNeeded(_ window: NSWindow) {
-        // Must be able to become key window
-        guard window.canBecomeKey else { return }
-        
-        // Skip status bar windows, settings window, and other non-standard windows
-        let windowClass = String(describing: type(of: window))
-        guard !windowClass.contains("StatusBar"),
-              !windowClass.contains("MenuBar"),
-              window.title != "Settings" else { return }
-        
-        // Check if this looks like a Sparkle window
-        let windowTitle = window.title.lowercased()
-        let isSparkleWindow = windowClass.contains("SPU") ||
-                              windowTitle.contains("software update") ||
-                              windowTitle.contains("new version") ||
-                              windowTitle.contains("update available")
-        
-        if isSparkleWindow {
-            bringWindowToFront(window)
-        }
+        guard isCandidateWindow(window), isSparkleWindow(window) else { return }
+        bringWindowToFront(window)
     }
     
     /// Safely bring a window to front
@@ -159,8 +142,7 @@ extension SparkleUpdaterManager: SPUStandardUserDriverDelegate {
     /// Called when Sparkle is about to show a modal alert or update window
     /// This is our opportunity to bring the app to the foreground
     func standardUserDriverWillHandleShowingUpdate(_ handleShowingUpdate: Bool, forUpdate update: SUAppcastItem, state: SPUUserUpdateState) {
-        // Lower the settings window level so Sparkle's window can appear above it
-        SettingsWindowController.shared.temporarilyLowerWindowLevel()
+        NotificationCenter.default.post(name: .sparkleUpdateWindowWillShow, object: nil)
         
         // Bring the app to the foreground
         NSApp.activate(ignoringOtherApps: true)
@@ -183,30 +165,9 @@ extension SparkleUpdaterManager: SPUStandardUserDriverDelegate {
     
     /// Find Sparkle's update window and bring it to front
     private func findAndFocusSparkleWindow(attempt: Int) {
-        // Find all candidate windows (visible, can become key, not settings)
-        let candidateWindows = NSApp.windows.filter { window in
-            guard window.isVisible, window.canBecomeKey else { return false }
-            guard window.title != "Settings" else { return false }
-            
-            let windowClass = String(describing: type(of: window))
-            guard !windowClass.contains("StatusBar"),
-                  !windowClass.contains("MenuBar"),
-                  !windowClass.contains("PopUp") else { return false }
-            
-            return true
-        }
+        let candidateWindows = NSApp.windows.filter(isCandidateWindow)
         
-        // Look for Sparkle-specific windows first
-        let sparkleWindow = candidateWindows.first { window in
-            let windowClass = String(describing: type(of: window))
-            let windowTitle = window.title.lowercased()
-            
-            return windowClass.contains("SPU") ||
-                   windowTitle.contains("software update") ||
-                   windowTitle.contains("new version") ||
-                   windowTitle.contains("update available") ||
-                   windowTitle.contains("alwayson")
-        }
+        let sparkleWindow = candidateWindows.first(where: isSparkleWindow)
         
         if let window = sparkleWindow {
             bringWindowToFront(window)
@@ -215,7 +176,7 @@ extension SparkleUpdaterManager: SPUStandardUserDriverDelegate {
         }
 
         guard attempt < 4 else {
-            restoreSettingsWindowLevel()
+            notifySparkleWindowDidClose()
             return
         }
 
@@ -234,14 +195,14 @@ extension SparkleUpdaterManager: SPUStandardUserDriverDelegate {
             ) { [weak self] _ in
                 guard let self else { return }
                 self.removeObserver(&self.sparkleWindowCloseObserver)
-                self.restoreSettingsWindowLevel()
+                self.notifySparkleWindowDidClose()
             }
     }
     
     /// Restore the settings window level after Sparkle window is dismissed
-    private func restoreSettingsWindowLevel() {
+    private func notifySparkleWindowDidClose() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            SettingsWindowController.shared.restoreWindowLevel()
+            NotificationCenter.default.post(name: .sparkleUpdateWindowDidClose, object: nil)
         }
     }
 
@@ -249,5 +210,26 @@ extension SparkleUpdaterManager: SPUStandardUserDriverDelegate {
         guard let token = observer else { return }
         NotificationCenter.default.removeObserver(token)
         observer = nil
+    }
+
+    private func isCandidateWindow(_ window: NSWindow) -> Bool {
+        guard window.isVisible, window.canBecomeKey else { return false }
+        guard window.title != "Settings" else { return false }
+
+        let windowClass = String(describing: type(of: window))
+        return !windowClass.contains("StatusBar") &&
+               !windowClass.contains("MenuBar") &&
+               !windowClass.contains("PopUp")
+    }
+
+    private func isSparkleWindow(_ window: NSWindow) -> Bool {
+        let windowClass = String(describing: type(of: window))
+        let windowTitle = window.title.lowercased()
+
+        return windowClass.contains("SPU") ||
+               windowTitle.contains("software update") ||
+               windowTitle.contains("new version") ||
+               windowTitle.contains("update available") ||
+               windowTitle.contains("alwayson")
     }
 }

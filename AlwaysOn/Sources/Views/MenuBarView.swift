@@ -105,7 +105,7 @@ struct MenuBarView: View {
         Menu {
             ForEach(appState.profileManager.profiles) { profile in
                 Button {
-                    appState.profileManager.switchProfile(profile.id, in: appState)
+                    appState.switchProfile(profile.id)
                 } label: {
                     Label(profile.name, systemImage: profile.id == appState.profileManager.activeProfileId ? "checkmark" : "circle")
                 }
@@ -347,7 +347,7 @@ struct MenuBarView: View {
     // MARK: - Helpers
     
     private var appVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        Bundle.main.appVersion
     }
     
     private func formatDuration(_ duration: TimeInterval) -> String {

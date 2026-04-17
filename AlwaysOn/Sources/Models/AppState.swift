@@ -142,7 +142,7 @@ final class AppState: ObservableObject {
         get { UserDefaults.standard.bool(forKey: Keys.hasCompletedOnboarding) }
         set { UserDefaults.standard.set(newValue, forKey: Keys.hasCompletedOnboarding) }
     }
-    
+
     /// Whether to show the permissions window on launch
     var needsPermissionsOnboarding: Bool {
         !hasCompletedOnboarding || !accessibilityPermission.hasPermission
@@ -293,6 +293,23 @@ final class AppState: ObservableObject {
         quickTimerRemaining = 0
     }
 
+    func switchProfile(_ id: UUID) {
+        guard id != profileManager.activeProfileId else { return }
+
+        syncActiveProfileSettings()
+        let wasActive = isActive || activeSessionDuration > 0
+
+        // Priority: Manual user action > Profile switch > Work Schedule
+        stopSession()
+
+        guard let newProfile = profileManager.switchProfile(to: id) else { return }
+        applyProfile(newProfile)
+
+        if wasActive {
+            notificationManager.notifyProfileSwitchedDuringSession(newProfileName: newProfile.name)
+        }
+    }
+
     /// Start with a quick timer duration
     func startWithQuickTimer(_ duration: QuickTimerDuration) {
         if !hasAccessibilityPermission {
@@ -345,7 +362,7 @@ final class AppState: ObservableObject {
             }
         )
     }
-    
+
     /// Complete the permission setup (called after onboarding)
     func completePermissionSetup() {
         hasCompletedOnboarding = true
@@ -432,7 +449,13 @@ final class AppState: ObservableObject {
 
     private func syncActiveProfileSettings() {
         guard !isApplyingProfile else { return }
-        profileManager.updateProfileSettings(profileManager.activeProfileId, from: self)
+        profileManager.updateProfileSettings(
+            profileManager.activeProfileId,
+            activityInterval: activityInterval,
+            activityMethod: activityMethod,
+            defaultTimerDuration: defaultTimerDuration,
+            workSchedule: workScheduleManager.schedule
+        )
     }
     
     // MARK: - Automation Handlers

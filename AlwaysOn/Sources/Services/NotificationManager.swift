@@ -32,6 +32,10 @@ final class NotificationManager: NSObject, ObservableObject {
     // MARK: - Private Properties
     
     private let notificationCenter = UNUserNotificationCenter.current()
+
+    private var canSendNotifications: Bool {
+        isEnabled && authorizationStatus == .authorized
+    }
     
     // MARK: - Constants
     
@@ -128,7 +132,7 @@ final class NotificationManager: NSObject, ObservableObject {
     
     /// Send notification when work schedule starts
     func notifyWorkScheduleStarted() {
-        guard isEnabled && authorizationStatus == .authorized else { return }
+        guard canSendNotifications else { return }
         
         sendNotification(
             identifier: .workScheduleStarted,
@@ -139,7 +143,7 @@ final class NotificationManager: NSObject, ObservableObject {
     
     /// Send notification when work schedule ends
     func notifyWorkScheduleEnded() {
-        guard isEnabled && authorizationStatus == .authorized else { return }
+        guard canSendNotifications else { return }
         
         sendNotification(
             identifier: .workScheduleEnded,
@@ -150,7 +154,7 @@ final class NotificationManager: NSObject, ObservableObject {
     
     /// Send notification when quick timer expires during work hours
     func notifyQuickTimerExpired() {
-        guard isEnabled && authorizationStatus == .authorized else { return }
+        guard canSendNotifications else { return }
         
         let content = UNMutableNotificationContent()
         content.title = "Quick Timer Expired"
@@ -172,7 +176,7 @@ final class NotificationManager: NSObject, ObservableObject {
     }
 
     func notifyProfileSwitchedDuringSession(newProfileName: String) {
-        guard isEnabled && authorizationStatus == .authorized else { return }
+        guard canSendNotifications else { return }
 
         sendNotification(
             identifier: .profileSwitched,

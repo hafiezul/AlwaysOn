@@ -1,12 +1,44 @@
 import Foundation
 
+extension Bundle {
+    func infoPlistString(forKey key: String) -> String? {
+        object(forInfoDictionaryKey: key) as? String
+    }
+
+    var appVersion: String {
+        infoPlistString(forKey: "CFBundleShortVersionString") ?? "Unknown"
+    }
+
+    var buildNumber: String {
+        infoPlistString(forKey: "CFBundleVersion") ?? "Unknown"
+    }
+}
+
+enum AppUpdateRepository {
+    static let owner = "hafiezul"
+    static let repo = "AlwaysOn"
+
+    static var repositoryURL: URL {
+        URL(string: "https://github.com/\(owner)/\(repo)")!
+    }
+
+    static var issuesURL: URL {
+        repositoryURL.appending(path: "issues")
+    }
+
+    static var releasesPageURL: URL {
+        repositoryURL.appending(path: "releases/latest")
+    }
+}
+
 enum AppUpdateMode: String {
     case manual
     case sparkle
 
     static var current: AppUpdateMode {
-        let rawValue = Bundle.main.object(forInfoDictionaryKey: "AlwaysOnUpdateMode") as? String
-        return AppUpdateMode(rawValue: rawValue ?? "") ?? .manual
+        Bundle.main
+            .infoPlistString(forKey: "AlwaysOnUpdateMode")
+            .flatMap(AppUpdateMode.init(rawValue:)) ?? .manual
     }
 
     var usesSparkle: Bool {
@@ -14,23 +46,23 @@ enum AppUpdateMode: String {
     }
 }
 
+struct AppUpdateInfo {
+    let version: String
+    let releaseURL: URL
+    let releaseNotes: String?
+}
+
+enum AppUpdateCheckResult {
+    case updateAvailable(AppUpdateInfo)
+    case upToDate
+    case error(Error)
+}
+
 /// Handles checking for app updates from GitHub releases
 final class UpdateChecker {
-    
-    // MARK: - Types
-    
-    struct UpdateInfo {
-        let version: String
-        let releaseURL: URL
-        let releaseNotes: String?
-    }
-    
-    enum UpdateCheckResult {
-        case updateAvailable(UpdateInfo)
-        case upToDate
-        case error(Error)
-    }
-    
+    typealias UpdateInfo = AppUpdateInfo
+    typealias UpdateCheckResult = AppUpdateCheckResult
+
     enum UpdateError: LocalizedError {
         case invalidURL
         case networkError(Error)
@@ -57,10 +89,7 @@ final class UpdateChecker {
     // MARK: - Constants
     
     private enum Constants {
-        static let owner = "hafiezul"
-        static let repo = "AlwaysOn"
-        static let apiURL = "https://api.github.com/repos/\(owner)/\(repo)/releases/latest"
-        static let releasesPageURL = "https://github.com/\(owner)/\(repo)/releases/latest"
+        static let apiURL = "https://api.github.com/repos/\(AppUpdateRepository.owner)/\(AppUpdateRepository.repo)/releases/latest"
     }
 
     private struct GitHubRelease: Decodable {
@@ -76,25 +105,37 @@ final class UpdateChecker {
     }
     
     // MARK: - Properties
-    
+
     /// Current app version from bundle
     static var currentVersion: String {
-        Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
+        Bundle.main.appVersion
+    }
+
+    static var currentBuildNumber: String {
+        Bundle.main.buildNumber
     }
 
     static var currentMode: AppUpdateMode {
         AppUpdateMode.current
     }
 
+    static var repositoryURL: URL {
+        AppUpdateRepository.repositoryURL
+    }
+
+    static var issuesURL: URL {
+        repositoryURL.appending(path: "issues")
+    }
+
     static var releasesPageURL: URL {
-        URL(string: Constants.releasesPageURL)!
+        AppUpdateRepository.releasesPageURL
     }
     
     // MARK: - Public Methods
     
     /// Check for updates asynchronously
     /// - Parameter completion: Called with the result on the main thread
-    static func checkForUpdate(completion: @escaping (UpdateCheckResult) -> Void) {
+    static func checkForUpdate(completion: @escaping (AppUpdateCheckResult) -> Void) {
         guard let url = URL(string: Constants.apiURL) else {
             DispatchQueue.main.async {
                 completion(.error(UpdateError.invalidURL))
@@ -152,8 +193,7 @@ final class UpdateChecker {
     }
     
     /// Check for updates using async/await
-    @available(macOS 12.0, *)
-    static func checkForUpdate() async -> UpdateCheckResult {
+    static func checkForUpdate() async -> AppUpdateCheckResult {
         await withCheckedContinuation { continuation in
             checkForUpdate { result in
                 continuation.resume(returning: result)
