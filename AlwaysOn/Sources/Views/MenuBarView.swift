@@ -4,6 +4,7 @@ import SwiftUI
 /// Kept minimal - all settings live in the Settings window
 struct MenuBarView: View {
     @EnvironmentObject var appState: AppState
+    @State private var pendingProfileId: UUID?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -50,6 +51,18 @@ struct MenuBarView: View {
         }
         .padding(.vertical, 8)
         .frame(width: 260)
+        .alert("Switch Profile?", isPresented: Binding(
+            get: { pendingProfileId != nil },
+            set: { if !$0 { pendingProfileId = nil } }
+        )) {
+            Button("Switch & Stop Session", role: .destructive) {
+                if let id = pendingProfileId { appState.switchProfile(id) }
+                pendingProfileId = nil
+            }
+            Button("Cancel", role: .cancel) { pendingProfileId = nil }
+        } message: {
+            Text("Switching profiles will stop and clear the current session.")
+        }
     }
     
     // MARK: - View Components
@@ -105,7 +118,11 @@ struct MenuBarView: View {
         Menu {
             ForEach(appState.profileManager.profiles) { profile in
                 Button {
-                    appState.switchProfile(profile.id)
+                    if appState.isActive || appState.activeSessionDuration > 0 {
+                        pendingProfileId = profile.id
+                    } else {
+                        appState.switchProfile(profile.id)
+                    }
                 } label: {
                     Label(profile.name, systemImage: profile.id == appState.profileManager.activeProfileId ? "checkmark" : "circle")
                 }
@@ -172,14 +189,14 @@ struct MenuBarView: View {
                     Spacer()
                 }
                 
-                Text("Click below to grant permission. If you reinstalled the app, remove the old entry in Settings first.")
+                Text("Grant permission below. For reinstalls, see the setup guide to remove the old entry first.")
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 6)
-            
+
             // Grant Permission button (primary action)
             Button(action: {
                 appState.requestPermission()
@@ -197,27 +214,8 @@ struct MenuBarView: View {
             }
             .buttonStyle(.plain)
             .background(HoverBackground())
-            
-            // Open Settings button (secondary/fallback)
-            Button(action: {
-                appState.openAccessibilitySettings()
-            }) {
-                HStack(spacing: 8) {
-                    Image(systemName: "gear")
-                        .frame(width: 16)
-                    Text("Open Settings...")
-                        .foregroundColor(.secondary)
-                    Spacer()
-                }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .background(HoverBackground())
-            
-            // Show Permissions Window button
+
+            // Setup guide (secondary — covers Open Settings too)
             Button(action: {
                 appState.showPermissionsWindow()
             }) {
@@ -249,7 +247,7 @@ struct MenuBarView: View {
                 if !appState.isActive {
                     Text("(paused)")
                         .font(.caption)
-                        .foregroundColor(.orange)
+                        .foregroundColor(.blue)
                 }
                 Spacer()
             }
