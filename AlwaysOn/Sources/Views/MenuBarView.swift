@@ -5,6 +5,11 @@ import SwiftUI
 struct MenuBarView: View {
     @EnvironmentObject var appState: AppState
     @State private var pendingProfileId: UUID?
+
+    private var pendingProfileName: String {
+        guard let pendingProfileId else { return "this profile" }
+        return appState.profileManager.profiles.first(where: { $0.id == pendingProfileId })?.name ?? "this profile"
+    }
     
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -51,18 +56,6 @@ struct MenuBarView: View {
         }
         .padding(.vertical, 8)
         .frame(width: 260)
-        .alert("Switch Profile?", isPresented: Binding(
-            get: { pendingProfileId != nil },
-            set: { if !$0 { pendingProfileId = nil } }
-        )) {
-            Button("Switch & Stop Session", role: .destructive) {
-                if let id = pendingProfileId { appState.switchProfile(id) }
-                pendingProfileId = nil
-            }
-            Button("Cancel", role: .cancel) { pendingProfileId = nil }
-        } message: {
-            Text("Switching profiles will stop and clear the current session.")
-        }
     }
     
     // MARK: - View Components
@@ -114,7 +107,16 @@ struct MenuBarView: View {
         .keyboardShortcut("k", modifiers: .command)
     }
 
+    @ViewBuilder
     private var profileMenu: some View {
+        if pendingProfileId != nil {
+            profileSwitchConfirmation
+        } else {
+            profileSelectionMenu
+        }
+    }
+
+    private var profileSelectionMenu: some View {
         Menu {
             ForEach(appState.profileManager.profiles) { profile in
                 Button {
@@ -150,6 +152,43 @@ struct MenuBarView: View {
         }
         .buttonStyle(.plain)
         .background(HoverBackground())
+    }
+
+    private var profileSwitchConfirmation: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                Image(systemName: "person.2")
+                    .frame(width: 16)
+                Text("Switch Profile?")
+                    .font(.headline)
+                Spacer()
+            }
+
+            Text("Switch to \(pendingProfileName) and stop the current session?")
+                .font(.subheadline)
+
+            Text("The current session and timer will be cleared.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+
+            HStack(spacing: 8) {
+                Button("Cancel") {
+                    pendingProfileId = nil
+                }
+                .buttonStyle(.borderless)
+
+                Spacer()
+
+                Button("Switch & Stop Session", role: .destructive) {
+                    guard let pendingProfileId else { return }
+                    appState.switchProfile(pendingProfileId)
+                    self.pendingProfileId = nil
+                }
+                .buttonStyle(.borderless)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
     }
     
     private var stopSessionButton: some View {
