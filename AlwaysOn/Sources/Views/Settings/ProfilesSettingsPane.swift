@@ -7,6 +7,7 @@ struct ProfilesSettingsPane: View {
     @State private var editingProfileId: UUID?
     @State private var draftName = ""
     @State private var newProfileName = ""
+    @State private var pendingActivateProfileId: UUID?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -45,6 +46,18 @@ struct ProfilesSettingsPane: View {
         .sheet(isPresented: $isShowingAddProfileSheet) {
             addProfileSheet
         }
+        .alert("Switch Profile?", isPresented: Binding(
+            get: { pendingActivateProfileId != nil },
+            set: { if !$0 { pendingActivateProfileId = nil } }
+        )) {
+            Button("Switch & Stop Session", role: .destructive) {
+                if let id = pendingActivateProfileId { appState.switchProfile(id) }
+                pendingActivateProfileId = nil
+            }
+            Button("Cancel", role: .cancel) { pendingActivateProfileId = nil }
+        } message: {
+            Text("Switching profiles will stop and clear the current session.")
+        }
     }
 
     @ViewBuilder
@@ -75,6 +88,8 @@ struct ProfilesSettingsPane: View {
                 Text(description(for: profile))
                     .font(.caption)
                     .foregroundColor(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
             }
 
             Spacer()
@@ -105,11 +120,19 @@ struct ProfilesSettingsPane: View {
         .contentShape(Rectangle())
         .onTapGesture {
             guard editingProfileId != profile.id else { return }
-            appState.switchProfile(profile.id)
+            if appState.isActive || appState.activeSessionDuration > 0 {
+                pendingActivateProfileId = profile.id
+            } else {
+                appState.switchProfile(profile.id)
+            }
         }
         .contextMenu {
             Button("Activate") {
-                appState.switchProfile(profile.id)
+                if appState.isActive || appState.activeSessionDuration > 0 {
+                    pendingActivateProfileId = profile.id
+                } else {
+                    appState.switchProfile(profile.id)
+                }
             }
             .disabled(isActive)
 
