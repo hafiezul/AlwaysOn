@@ -63,22 +63,13 @@ struct MenuBarView: View {
     private var statusHeader: some View {
         HStack(spacing: 8) {
             Circle()
-                .fill(appState.isActive ? Color.green : Color.gray)
+                .fill(appState.isActive ? Color.green : (appState.activeSessionDuration > 0 ? Color.orange : Color.gray))
                 .frame(width: 8, height: 8)
-            
-            Text(appState.isActive ? "Active" : "Inactive")
+
+            Text(appState.isActive ? "Active" : (appState.activeSessionDuration > 0 ? "Paused" : "Inactive"))
                 .font(.headline)
-            
+
             Spacer()
-            
-            // Version badge
-            Text("v\(appVersion)")
-                .font(.caption2)
-                .foregroundColor(.secondary)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(Color.secondary.opacity(0.1))
-                .cornerRadius(4)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 4)
@@ -382,10 +373,6 @@ struct MenuBarView: View {
     }
     
     // MARK: - Helpers
-    
-    private var appVersion: String {
-        Bundle.main.appVersion
-    }
     
     private func formatDuration(_ duration: TimeInterval) -> String {
         let hours = Int(duration) / 3600

@@ -30,14 +30,12 @@ If you find this app useful, consider supporting its development:
 ### Install a Release
 
 1. Download the latest build from the [Releases page](../../releases/latest).
-2. Move `AlwaysOn.app` to `/Applications`.
-3. Launch the app and grant Accessibility permission when prompted.
-4. If Accessibility breaks after a reinstall or update, download the matching `install-helper.sh`, run it, remove the old AlwaysOn entry from **System Settings > Privacy & Security > Accessibility**, then add the app again.
+2. Open the DMG and drag `AlwaysOn.app` to Applications.
+3. Launch AlwaysOn from Applications.
+4. If macOS says the app cannot be verified, Control-click or right-click `AlwaysOn.app`, choose **Open**, then choose **Open** again.
+5. Grant Accessibility permission when prompted.
 
-```bash
-chmod +x install-helper.sh
-./install-helper.sh
-```
+If Accessibility breaks after a reinstall or update, remove the old AlwaysOn entry from **System Settings > Privacy & Security > Accessibility**, then add and enable `/Applications/AlwaysOn.app` again.
 
 ### Build From Source
 
@@ -67,26 +65,19 @@ This keeps macOS from marking the system idle, which many workplace apps use to 
 ## Permissions and Updates
 
 - Accessibility permission is required because the app simulates keyboard or mouse input.
-- Signed releases support Sparkle in-app updates.
-- Unsigned releases are updated manually from [GitHub Releases](../../releases/latest).
+- Releases are unsigned and updated manually from [GitHub Releases](../../releases/latest).
 - If Accessibility stops working after an upgrade or reinstall, remove the old entry in Accessibility settings and add `AlwaysOn.app` again.
-- The app does not collect data and only uses network access for optional update checks on signed builds.
+- The app does not collect data.
 
 ## Troubleshooting
 
 ### macOS says the app could not be verified
 
-Run:
-
-```bash
-xattr -r -d com.apple.quarantine /Applications/AlwaysOn.app
-```
-
-Then launch the app again.
+Open Applications in Finder, Control-click or right-click `AlwaysOn.app`, choose **Open**, then choose **Open** again. macOS should remember this choice for future launches.
 
 ### Accessibility permission is not working
 
-Re-run the version-matched `install-helper.sh` if you installed from a DMG or ZIP, then remove any old AlwaysOn entry from **System Settings > Privacy & Security > Accessibility**, add `AlwaysOn.app` again, and relaunch.
+Remove any old AlwaysOn entry from **System Settings > Privacy & Security > Accessibility**, add `/Applications/AlwaysOn.app` again, enable it, and relaunch AlwaysOn.
 
 ### The app is not keeping status active
 
