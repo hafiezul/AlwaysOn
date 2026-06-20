@@ -32,7 +32,7 @@ If you find this app useful, consider supporting its development:
 1. Download the latest build from the [Releases page](../../releases/latest).
 2. Open the DMG and drag `AlwaysOn.app` to Applications.
 3. Launch AlwaysOn from Applications.
-4. If macOS says the app cannot be verified, Control-click or right-click `AlwaysOn.app`, choose **Open**, then choose **Open** again.
+4. If macOS says Apple could not verify the app is free of malware, open **System Settings > Privacy & Security**, scroll to **Security**, click **Open Anyway** for AlwaysOn, then confirm **Open Anyway**.
 5. Grant Accessibility permission when prompted.
 
 If Accessibility breaks after a reinstall or update, remove the old AlwaysOn entry from **System Settings > Privacy & Security > Accessibility**, then add and enable `/Applications/AlwaysOn.app` again.
@@ -73,7 +73,7 @@ This keeps macOS from marking the system idle, which many workplace apps use to 
 
 ### macOS says the app could not be verified
 
-Open Applications in Finder, Control-click or right-click `AlwaysOn.app`, choose **Open**, then choose **Open** again. macOS should remember this choice for future launches.
+Try launching AlwaysOn once, then open **System Settings > Privacy & Security**, scroll to **Security**, click **Open Anyway** for AlwaysOn, and confirm **Open Anyway**. macOS should remember this choice for future launches.
 
 ### Accessibility permission is not working
 

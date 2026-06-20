@@ -17,11 +17,13 @@ The GitHub Actions release workflow:
 The release workflow signs the app with a local ad-hoc identity:
 
 ```bash
-codesign --force --deep --sign - --options runtime build/Build/Products/Release/AlwaysOn.app
+codesign --force --deep --sign - build/Build/Products/Release/AlwaysOn.app
 codesign --verify --deep --strict --verbose=2 build/Build/Products/Release/AlwaysOn.app
 ```
 
 This gives macOS a stable signed bundle to evaluate, but it does not make the app trusted as an identified developer download.
+
+Do not enable hardened runtime for unsigned releases. With the embedded Sparkle framework still linked into the app, hardened runtime library validation can reject the framework at launch after ad-hoc signing.
 
 ## User Install Behavior
 
@@ -30,7 +32,7 @@ Users install the app from Finder:
 1. Download the latest DMG from GitHub Releases.
 2. Open the DMG.
 3. Drag `AlwaysOn.app` to Applications.
-4. If Gatekeeper blocks first launch, Control-click or right-click the app in Finder, choose **Open**, then choose **Open** again.
+4. If Gatekeeper blocks first launch, open **System Settings > Privacy & Security**, scroll to **Security**, click **Open Anyway** for AlwaysOn, then confirm **Open Anyway**.
 5. Grant Accessibility permission when prompted.
 
 Accessibility permission is still required because AlwaysOn simulates keyboard or mouse input. After replacing the app with a new release, macOS may require users to remove the old AlwaysOn entry from **System Settings > Privacy & Security > Accessibility**, then add and enable `/Applications/AlwaysOn.app` again.
