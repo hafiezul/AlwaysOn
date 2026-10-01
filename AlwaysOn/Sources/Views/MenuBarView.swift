@@ -42,8 +42,8 @@ struct MenuBarView: View {
                 }
             }
             
-            // Stop Session button (only shown when paused, AFTER session info)
-            if !appState.isActive && appState.activeSessionDuration > 0 {
+            // Stop Session button (shown for active and paused sessions, AFTER session info)
+            if appState.isActive || appState.activeSessionDuration > 0 {
                 stopSessionButton
             }
             
