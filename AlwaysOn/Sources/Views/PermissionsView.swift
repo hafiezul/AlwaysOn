@@ -193,7 +193,7 @@ struct PermissionsView: View {
 
 #Preview {
     PermissionsView(
-        accessibilityPermission: AccessibilityPermission(),
+        accessibilityPermission: .shared,
         onContinue: {},
         onQuit: {}
     )

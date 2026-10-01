@@ -76,8 +76,8 @@ final class AppState: ObservableObject {
     
     // MARK: - Permission Management
     
-    /// Accessibility permission state (Combine-based, continuous polling)
-    let accessibilityPermission = AccessibilityPermission()
+    /// Accessibility permission state (Combine-based polling since macOS offers no change callback)
+    let accessibilityPermission = AccessibilityPermission.shared
     
     /// Convenience accessor for permission state
     var hasAccessibilityPermission: Bool {
@@ -124,7 +124,6 @@ final class AppState: ObservableObject {
         static let isActive = "isActive"
         static let activityInterval = "activityInterval"
         static let activityMethod = "activityMethod"
-        static let hasCompletedOnboarding = "hasCompletedOnboarding"
         static let quickTimerEndTime = "quickTimerEndTime"
         static let defaultTimerDuration = "defaultTimerDuration"
     }
@@ -137,15 +136,9 @@ final class AppState: ObservableObject {
     
     // MARK: - Onboarding State
     
-    /// Whether the user has completed the initial permission onboarding
-    var hasCompletedOnboarding: Bool {
-        get { UserDefaults.standard.bool(forKey: Keys.hasCompletedOnboarding) }
-        set { UserDefaults.standard.set(newValue, forKey: Keys.hasCompletedOnboarding) }
-    }
-
     /// Whether to show the permissions window on launch
     var needsPermissionsOnboarding: Bool {
-        !hasCompletedOnboarding || !accessibilityPermission.hasPermission
+        !accessibilityPermission.onboardingCompleted || !accessibilityPermission.hasPermission
     }
     
     // MARK: - Computed Properties
@@ -212,8 +205,8 @@ final class AppState: ObservableObject {
         setupNotificationCallbacks()
         setupProfileSync()
         
-        // Start permission polling
-        accessibilityPermission.startPolling()
+        // Steady-state polling; onboarding temporarily raises the rate when its window opens
+        accessibilityPermission.startPolling(.standard)
         
         // Resume active state if was active before quit (and has permission)
         if isActive && hasAccessibilityPermission {
@@ -352,10 +345,10 @@ final class AppState: ObservableObject {
             accessibilityPermission: accessibilityPermission,
             onContinue: { [weak self] in
                 guard let self else { return }
-                self.hasCompletedOnboarding = true
+                self.accessibilityPermission.onboardingCompleted = true
+                // Back to steady-state polling now that the prompt is done
                 self.accessibilityPermission.stopPolling()
-                // Start normal operation polling (less frequent when running normally)
-                self.accessibilityPermission.startPolling()
+                self.accessibilityPermission.startPolling(.standard)
             },
             onQuit: {
                 NSApplication.shared.terminate(nil)
@@ -365,10 +358,10 @@ final class AppState: ObservableObject {
 
     /// Complete the permission setup (called after onboarding)
     func completePermissionSetup() {
-        hasCompletedOnboarding = true
+        accessibilityPermission.onboardingCompleted = true
+        // Back to steady-state polling now that onboarding is done
         accessibilityPermission.stopPolling()
-        // Restart with normal polling
-        accessibilityPermission.startPolling()
+        accessibilityPermission.startPolling(.standard)
     }
     
     // MARK: - Private Methods
@@ -393,7 +386,7 @@ final class AppState: ObservableObject {
         // When nested ObservableObjects change, SwiftUI doesn't automatically detect it
         // because it only observes one level deep. We need to manually forward changes.
         
-        workScheduleManager.objectWillChange
+        accessibilityPermission.objectWillChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] (_: Void) in
                 self?.objectWillChange.send()

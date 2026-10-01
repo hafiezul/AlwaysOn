@@ -38,8 +38,8 @@ final class PermissionsWindowController {
             return
         }
         
-        // Start polling for permission changes
-        accessibilityPermission.startPolling()
+        // Start polling so the window tracks permission changes from System Settings
+        accessibilityPermission.startPolling(.onboarding)
         
         // Create the SwiftUI view
         let permissionsView = PermissionsView(
