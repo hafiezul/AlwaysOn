@@ -69,10 +69,10 @@ This keeps macOS from marking the system idle, which many workplace apps use to 
 
 AlwaysOn registers the `alwayson://` URL scheme, so launchers like Raycast and Alfred can drive it:
 
-- `alwayson://start` — start a session
-- `alwayson://stop` — stop the session
-- `alwayson://toggle` — start or pause
-- `alwayson://timer?minutes=30` — keep online for 30 minutes (omit `minutes` to use the profile default)
+- `alwayson://start` starts a session
+- `alwayson://stop` stops the session
+- `alwayson://toggle` starts or pauses
+- `alwayson://timer?minutes=30` keeps online for 30 minutes. Omit `minutes` to use the profile default.
 
 ## Permissions and Updates
 
