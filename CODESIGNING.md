@@ -2,6 +2,8 @@
 
 AlwaysOn releases are built for manual installation without an Apple Developer ID.
 
+The release can be started from the GitHub Actions tab by running the Release workflow with a version like `1.8.0`, or by pushing a `v1.8.0` tag. Both entry points run the same pipeline; the Actions-tab run creates the tag itself and refuses to reuse an existing tag.
+
 The GitHub Actions release workflow:
 
 1. Builds `AlwaysOn.app` in Release configuration.
