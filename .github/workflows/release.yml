@@ -1,4 +1,4 @@
-name: Build and Release
+name: Release
 
 on:
   push:
@@ -9,8 +9,8 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build AlwaysOn
+  release:
+    name: Build, package, and publish
     runs-on: macos-latest
 
     steps:
@@ -19,46 +19,28 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set up Xcode
+      - name: Validate tag
         run: |
-          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          TAG_VERSION=${GITHUB_REF#refs/tags/}
+          if [[ ! "$TAG_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid tag '$TAG_VERSION': release tags must look like v1.2.3" >&2
+            exit 1
+          fi
+          echo "TAG_VERSION=$TAG_VERSION" >> "$GITHUB_ENV"
 
       - name: Set version from tag
         run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          TAG_VERSION=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG_VERSION#v}
           BUILD_NUMBER=$(git rev-list --count HEAD)
 
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          echo "TAG_VERSION=$TAG_VERSION" >> "$GITHUB_ENV"
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
 
           echo "Marketing Version: $VERSION"
           echo "Build Number: $BUILD_NUMBER"
 
-      - name: Build app
-        run: |
-          xcodebuild -project AlwaysOn.xcodeproj \
-            -scheme AlwaysOn \
-            -configuration Release \
-            -derivedDataPath build \
-            -arch arm64 -arch x86_64 \
-            ONLY_ACTIVE_ARCH=NO \
-            ALWAYSON_UPDATE_MODE=manual \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            DEVELOPMENT_TEAM="" \
-            MARKETING_VERSION="$VERSION" \
-            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
-            build
-
-      - name: Ad-hoc sign app
-        run: |
-          APP_PATH="build/Build/Products/Release/AlwaysOn.app"
-
-          codesign --force --deep --sign - "$APP_PATH"
-          codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+      - name: Build and ad-hoc sign
+        run: ./Scripts/build-app.sh
 
       - name: Prepare DMG
         run: |

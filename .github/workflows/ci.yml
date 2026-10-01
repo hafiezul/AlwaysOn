@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Build and ad-hoc sign
+        env:
+          VERSION: 0.0.0-ci
+        run: ./Scripts/build-app.sh
+
+      - name: Run unit tests
+        run: |
+          xcodebuild \
+            -project AlwaysOn.xcodeproj \
+            -scheme AlwaysOn \
+            -destination 'platform=macOS' \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            test
