@@ -65,6 +65,15 @@ AlwaysOn simulates minimal input on a configurable interval, with 45 seconds as 
 
 This keeps macOS from marking the system idle, which many workplace apps use to determine presence.
 
+## Launcher Commands
+
+AlwaysOn registers the `alwayson://` URL scheme, so launchers like Raycast and Alfred can drive it:
+
+- `alwayson://start` — start a session
+- `alwayson://stop` — stop the session
+- `alwayson://toggle` — start or pause
+- `alwayson://timer?minutes=30` — keep online for 30 minutes (omit `minutes` to use the profile default)
+
 ## Permissions and Updates
 
 - Accessibility permission is required because the app simulates keyboard or mouse input.

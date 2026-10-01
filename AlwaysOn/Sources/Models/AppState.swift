@@ -1,12 +1,12 @@
 import Foundation
 import Combine
 import AppKit
-import Carbon.HIToolbox
+import Carbon
 
 /// Central state management for the AlwaysOn app
 /// Keeps track of active status and coordinates with ActivitySimulator
 @MainActor
-final class AppState: ObservableObject {
+final class AppState: NSObject, ObservableObject {
     enum SessionSource: Codable {
         case manual
         case workSchedule(profileName: String)
@@ -215,7 +215,7 @@ final class AppState: ObservableObject {
     
     // MARK: - Initialization
     
-    init() {
+    override init() {
         let defaults = UserDefaults.standard
         ProfileManager.migrateIfNeeded(defaults: defaults)
 
@@ -236,6 +236,7 @@ final class AppState: ObservableObject {
         self._requireTargetApp = Published(initialValue: defaults.bool(forKey: Keys.requireTargetApp))
         self._targetApps = Published(initialValue: Set(defaults.stringArray(forKey: Keys.targetApps) ?? []))
         self._globalHotKeyEnabled = Published(initialValue: defaults.object(forKey: Keys.globalHotKeyEnabled) as? Bool ?? true)
+        super.init()
         activitySimulator.gate.idleOnlyEnabled = simulateOnlyWhenIdle
         activitySimulator.gate.requireTargetApp = requireTargetApp
         activitySimulator.gate.targetBundleIDs = targetApps
@@ -245,6 +246,7 @@ final class AppState: ObservableObject {
             }
         }
         refreshGlobalHotKey()
+        registerURLHandler()
         
         // Restore quick timer if still valid
         if let savedEndTime = defaults.object(forKey: Keys.quickTimerEndTime) as? Date {
@@ -545,6 +547,57 @@ final class AppState: ObservableObject {
                                          modifiers: UInt32(optionKey | cmdKey))
         } else {
             globalHotKeyManager.unregister()
+        }
+    }
+    
+    // MARK: - URL Commands
+    
+    /// Launcher integrations (Raycast, Alfred, shell) open alwayson:// URLs
+    private func registerURLHandler() {
+        NSAppleEventManager.shared().setEventHandler(
+            self,
+            andSelector: #selector(handleGetURLEvent(_:withReplyEvent:)),
+            forEventClass: AEEventClass(kInternetEventClass),
+            andEventID: AEEventID(kAEGetURL)
+        )
+    }
+    
+    @objc private func handleGetURLEvent(_ event: NSAppleEventDescriptor, withReplyEvent reply: NSAppleEventDescriptor) {
+        guard let directObject = event.paramDescriptor(forKeyword: keyDirectObject),
+              let urlString = directObject.stringValue,
+              let url = URL(string: urlString),
+              let command = URLCommandParser.command(from: url) else { return }
+        
+        Task { @MainActor in
+            applyURLCommand(command)
+        }
+    }
+    
+    private func applyURLCommand(_ command: URLCommand) {
+        switch command {
+        case .start:
+            if !isActive {
+                if hasAccessibilityPermission {
+                    sessionSource = .manual
+                    isActive = true
+                } else {
+                    accessibilityPermission.request()
+                }
+            }
+        case .stop:
+            stopSession()
+        case .toggle:
+            toggle()
+        case .timer(let minutes):
+            let duration: QuickTimerDuration
+            if let minutes {
+                let clamped = min(max(minutes, QuickTimerDuration.customMinutesRange.lowerBound),
+                                  QuickTimerDuration.customMinutesRange.upperBound)
+                duration = .custom(minutes: clamped)
+            } else {
+                duration = defaultTimerDuration
+            }
+            startWithQuickTimer(duration)
         }
     }
     
