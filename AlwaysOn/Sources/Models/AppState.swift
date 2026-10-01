@@ -230,12 +230,6 @@ final class AppState: ObservableObject {
         } else {
             sessionSource = .manual
             
-            // Restore saved session state if there was a saved session
-            if pausedSessionDuration > 0 {
-                // Resume from paused state
-                // sessionStartTime will be set to calculate from pausedSessionDuration
-            }
-            
             // Restore quick timer if it was active when paused
             if let savedTimerEndTime = pausedQuickTimerEndTime {
                 quickTimerEndTime = savedTimerEndTime
