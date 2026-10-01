@@ -9,6 +9,20 @@ final class QuickTimerDurationTests: XCTestCase {
         XCTAssertEqual(QuickTimerDuration.from(id: nil), .noLimit)
     }
 
+    func testCustomDurationsRoundTripThroughId() {
+        XCTAssertEqual(QuickTimerDuration.from(id: "custom:90"), .custom(minutes: 90))
+        XCTAssertEqual(QuickTimerDuration.custom(minutes: 90).id, "custom:90")
+        XCTAssertEqual(QuickTimerDuration.from(id: "custom:0"), .noLimit)
+        XCTAssertEqual(QuickTimerDuration.from(id: "custom:9999"), .noLimit)
+    }
+
+    func testCustomDurationSeconds() {
+        XCTAssertEqual(QuickTimerDuration.custom(minutes: 90).seconds, 5400)
+        XCTAssertEqual(QuickTimerDuration.custom(minutes: 60).title, "1 hour")
+        XCTAssertEqual(QuickTimerDuration.custom(minutes: 120).title, "2 hours")
+        XCTAssertEqual(QuickTimerDuration.custom(minutes: 45).title, "45 minutes")
+    }
+
     func testSecondsMatchTitles() {
         XCTAssertEqual(QuickTimerDuration.minutes30.seconds, 1800)
         XCTAssertEqual(QuickTimerDuration.hour1.seconds, 3600)

@@ -13,6 +13,45 @@ struct GeneralSettingsPane: View {
         ("2 minutes", 120),
         ("5 minutes", 300)
     ]
+
+    /// Preset tag matching the current interval, nil when it is a custom value
+    private var intervalPickerSelection: Binding<TimeInterval?> {
+        Binding(
+            get: { intervalOptions.first { $0.value == appState.activityInterval }?.value },
+            set: { if let value = $0 { appState.activityInterval = value } }
+        )
+    }
+
+    /// Editing surface for the custom interval, clamped on commit
+    private var customIntervalSeconds: Binding<Int> {
+        Binding(
+            get: { Int(appState.activityInterval) },
+            set: { appState.activityInterval = TimeInterval(min(max($0, 10), 3600)) }
+        )
+    }
+
+    /// Preset tag matching the current auto-disable duration, nil when custom
+    private var timerPickerSelection: Binding<QuickTimerDuration?> {
+        Binding(
+            get: { QuickTimerDuration.allCases.first { $0 == appState.defaultTimerDuration } },
+            set: { if let duration = $0 { appState.defaultTimerDuration = duration } }
+        )
+    }
+
+    /// Editing surface for the custom duration in minutes, clamped on commit
+    private var customTimerMinutes: Binding<Int> {
+        Binding(
+            get: {
+                if case .custom(let minutes) = appState.defaultTimerDuration { return minutes }
+                return Int((appState.defaultTimerDuration.seconds ?? 0) / 60)
+            },
+            set: {
+                let clamped = min(max($0, QuickTimerDuration.customMinutesRange.lowerBound),
+                                  QuickTimerDuration.customMinutesRange.upperBound)
+                appState.defaultTimerDuration = .custom(minutes: clamped)
+            }
+        )
+    }
     
     var body: some View {
         Form {
@@ -28,13 +67,26 @@ struct GeneralSettingsPane: View {
             
             // Activity section
             Section {
-                Picker("Activity Interval", selection: $appState.activityInterval) {
+                Picker("Activity Interval", selection: intervalPickerSelection) {
                     ForEach(intervalOptions, id: \.value) { option in
-                        Text(option.label).tag(option.value)
+                        Text(option.label).tag(option.value as TimeInterval?)
                     }
+                    Text("Custom…").tag(nil as TimeInterval?)
                 }
                 .pickerStyle(.menu)
-                
+
+                if intervalPickerSelection.wrappedValue == nil {
+                    HStack {
+                        Text("Seconds")
+                        Spacer()
+                        TextField(value: customIntervalSeconds, format: .number.grouping(.never)) {
+                            Text("10-3600")
+                        }
+                        .frame(width: 80)
+                        .multilineTextAlignment(.trailing)
+                    }
+                }
+
                 Text("How often AlwaysOn simulates activity to keep your status active.")
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -51,12 +103,25 @@ struct GeneralSettingsPane: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
                 
-                Picker("Auto-disable after", selection: $appState.defaultTimerDuration) {
+                Picker("Auto-disable after", selection: timerPickerSelection) {
                     ForEach(QuickTimerDuration.allCases) { duration in
-                        Text(duration.title).tag(duration)
+                        Text(duration.title).tag(duration as QuickTimerDuration?)
                     }
+                    Text("Custom…").tag(nil as QuickTimerDuration?)
                 }
                 .pickerStyle(.menu)
+
+                if timerPickerSelection.wrappedValue == nil {
+                    HStack {
+                        Text("Minutes")
+                        Spacer()
+                        TextField(value: customTimerMinutes, format: .number.grouping(.never)) {
+                            Text("1-1440")
+                        }
+                        .frame(width: 80)
+                        .multilineTextAlignment(.trailing)
+                    }
+                }
                 
                 Text("Automatically pause after the selected duration. Choose 'No limit' to stay active indefinitely.")
                     .font(.caption)
