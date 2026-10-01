@@ -44,7 +44,8 @@ final class WorkScheduleManager: ObservableObject {
     
     // MARK: - Public Methods
     
-    /// Start monitoring the schedule
+    /// Start monitoring the schedule; a minute-granularity repeating timer is
+    /// all this needs because no consumer reacts faster than a minute boundary
     func startMonitoring() {
         guard schedule.isEnabled else { return }
         
@@ -60,9 +61,6 @@ final class WorkScheduleManager: ObservableObject {
                 self?.updateScheduleState()
             }
         }
-        
-        // Also check immediately when the minute changes for precise transitions
-        scheduleNextMinuteCheck()
     }
     
     /// Stop monitoring the schedule
@@ -95,19 +93,6 @@ final class WorkScheduleManager: ObservableObject {
         // Notify if state changed
         if wasWithinSchedule != isWithinSchedule {
             onScheduleStateChanged?(isWithinSchedule)
-        }
-    }
-    
-    private func scheduleNextMinuteCheck() {
-        let calendar = Calendar.current
-        let now = Date()
-        let nextMinute = calendar.nextDate(after: now, matching: DateComponents(second: 0), matchingPolicy: .nextTime) ?? now.addingTimeInterval(60)
-        let delay = nextMinute.timeIntervalSince(now)
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-            guard let self, self.schedule.isEnabled else { return }
-            self.updateScheduleState()
-            self.scheduleNextMinuteCheck()
         }
     }
 

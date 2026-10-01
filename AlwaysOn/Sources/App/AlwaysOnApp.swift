@@ -50,7 +50,7 @@ struct AlwaysOnApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Delay slightly to ensure the app is fully initialized
+        // The menu bar scene needs a beat to install its window hooks before a dialog shows
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             self.handleAppLaunch()
         }
@@ -58,20 +58,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     
     @MainActor
     private func handleAppLaunch() {
-        // Check if we need to show the permissions window
-        let permission = AccessibilityPermission()
+        let permission = AccessibilityPermission.shared
         
         // Show permissions window if:
         // 1. User hasn't completed onboarding, OR
         // 2. Permission is not currently granted
-        let hasCompletedOnboarding = UserDefaults.standard.bool(forKey: "hasCompletedOnboarding")
-        
-        if !hasCompletedOnboarding || !permission.hasPermission {
+        if !permission.onboardingCompleted || !permission.hasPermission {
             PermissionsWindowController.shared.show(
                 accessibilityPermission: permission,
                 onContinue: {
-                    UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
+                    permission.onboardingCompleted = true
+                    // Back to steady-state polling now that the prompt is done
                     permission.stopPolling()
+                    permission.startPolling(.standard)
                 },
                 onQuit: {
                     NSApplication.shared.terminate(nil)

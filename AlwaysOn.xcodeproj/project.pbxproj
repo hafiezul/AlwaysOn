@@ -14,8 +14,6 @@
 		1000000000000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2000000000000006 /* Assets.xcassets */; };
 		1000000000000007 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000009 /* UpdateChecker.swift */; };
 		1000000000000008 /* LaunchAtLoginManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000A /* LaunchAtLoginManager.swift */; };
-		100000000000000A /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A000000000000001 /* Sparkle */; };
-		100000000000000B /* SparkleUpdaterManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000C /* SparkleUpdaterManager.swift */; };
 		100000000000000C /* AccessibilityPermission.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000D /* AccessibilityPermission.swift */; };
 		100000000000000D /* PermissionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000E /* PermissionsView.swift */; };
 		100000000000000E /* PermissionsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000F /* PermissionsWindowController.swift */; };
@@ -34,7 +32,16 @@
 		100000000000001E /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000001F /* Profile.swift */; };
 		100000000000001F /* ProfileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000020 /* ProfileManager.swift */; };
 		1000000000000020 /* ProfilesSettingsPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000021 /* ProfilesSettingsPane.swift */; };
-		1000000000000022 /* UpdateWindowNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000023 /* UpdateWindowNotifications.swift */; };
+		1000000000000030 /* WorkScheduleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000030 /* WorkScheduleTests.swift */; };
+		1000000000000031 /* UpdateCheckerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000031 /* UpdateCheckerTests.swift */; };
+		1000000000000032 /* ProfileManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000032 /* ProfileManagerTests.swift */; };
+		1000000000000033 /* QuickTimerDurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000033 /* QuickTimerDurationTests.swift */; };
+		1000000000000040 /* WorkSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000040 /* WorkSchedule.swift */; };
+		1000000000000041 /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000041 /* Profile.swift */; };
+		1000000000000042 /* QuickTimerDuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000042 /* QuickTimerDuration.swift */; };
+		1000000000000043 /* ActivityMethod.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000043 /* ActivityMethod.swift */; };
+		1000000000000044 /* ProfileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000044 /* ProfileManager.swift */; };
+		1000000000000045 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000045 /* UpdateChecker.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -47,7 +54,6 @@
 		2000000000000008 /* AlwaysOn.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AlwaysOn.entitlements; sourceTree = "<group>"; };
 		2000000000000009 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
 		200000000000000A /* LaunchAtLoginManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginManager.swift; sourceTree = "<group>"; };
-		200000000000000C /* SparkleUpdaterManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparkleUpdaterManager.swift; sourceTree = "<group>"; };
 		200000000000000D /* AccessibilityPermission.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityPermission.swift; sourceTree = "<group>"; };
 		200000000000000E /* PermissionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionsView.swift; sourceTree = "<group>"; };
 		200000000000000F /* PermissionsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionsWindowController.swift; sourceTree = "<group>"; };
@@ -66,8 +72,18 @@
 		200000000000001F /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profile.swift; sourceTree = "<group>"; };
 		2000000000000020 /* ProfileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileManager.swift; sourceTree = "<group>"; };
 		2000000000000021 /* ProfilesSettingsPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilesSettingsPane.swift; sourceTree = "<group>"; };
-		2000000000000023 /* UpdateWindowNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateWindowNotifications.swift; sourceTree = "<group>"; };
 		3000000000000001 /* AlwaysOn.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AlwaysOn.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2000000000000030 /* WorkScheduleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkScheduleTests.swift; sourceTree = "<group>"; };
+		2000000000000031 /* UpdateCheckerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateCheckerTests.swift; sourceTree = "<group>"; };
+		2000000000000032 /* ProfileManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileManagerTests.swift; sourceTree = "<group>"; };
+		2000000000000033 /* QuickTimerDurationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickTimerDurationTests.swift; sourceTree = "<group>"; };
+		3000000000000002 /* AlwaysOnTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AlwaysOnTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		2000000000000040 /* WorkSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WorkSchedule.swift; path = ../AlwaysOn/Sources/Models/WorkSchedule.swift; sourceTree = "<group>"; };
+		2000000000000041 /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Profile.swift; path = ../AlwaysOn/Sources/Models/Profile.swift; sourceTree = "<group>"; };
+		2000000000000042 /* QuickTimerDuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = QuickTimerDuration.swift; path = ../AlwaysOn/Sources/Models/QuickTimerDuration.swift; sourceTree = "<group>"; };
+		2000000000000043 /* ActivityMethod.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ActivityMethod.swift; path = ../AlwaysOn/Sources/Models/ActivityMethod.swift; sourceTree = "<group>"; };
+		2000000000000044 /* ProfileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ProfileManager.swift; path = ../AlwaysOn/Sources/Services/ProfileManager.swift; sourceTree = "<group>"; };
+		2000000000000045 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = UpdateChecker.swift; path = ../AlwaysOn/Sources/Services/UpdateChecker.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -75,7 +91,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				100000000000000A /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -86,6 +101,7 @@
 			isa = PBXGroup;
 			children = (
 				5000000000000002 /* AlwaysOn */,
+				500000000000000B /* AlwaysOnTests */,
 				5000000000000009 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -128,7 +144,6 @@
 				200000000000001F /* Profile.swift */,
 				2000000000000017 /* QuickTimerDuration.swift */,
 				2000000000000010 /* SettingsNavigationItem.swift */,
-				2000000000000023 /* UpdateWindowNotifications.swift */,
 				2000000000000018 /* WorkSchedule.swift */,
 			);
 			path = Models;
@@ -144,7 +159,6 @@
 				200000000000000F /* PermissionsWindowController.swift */,
 				2000000000000020 /* ProfileManager.swift */,
 				2000000000000015 /* SettingsWindowController.swift */,
-				200000000000000C /* SparkleUpdaterManager.swift */,
 				2000000000000009 /* UpdateChecker.swift */,
 				2000000000000019 /* WorkScheduleManager.swift */,
 			);
@@ -186,8 +200,26 @@
 			isa = PBXGroup;
 			children = (
 				3000000000000001 /* AlwaysOn.app */,
+				3000000000000002 /* AlwaysOnTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		500000000000000B /* AlwaysOnTests */ = {
+			isa = PBXGroup;
+			children = (
+				2000000000000030 /* WorkScheduleTests.swift */,
+				2000000000000031 /* UpdateCheckerTests.swift */,
+				2000000000000032 /* ProfileManagerTests.swift */,
+				2000000000000033 /* QuickTimerDurationTests.swift */,
+				2000000000000040 /* WorkSchedule.swift */,
+				2000000000000041 /* Profile.swift */,
+				2000000000000042 /* QuickTimerDuration.swift */,
+				2000000000000043 /* ActivityMethod.swift */,
+				2000000000000044 /* ProfileManager.swift */,
+				2000000000000045 /* UpdateChecker.swift */,
+			);
+			path = AlwaysOnTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -206,12 +238,24 @@
 			dependencies = (
 			);
 			name = AlwaysOn;
-			packageProductDependencies = (
-				A000000000000001 /* Sparkle */,
-			);
 			productName = AlwaysOn;
 			productReference = 3000000000000001 /* AlwaysOn.app */;
 			productType = "com.apple.product-type.application";
+		};
+		6000000000000005 /* AlwaysOnTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7000000000000004 /* Build configuration list for PBXNativeTarget "AlwaysOnTests" */;
+			buildPhases = (
+				6000000000000004 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AlwaysOnTests;
+			productName = AlwaysOnTests;
+			productReference = 3000000000000002 /* AlwaysOnTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -226,6 +270,9 @@
 					6000000000000001 = {
 						CreatedOnToolsVersion = 15.0;
 					};
+					6000000000000002 = {
+						CreatedOnToolsVersion = 15.0;
+					};
 				};
 			};
 			buildConfigurationList = 7000000000000001 /* Build configuration list for PBXProject "AlwaysOn" */;
@@ -237,14 +284,12 @@
 				Base,
 			);
 			mainGroup = 5000000000000001;
-			packageReferences = (
-				B000000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */,
-			);
 			productRefGroup = 5000000000000009 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
 				6000000000000001 /* AlwaysOn */,
+				6000000000000005 /* AlwaysOnTests */,
 			);
 		};
 /* End PBXProject section */
@@ -271,7 +316,6 @@
 				1000000000000005 /* MenuBarView.swift in Sources */,
 				1000000000000007 /* UpdateChecker.swift in Sources */,
 				1000000000000008 /* LaunchAtLoginManager.swift in Sources */,
-				100000000000000B /* SparkleUpdaterManager.swift in Sources */,
 				100000000000000C /* AccessibilityPermission.swift in Sources */,
 				100000000000000D /* PermissionsView.swift in Sources */,
 				100000000000000E /* PermissionsWindowController.swift in Sources */,
@@ -290,7 +334,23 @@
 				100000000000001E /* Profile.swift in Sources */,
 				100000000000001F /* ProfileManager.swift in Sources */,
 				1000000000000020 /* ProfilesSettingsPane.swift in Sources */,
-				1000000000000022 /* UpdateWindowNotifications.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6000000000000004 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1000000000000030 /* WorkScheduleTests.swift in Sources */,
+				1000000000000031 /* UpdateCheckerTests.swift in Sources */,
+				1000000000000032 /* ProfileManagerTests.swift in Sources */,
+				1000000000000033 /* QuickTimerDurationTests.swift in Sources */,
+				1000000000000040 /* WorkSchedule.swift in Sources */,
+				1000000000000041 /* Profile.swift in Sources */,
+				1000000000000042 /* QuickTimerDuration.swift in Sources */,
+				1000000000000043 /* ActivityMethod.swift in Sources */,
+				1000000000000044 /* ProfileManager.swift in Sources */,
+				1000000000000045 /* UpdateChecker.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -418,7 +478,6 @@
 		9000000000000003 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYSON_UPDATE_MODE = manual;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = AlwaysOn/AlwaysOn.entitlements;
@@ -446,7 +505,6 @@
 		9000000000000004 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYSON_UPDATE_MODE = manual;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = AlwaysOn/AlwaysOn.entitlements;
@@ -467,6 +525,32 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.alwayson.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		9000000000000005 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.alwayson.app.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		9000000000000006 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.alwayson.app.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
@@ -492,26 +576,16 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		7000000000000004 /* Build configuration list for PBXNativeTarget "AlwaysOnTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9000000000000005 /* Debug */,
+				9000000000000006 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-		B000000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/sparkle-project/Sparkle";
-			requirement = {
-				kind = exactVersion;
-				version = 2.8.1;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		A000000000000001 /* Sparkle */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = B000000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */;
-			productName = Sparkle;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 8000000000000001 /* Project object */;
 }

@@ -31,31 +31,31 @@ struct WorkSchedule: Codable, Equatable {
     
     /// Formatted start time string
     var startTimeString: String {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        return formatter.string(from: startTime)
+        return Self.timeFormatter.string(from: startTime)
     }
     
     /// Formatted end time string
     var endTimeString: String {
-        let formatter = DateFormatter()
-        formatter.timeStyle = .short
-        return formatter.string(from: endTime)
+        return Self.timeFormatter.string(from: endTime)
     }
     
     /// Whether the current time falls within the scheduled work hours
     var isCurrentlyWithinSchedule: Bool {
+        isWithinSchedule(on: Date())
+    }
+    
+    /// Whether the given time falls within the scheduled work hours
+    func isWithinSchedule(on date: Date) -> Bool {
         guard isEnabled else { return false }
         
         let calendar = Calendar.current
-        let now = Date()
         
-        // Check if today is an active day
-        let weekday = calendar.component(.weekday, from: now)
+        // Check if this date is an active day
+        let weekday = calendar.component(.weekday, from: date)
         guard activeDays.contains(weekday) else { return false }
         
-        // Check if current time is within the schedule
-        let currentMinutes = calendar.component(.hour, from: now) * 60 + calendar.component(.minute, from: now)
+        // Check if it is within the schedule window
+        let currentMinutes = calendar.component(.hour, from: date) * 60 + calendar.component(.minute, from: date)
         return currentMinutes >= startTimeMinutes && currentMinutes < endTimeMinutes
     }
     
@@ -104,6 +104,12 @@ struct WorkSchedule: Codable, Equatable {
     
     // MARK: - Static Defaults
     
+    private static let timeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .short
+        return formatter
+    }()
+    
     /// Default work schedule: Monday-Friday, 9 AM - 5 PM
     static let `default` = WorkSchedule(
         isEnabled: false,
@@ -116,9 +122,7 @@ struct WorkSchedule: Codable, Equatable {
     
     /// Get the short name for a weekday
     private func dayName(for weekday: Int) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale.current
-        let symbols = formatter.shortWeekdaySymbols ?? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+        let symbols = Self.shortWeekdaySymbols
         return symbols[(weekday - 1) % 7]
     }
     
@@ -135,6 +139,12 @@ struct WorkSchedule: Codable, Equatable {
             activeDays.insert(weekday)
         }
     }
+    
+    private static let shortWeekdaySymbols: [String] = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale.current
+        return formatter.shortWeekdaySymbols ?? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    }()
     
     /// Calculate time until next schedule start (nil if currently within schedule or schedule disabled)
     func timeUntilNextStart() -> TimeInterval? {
@@ -194,18 +204,26 @@ enum DayOfWeek: Int, CaseIterable, Identifiable {
     var id: Int { rawValue }
     
     var shortName: String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale.current
-        let symbols = formatter.shortWeekdaySymbols ?? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+        let symbols = Self.shortSymbols
         return symbols[(rawValue - 1) % 7]
     }
     
     var name: String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale.current
-        let symbols = formatter.weekdaySymbols ?? ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+        let symbols = Self.fullSymbols
         return symbols[(rawValue - 1) % 7]
     }
+    
+    private static let shortSymbols: [String] = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale.current
+        return formatter.shortWeekdaySymbols ?? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    }()
+    
+    private static let fullSymbols: [String] = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale.current
+        return formatter.weekdaySymbols ?? ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
+    }()
     
     /// Returns weekdays in the order starting from Monday (more common for work schedules)
     static var workWeekOrder: [DayOfWeek] {

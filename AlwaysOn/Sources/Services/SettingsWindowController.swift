@@ -14,30 +14,10 @@ final class SettingsWindowController {
     private var windowController: NSWindowController?
     private var hostingController: NSHostingController<AnyView>?
     private weak var appState: AppState?
-    private var sparkleWillShowObserver: NSObjectProtocol?
-    private var sparkleDidCloseObserver: NSObjectProtocol?
     
     /// Access to the settings window
     var window: NSWindow? {
         windowController?.window
-    }
-    
-    private init() {
-        sparkleWillShowObserver = NotificationCenter.default.addObserver(
-            forName: .sparkleUpdateWindowWillShow,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            self?.temporarilyLowerWindowLevel()
-        }
-
-        sparkleDidCloseObserver = NotificationCenter.default.addObserver(
-            forName: .sparkleUpdateWindowDidClose,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            self?.restoreWindowLevel()
-        }
     }
     
     // MARK: - Public Methods
@@ -46,18 +26,22 @@ final class SettingsWindowController {
     /// - Parameter appState: The app state to inject into the view
     func show(appState: AppState, selectedItem: SettingsNavigationItem = .general) {
         self.appState = appState
-        let rootView = AnyView(
-            SettingsView(initialSelection: selectedItem)
-                .environmentObject(appState)
-        )
         
-        // If window exists and is visible, just bring it to front
+        // If window exists and is visible, just bring it to front with updated content
         if let existingWindow = windowController?.window, existingWindow.isVisible {
-            hostingController?.rootView = rootView
+            hostingController?.rootView = AnyView(
+                SettingsView(initialSelection: selectedItem)
+                    .environmentObject(appState)
+            )
             existingWindow.makeKeyAndOrderFront(nil)
             NSApp.activate(ignoringOtherApps: true)
             return
         }
+        
+        let rootView = AnyView(
+            SettingsView(initialSelection: selectedItem)
+                .environmentObject(appState)
+        )
         
         let hostingController = NSHostingController(rootView: rootView)
         self.hostingController = hostingController
@@ -87,25 +71,5 @@ final class SettingsWindowController {
         windowController?.close()
         windowController = nil
         hostingController = nil
-    }
-    
-    /// Temporarily lower the window level to allow other windows to appear above
-    func temporarilyLowerWindowLevel() {
-        window?.level = .normal
-    }
-    
-    /// Restore the window level to floating
-    func restoreWindowLevel() {
-        window?.level = .floating
-    }
-
-    deinit {
-        if let sparkleWillShowObserver {
-            NotificationCenter.default.removeObserver(sparkleWillShowObserver)
-        }
-
-        if let sparkleDidCloseObserver {
-            NotificationCenter.default.removeObserver(sparkleDidCloseObserver)
-        }
     }
 }

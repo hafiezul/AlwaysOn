@@ -76,8 +76,8 @@ final class AppState: ObservableObject {
     
     // MARK: - Permission Management
     
-    /// Accessibility permission state (Combine-based, continuous polling)
-    let accessibilityPermission = AccessibilityPermission()
+    /// Accessibility permission state (Combine-based polling since macOS offers no change callback)
+    let accessibilityPermission = AccessibilityPermission.shared
     
     /// Convenience accessor for permission state
     var hasAccessibilityPermission: Bool {
@@ -103,7 +103,6 @@ final class AppState: ObservableObject {
     private let activitySimulator = ActivitySimulator()
     private var sessionTimer: Timer?
     private var sessionStartTime: Date?
-    private var quickTimerCheckTimer: Timer?
     private var cancellables = Set<AnyCancellable>()
     
     /// Accumulated session duration when paused (for pause/resume functionality)
@@ -124,7 +123,6 @@ final class AppState: ObservableObject {
         static let isActive = "isActive"
         static let activityInterval = "activityInterval"
         static let activityMethod = "activityMethod"
-        static let hasCompletedOnboarding = "hasCompletedOnboarding"
         static let quickTimerEndTime = "quickTimerEndTime"
         static let defaultTimerDuration = "defaultTimerDuration"
     }
@@ -137,15 +135,9 @@ final class AppState: ObservableObject {
     
     // MARK: - Onboarding State
     
-    /// Whether the user has completed the initial permission onboarding
-    var hasCompletedOnboarding: Bool {
-        get { UserDefaults.standard.bool(forKey: Keys.hasCompletedOnboarding) }
-        set { UserDefaults.standard.set(newValue, forKey: Keys.hasCompletedOnboarding) }
-    }
-
     /// Whether to show the permissions window on launch
     var needsPermissionsOnboarding: Bool {
-        !hasCompletedOnboarding || !accessibilityPermission.hasPermission
+        !accessibilityPermission.onboardingCompleted || !accessibilityPermission.hasPermission
     }
     
     // MARK: - Computed Properties
@@ -184,21 +176,18 @@ final class AppState: ObservableObject {
         self.profileManager = profileManager
         self.workScheduleManager = WorkScheduleManager(schedule: initialProfile.workSchedule)
 
-        // Restore persisted state
-        self.isActive = defaults.bool(forKey: Keys.isActive)
-        self.activityInterval = initialProfile.activityInterval > 0 ? initialProfile.activityInterval : Defaults.activityInterval
-        self.activityMethod = initialProfile.activityMethod
-        self.defaultTimerDuration = initialProfile.defaultTimerDuration
-        
-        // Set default interval if not previously set
-        if activityInterval == 0 {
-            activityInterval = Defaults.activityInterval
-        }
+        // Restore persisted state through backing storage so the didSet side
+        // effects (persistence writes, simulator restarts, simulation starts)
+        // don't re-run before initialization finishes
+        self._isActive = Published(initialValue: defaults.bool(forKey: Keys.isActive))
+        self._activityInterval = Published(initialValue: initialProfile.activityInterval > 0 ? initialProfile.activityInterval : Defaults.activityInterval)
+        self._activityMethod = Published(initialValue: initialProfile.activityMethod)
+        self._defaultTimerDuration = Published(initialValue: initialProfile.defaultTimerDuration)
         
         // Restore quick timer if still valid
         if let savedEndTime = defaults.object(forKey: Keys.quickTimerEndTime) as? Date {
             if savedEndTime > Date() {
-                self.quickTimerEndTime = savedEndTime
+                self._quickTimerEndTime = Published(initialValue: savedEndTime)
             } else {
                 // Timer expired while app was closed
                 defaults.removeObject(forKey: Keys.quickTimerEndTime)
@@ -212,8 +201,8 @@ final class AppState: ObservableObject {
         setupNotificationCallbacks()
         setupProfileSync()
         
-        // Start permission polling
-        accessibilityPermission.startPolling()
+        // Steady-state polling; onboarding temporarily raises the rate when its window opens
+        accessibilityPermission.startPolling(.standard)
         
         // Resume active state if was active before quit (and has permission)
         if isActive && hasAccessibilityPermission {
@@ -240,12 +229,6 @@ final class AppState: ObservableObject {
             pausedQuickTimerEndTime = quickTimerEndTime
         } else {
             sessionSource = .manual
-            
-            // Restore saved session state if there was a saved session
-            if pausedSessionDuration > 0 {
-                // Resume from paused state
-                // sessionStartTime will be set to calculate from pausedSessionDuration
-            }
             
             // Restore quick timer if it was active when paused
             if let savedTimerEndTime = pausedQuickTimerEndTime {
@@ -352,10 +335,10 @@ final class AppState: ObservableObject {
             accessibilityPermission: accessibilityPermission,
             onContinue: { [weak self] in
                 guard let self else { return }
-                self.hasCompletedOnboarding = true
+                self.accessibilityPermission.onboardingCompleted = true
+                // Back to steady-state polling now that the prompt is done
                 self.accessibilityPermission.stopPolling()
-                // Start normal operation polling (less frequent when running normally)
-                self.accessibilityPermission.startPolling()
+                self.accessibilityPermission.startPolling(.standard)
             },
             onQuit: {
                 NSApplication.shared.terminate(nil)
@@ -365,10 +348,10 @@ final class AppState: ObservableObject {
 
     /// Complete the permission setup (called after onboarding)
     func completePermissionSetup() {
-        hasCompletedOnboarding = true
+        accessibilityPermission.onboardingCompleted = true
+        // Back to steady-state polling now that onboarding is done
         accessibilityPermission.stopPolling()
-        // Restart with normal polling
-        accessibilityPermission.startPolling()
+        accessibilityPermission.startPolling(.standard)
     }
     
     // MARK: - Private Methods
@@ -393,7 +376,7 @@ final class AppState: ObservableObject {
         // When nested ObservableObjects change, SwiftUI doesn't automatically detect it
         // because it only observes one level deep. We need to manually forward changes.
         
-        workScheduleManager.objectWillChange
+        accessibilityPermission.objectWillChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] (_: Void) in
                 self?.objectWillChange.send()
@@ -510,18 +493,15 @@ final class AppState: ObservableObject {
             sessionStartTime = Date()
         }
         
-        startSessionTimer()
-        startQuickTimerChecker()
+        scheduleSessionHeartbeat()
     }
     
     private func stopActivitySimulation() {
         activitySimulator.stop()
         
-        // Stop timers but preserve duration for pause/resume
+        // Stop the heartbeat but preserve duration for pause/resume
         sessionTimer?.invalidate()
         sessionTimer = nil
-        quickTimerCheckTimer?.invalidate()
-        quickTimerCheckTimer = nil
         
         // Save current session duration for pause (don't reset to 0)
         // The pausedSessionDuration is set in toggle() before stopping
@@ -533,41 +513,39 @@ final class AppState: ObservableObject {
         // Don't reset quickTimerRemaining - it will be calculated on resume
     }
     
-    private func startSessionTimer() {
+    /// One per-second heartbeat drives both the session duration display and
+    /// quick timer expiry, invalidating any previous heartbeat first so repeated
+    /// startup paths (launch restore) can't stack timers
+    private func scheduleSessionHeartbeat() {
+        sessionTimer?.invalidate()
         sessionTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
             Task { @MainActor in
-                guard let self = self, let startTime = self.sessionStartTime else { return }
-                self.activeSessionDuration = Date().timeIntervalSince(startTime)
+                self?.tickSessionState()
             }
         }
     }
     
-    private func startQuickTimerChecker() {
-        quickTimerCheckTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                guard let self = self else { return }
+    private func tickSessionState() {
+        if let startTime = sessionStartTime {
+            activeSessionDuration = Date().timeIntervalSince(startTime)
+        }
+        
+        if let endTime = quickTimerEndTime {
+            let remaining = endTime.timeIntervalSince(Date())
+            if remaining <= 0 {
+                // Timer expired - disable activity
+                quickTimerEndTime = nil
+                quickTimerRemaining = 0
+                sessionSource = nil
+                isActive = false
                 
-                if let endTime = self.quickTimerEndTime {
-                    let remaining = endTime.timeIntervalSince(Date())
-                    if remaining <= 0 {
-                        // Timer expired - disable activity
-                        self.quickTimerEndTime = nil
-                        self.sessionSource = nil
-                        self.isActive = false
-                        
-                        // Send notification if timer expired during work hours
-                        if self.workScheduleManager.schedule.isEnabled && self.workScheduleManager.isWithinSchedule {
-                            self.notificationManager.notifyQuickTimerExpired()
-                        }
-                    } else {
-                        self.quickTimerRemaining = remaining
-                    }
+                // Send notification if timer expired during work hours
+                if workScheduleManager.schedule.isEnabled && workScheduleManager.isWithinSchedule {
+                    notificationManager.notifyQuickTimerExpired()
                 }
+            } else {
+                quickTimerRemaining = remaining
             }
         }
-    }
-    
-    deinit {
-        // Cleanup happens automatically
     }
 }
