@@ -19,6 +19,16 @@ final class ActivitySimulator {
     
     /// Tracks which method was used last (for alternating mode)
     private var lastMethodWasMouse = true
+
+    /// Suppression rules evaluated before each tick
+    var gate = ActivityGate()
+
+    /// Seconds since the last real or synthetic input event. Injectable for tests.
+    /// kCGAnyInputEventType (~0) matches any input class; stable for binary compatibility.
+    var idleSecondsProvider: () -> TimeInterval = {
+        CGEventSource.secondsSinceLastEventType(.combinedSessionState,
+                                                eventType: CGEventType(rawValue: ~0)!)
+    }
     
     // MARK: - Public Methods
     
@@ -74,6 +84,13 @@ final class ActivitySimulator {
     
     /// Performs activity simulation based on the selected method
     private func simulateActivity() {
+        guard gate.shouldPost(idleSeconds: idleSecondsProvider()) else {
+            #if DEBUG
+            print("[ActivitySimulator] Skipped: user active within idle threshold")
+            #endif
+            return
+        }
+
         switch activityMethod {
         case .mouse:
             simulateMouseActivity()

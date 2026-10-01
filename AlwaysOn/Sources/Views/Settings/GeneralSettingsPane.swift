@@ -61,6 +61,12 @@ struct GeneralSettingsPane: View {
                 Text("Automatically pause after the selected duration. Choose 'No limit' to stay active indefinitely.")
                     .font(.caption)
                     .foregroundColor(.secondary)
+
+                Toggle("Only simulate when idle", isOn: $appState.simulateOnlyWhenIdle)
+
+                Text("Skips simulated input whenever you produced input in the last 30 seconds, since your own activity already keeps the system awake.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             } header: {
                 Text("Activity")
             }

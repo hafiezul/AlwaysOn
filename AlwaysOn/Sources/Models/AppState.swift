@@ -52,6 +52,14 @@ final class AppState: ObservableObject {
             syncActiveProfileSettings()
         }
     }
+
+    /// Whether simulation is skipped while the user was recently active
+    @Published var simulateOnlyWhenIdle: Bool {
+        didSet {
+            UserDefaults.standard.set(simulateOnlyWhenIdle, forKey: Keys.simulateOnlyWhenIdle)
+            activitySimulator.gate.idleOnlyEnabled = simulateOnlyWhenIdle
+        }
+    }
     
     // MARK: - Quick Timer Properties
     
@@ -136,6 +144,7 @@ final class AppState: ObservableObject {
         static let quickTimerEndTime = "quickTimerEndTime"
         static let defaultTimerDuration = "defaultTimerDuration"
         static let sessionSource = "sessionSource"
+        static let simulateOnlyWhenIdle = "simulateOnlyWhenIdle"
     }
     
     private enum Defaults {
@@ -194,6 +203,8 @@ final class AppState: ObservableObject {
         self._activityInterval = Published(initialValue: initialProfile.activityInterval > 0 ? initialProfile.activityInterval : Defaults.activityInterval)
         self._activityMethod = Published(initialValue: initialProfile.activityMethod)
         self._defaultTimerDuration = Published(initialValue: initialProfile.defaultTimerDuration)
+        self._simulateOnlyWhenIdle = Published(initialValue: defaults.bool(forKey: Keys.simulateOnlyWhenIdle))
+        activitySimulator.gate.idleOnlyEnabled = simulateOnlyWhenIdle
         
         // Restore quick timer if still valid
         if let savedEndTime = defaults.object(forKey: Keys.quickTimerEndTime) as? Date {
