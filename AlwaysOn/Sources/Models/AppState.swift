@@ -1,6 +1,7 @@
 import Foundation
 import Combine
 import AppKit
+import Carbon.HIToolbox
 
 /// Central state management for the AlwaysOn app
 /// Keeps track of active status and coordinates with ActivitySimulator
@@ -76,6 +77,14 @@ final class AppState: ObservableObject {
             activitySimulator.gate.targetBundleIDs = targetApps
         }
     }
+
+    /// Whether the system-wide ⌥⌘K hotkey toggles the session
+    @Published var globalHotKeyEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(globalHotKeyEnabled, forKey: Keys.globalHotKeyEnabled)
+            refreshGlobalHotKey()
+        }
+    }
     
     // MARK: - Quick Timer Properties
     
@@ -135,6 +144,7 @@ final class AppState: ObservableObject {
     // MARK: - Private Properties
     
     private let activitySimulator = ActivitySimulator()
+    private let globalHotKeyManager = GlobalHotKeyManager()
     private var sessionTimer: Timer?
     private var sessionStartTime: Date?
     private var cancellables = Set<AnyCancellable>()
@@ -163,6 +173,7 @@ final class AppState: ObservableObject {
         static let simulateOnlyWhenIdle = "simulateOnlyWhenIdle"
         static let requireTargetApp = "requireTargetApp"
         static let targetApps = "targetApps"
+        static let globalHotKeyEnabled = "globalHotKeyEnabled"
     }
     
     private enum Defaults {
@@ -224,9 +235,16 @@ final class AppState: ObservableObject {
         self._simulateOnlyWhenIdle = Published(initialValue: defaults.bool(forKey: Keys.simulateOnlyWhenIdle))
         self._requireTargetApp = Published(initialValue: defaults.bool(forKey: Keys.requireTargetApp))
         self._targetApps = Published(initialValue: Set(defaults.stringArray(forKey: Keys.targetApps) ?? []))
+        self._globalHotKeyEnabled = Published(initialValue: defaults.object(forKey: Keys.globalHotKeyEnabled) as? Bool ?? true)
         activitySimulator.gate.idleOnlyEnabled = simulateOnlyWhenIdle
         activitySimulator.gate.requireTargetApp = requireTargetApp
         activitySimulator.gate.targetBundleIDs = targetApps
+        globalHotKeyManager.onKeyDown = { [weak self] in
+            Task { @MainActor in
+                self?.toggle()
+            }
+        }
+        refreshGlobalHotKey()
         
         // Restore quick timer if still valid
         if let savedEndTime = defaults.object(forKey: Keys.quickTimerEndTime) as? Date {
@@ -519,6 +537,15 @@ final class AppState: ObservableObject {
     private func restartActivitySimulatorWithCurrentSettings() {
         activitySimulator.stop()
         activitySimulator.start(interval: activityInterval, method: activityMethod)
+    }
+
+    private func refreshGlobalHotKey() {
+        if globalHotKeyEnabled {
+            globalHotKeyManager.register(keyCode: UInt32(kVK_ANSI_K),
+                                         modifiers: UInt32(optionKey | cmdKey))
+        } else {
+            globalHotKeyManager.unregister()
+        }
     }
     
     private func handleActiveStateChange() {

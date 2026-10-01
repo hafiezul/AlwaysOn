@@ -67,6 +67,12 @@ struct GeneralSettingsPane: View {
                 Text("Skips simulated input whenever you produced input in the last 30 seconds, since your own activity already keeps the system awake.")
                     .font(.caption)
                     .foregroundColor(.secondary)
+
+                Toggle("Global hotkey (⌥⌘K)", isOn: $appState.globalHotKeyEnabled)
+
+                Text("Toggles your session from any app, even with the menu closed.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             } header: {
                 Text("Activity")
             }

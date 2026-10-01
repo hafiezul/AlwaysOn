@@ -20,6 +20,7 @@ If you find this app useful, consider supporting its development:
 ## Core Features
 
 - Start, pause, resume, or stop activity simulation from the menu bar
+- Toggle the session from anywhere with the ⌥⌘K global hotkey
 - Use mouse, keyboard, or alternating activity methods
 - Optionally skip simulated input while you are actively using the machine
 - Optionally pause simulation while no chat or meeting app is running

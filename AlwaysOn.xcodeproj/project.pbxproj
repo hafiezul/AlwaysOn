@@ -33,6 +33,7 @@
 		100000000000001F /* ProfileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000020 /* ProfileManager.swift */; };
 		1000000000000020 /* ProfilesSettingsPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000021 /* ProfilesSettingsPane.swift */; };
 		1000000000000021 /* ActivityGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000022 /* ActivityGate.swift */; };
+		1000000000000022 /* GlobalHotKeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000023 /* GlobalHotKeyManager.swift */; };
 		1000000000000030 /* WorkScheduleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000030 /* WorkScheduleTests.swift */; };
 		1000000000000031 /* UpdateCheckerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000031 /* UpdateCheckerTests.swift */; };
 		1000000000000032 /* ProfileManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000032 /* ProfileManagerTests.swift */; };
@@ -76,6 +77,7 @@
 		2000000000000020 /* ProfileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileManager.swift; sourceTree = "<group>"; };
 		2000000000000021 /* ProfilesSettingsPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilesSettingsPane.swift; sourceTree = "<group>"; };
 		2000000000000022 /* ActivityGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityGate.swift; sourceTree = "<group>"; };
+		2000000000000023 /* GlobalHotKeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalHotKeyManager.swift; sourceTree = "<group>"; };
 		3000000000000001 /* AlwaysOn.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AlwaysOn.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2000000000000030 /* WorkScheduleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkScheduleTests.swift; sourceTree = "<group>"; };
 		2000000000000031 /* UpdateCheckerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateCheckerTests.swift; sourceTree = "<group>"; };
@@ -161,6 +163,7 @@
 			children = (
 				200000000000000D /* AccessibilityPermission.swift */,
 				2000000000000003 /* ActivitySimulator.swift */,
+				2000000000000023 /* GlobalHotKeyManager.swift */,
 				200000000000000A /* LaunchAtLoginManager.swift */,
 				200000000000001E /* NotificationManager.swift */,
 				200000000000000F /* PermissionsWindowController.swift */,
@@ -344,6 +347,7 @@
 				100000000000001F /* ProfileManager.swift in Sources */,
 				1000000000000020 /* ProfilesSettingsPane.swift in Sources */,
 				1000000000000021 /* ActivityGate.swift in Sources */,
+				1000000000000022 /* GlobalHotKeyManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
