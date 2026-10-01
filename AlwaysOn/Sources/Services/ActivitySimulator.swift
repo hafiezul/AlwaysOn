@@ -100,9 +100,10 @@ final class ActivitySimulator {
         let currentLocation = NSEvent.mouseLocation
         
         // Convert from bottom-left origin (AppKit) to top-left origin (CoreGraphics)
-        guard let screen = NSScreen.main else { return }
-        let screenHeight = screen.frame.height
-        let cgPoint = CGPoint(x: currentLocation.x, y: screenHeight - currentLocation.y)
+        // using the screen the cursor is on; multi-display setups offset screen
+        // origins, so a plain height subtraction would teleport the cursor
+        guard let screen = NSScreen.screens.first(where: { $0.frame.contains(currentLocation) }) ?? NSScreen.main else { return }
+        let cgPoint = CGPoint(x: currentLocation.x, y: screen.frame.maxY - currentLocation.y)
         
         // Calculate new position (move by 1 pixel)
         let newPoint = CGPoint(x: cgPoint.x + moveDirection, y: cgPoint.y)
