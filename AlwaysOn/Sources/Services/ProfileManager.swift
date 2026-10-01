@@ -16,15 +16,7 @@ final class ProfileManager: ObservableObject {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
 
-        let loadedProfiles: [Profile]
-        if let data = defaults.data(forKey: Keys.profiles),
-           let decodedProfiles = try? JSONDecoder().decode([Profile].self, from: data),
-           !decodedProfiles.isEmpty {
-            loadedProfiles = decodedProfiles
-        } else {
-            loadedProfiles = [Profile.makeDefault(from: defaults)]
-        }
-
+        let loadedProfiles = Self.loadProfiles(from: defaults) ?? [Profile.makeDefault(from: defaults)]
         self.profiles = loadedProfiles
 
         if let activeProfileIdString = defaults.string(forKey: Keys.activeProfileId),
@@ -98,9 +90,7 @@ final class ProfileManager: ObservableObject {
     static func migrateIfNeeded(defaults: UserDefaults = .standard) {
         guard !defaults.bool(forKey: Keys.profilesMigrated) else { return }
 
-        if let data = defaults.data(forKey: Keys.profiles),
-           let decodedProfiles = try? JSONDecoder().decode([Profile].self, from: data),
-           !decodedProfiles.isEmpty {
+        if Self.loadProfiles(from: defaults) != nil {
             defaults.set(true, forKey: Keys.profilesMigrated)
             return
         }
@@ -112,13 +102,20 @@ final class ProfileManager: ObservableObject {
         defaults.set(true, forKey: Keys.profilesMigrated)
     }
 
+    static func loadProfiles(from defaults: UserDefaults) -> [Profile]? {
+        guard let data = defaults.data(forKey: Keys.profiles),
+              let decodedProfiles = try? JSONDecoder().decode([Profile].self, from: data),
+              !decodedProfiles.isEmpty else { return nil }
+        return decodedProfiles
+    }
+
+    static func encodeProfiles(_ profiles: [Profile]) -> Data {
+        try! JSONEncoder().encode(profiles)
+    }
+
     private func persist() {
         defaults.set(Self.encodeProfiles(profiles), forKey: Keys.profiles)
 
         defaults.set(activeProfileId.uuidString, forKey: Keys.activeProfileId)
-    }
-
-    private static func encodeProfiles(_ profiles: [Profile]) -> Data {
-        try! JSONEncoder().encode(profiles)
     }
 }

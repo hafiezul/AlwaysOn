@@ -41,17 +41,21 @@ struct WorkSchedule: Codable, Equatable {
     
     /// Whether the current time falls within the scheduled work hours
     var isCurrentlyWithinSchedule: Bool {
+        isWithinSchedule(on: Date())
+    }
+    
+    /// Whether the given time falls within the scheduled work hours
+    func isWithinSchedule(on date: Date) -> Bool {
         guard isEnabled else { return false }
         
         let calendar = Calendar.current
-        let now = Date()
         
-        // Check if today is an active day
-        let weekday = calendar.component(.weekday, from: now)
+        // Check if this date is an active day
+        let weekday = calendar.component(.weekday, from: date)
         guard activeDays.contains(weekday) else { return false }
         
-        // Check if current time is within the schedule
-        let currentMinutes = calendar.component(.hour, from: now) * 60 + calendar.component(.minute, from: now)
+        // Check if it is within the schedule window
+        let currentMinutes = calendar.component(.hour, from: date) * 60 + calendar.component(.minute, from: date)
         return currentMinutes >= startTimeMinutes && currentMinutes < endTimeMinutes
     }
     

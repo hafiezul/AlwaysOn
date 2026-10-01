@@ -184,17 +184,18 @@ final class UpdateChecker {
     
     // MARK: - Private Helpers
     
-    /// Normalize version string (remove 'v' prefix, trim whitespace)
-    private static func normalizeVersion(_ version: String) -> String {
-        version
-            .trimmingCharacters(in: .whitespaces)
-            .lowercased()
-            .replacingOccurrences(of: "v", with: "")
+    /// Normalize version string (trim whitespace, lowercase, drop a single leading 'v')
+    static func normalizeVersion(_ version: String) -> String {
+        var trimmed = version.trimmingCharacters(in: .whitespaces).lowercased()
+        if trimmed.hasPrefix("v") {
+            trimmed.removeFirst()
+        }
+        return trimmed
     }
     
     /// Compare two version strings
     /// - Returns: true if version1 is newer than version2
-    private static func isVersion(_ version1: String, newerThan version2: String) -> Bool {
+    static func isVersion(_ version1: String, newerThan version2: String) -> Bool {
         let v1Components = version1.split(separator: ".").compactMap { Int($0) }
         let v2Components = version2.split(separator: ".").compactMap { Int($0) }
         

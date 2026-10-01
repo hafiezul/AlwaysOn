@@ -32,6 +32,16 @@
 		100000000000001E /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000001F /* Profile.swift */; };
 		100000000000001F /* ProfileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000020 /* ProfileManager.swift */; };
 		1000000000000020 /* ProfilesSettingsPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000021 /* ProfilesSettingsPane.swift */; };
+		1000000000000030 /* WorkScheduleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000030 /* WorkScheduleTests.swift */; };
+		1000000000000031 /* UpdateCheckerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000031 /* UpdateCheckerTests.swift */; };
+		1000000000000032 /* ProfileManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000032 /* ProfileManagerTests.swift */; };
+		1000000000000033 /* QuickTimerDurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000033 /* QuickTimerDurationTests.swift */; };
+		1000000000000040 /* WorkSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000040 /* WorkSchedule.swift */; };
+		1000000000000041 /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000041 /* Profile.swift */; };
+		1000000000000042 /* QuickTimerDuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000042 /* QuickTimerDuration.swift */; };
+		1000000000000043 /* ActivityMethod.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000043 /* ActivityMethod.swift */; };
+		1000000000000044 /* ProfileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000044 /* ProfileManager.swift */; };
+		1000000000000045 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000045 /* UpdateChecker.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -63,6 +73,17 @@
 		2000000000000020 /* ProfileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileManager.swift; sourceTree = "<group>"; };
 		2000000000000021 /* ProfilesSettingsPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilesSettingsPane.swift; sourceTree = "<group>"; };
 		3000000000000001 /* AlwaysOn.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AlwaysOn.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2000000000000030 /* WorkScheduleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkScheduleTests.swift; sourceTree = "<group>"; };
+		2000000000000031 /* UpdateCheckerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateCheckerTests.swift; sourceTree = "<group>"; };
+		2000000000000032 /* ProfileManagerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileManagerTests.swift; sourceTree = "<group>"; };
+		2000000000000033 /* QuickTimerDurationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickTimerDurationTests.swift; sourceTree = "<group>"; };
+		3000000000000002 /* AlwaysOnTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AlwaysOnTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		2000000000000040 /* WorkSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WorkSchedule.swift; path = ../AlwaysOn/Sources/Models/WorkSchedule.swift; sourceTree = "<group>"; };
+		2000000000000041 /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Profile.swift; path = ../AlwaysOn/Sources/Models/Profile.swift; sourceTree = "<group>"; };
+		2000000000000042 /* QuickTimerDuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = QuickTimerDuration.swift; path = ../AlwaysOn/Sources/Models/QuickTimerDuration.swift; sourceTree = "<group>"; };
+		2000000000000043 /* ActivityMethod.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ActivityMethod.swift; path = ../AlwaysOn/Sources/Models/ActivityMethod.swift; sourceTree = "<group>"; };
+		2000000000000044 /* ProfileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ProfileManager.swift; path = ../AlwaysOn/Sources/Services/ProfileManager.swift; sourceTree = "<group>"; };
+		2000000000000045 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = UpdateChecker.swift; path = ../AlwaysOn/Sources/Services/UpdateChecker.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -80,6 +101,7 @@
 			isa = PBXGroup;
 			children = (
 				5000000000000002 /* AlwaysOn */,
+				500000000000000B /* AlwaysOnTests */,
 				5000000000000009 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -178,8 +200,26 @@
 			isa = PBXGroup;
 			children = (
 				3000000000000001 /* AlwaysOn.app */,
+				3000000000000002 /* AlwaysOnTests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		500000000000000B /* AlwaysOnTests */ = {
+			isa = PBXGroup;
+			children = (
+				2000000000000030 /* WorkScheduleTests.swift */,
+				2000000000000031 /* UpdateCheckerTests.swift */,
+				2000000000000032 /* ProfileManagerTests.swift */,
+				2000000000000033 /* QuickTimerDurationTests.swift */,
+				2000000000000040 /* WorkSchedule.swift */,
+				2000000000000041 /* Profile.swift */,
+				2000000000000042 /* QuickTimerDuration.swift */,
+				2000000000000043 /* ActivityMethod.swift */,
+				2000000000000044 /* ProfileManager.swift */,
+				2000000000000045 /* UpdateChecker.swift */,
+			);
+			path = AlwaysOnTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -202,6 +242,21 @@
 			productReference = 3000000000000001 /* AlwaysOn.app */;
 			productType = "com.apple.product-type.application";
 		};
+		6000000000000005 /* AlwaysOnTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 7000000000000004 /* Build configuration list for PBXNativeTarget "AlwaysOnTests" */;
+			buildPhases = (
+				6000000000000004 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AlwaysOnTests;
+			productName = AlwaysOnTests;
+			productReference = 3000000000000002 /* AlwaysOnTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -213,6 +268,9 @@
 				LastUpgradeCheck = 1500;
 				TargetAttributes = {
 					6000000000000001 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+					6000000000000002 = {
 						CreatedOnToolsVersion = 15.0;
 					};
 				};
@@ -231,6 +289,7 @@
 			projectRoot = "";
 			targets = (
 				6000000000000001 /* AlwaysOn */,
+				6000000000000005 /* AlwaysOnTests */,
 			);
 		};
 /* End PBXProject section */
@@ -275,6 +334,23 @@
 				100000000000001E /* Profile.swift in Sources */,
 				100000000000001F /* ProfileManager.swift in Sources */,
 				1000000000000020 /* ProfilesSettingsPane.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6000000000000004 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1000000000000030 /* WorkScheduleTests.swift in Sources */,
+				1000000000000031 /* UpdateCheckerTests.swift in Sources */,
+				1000000000000032 /* ProfileManagerTests.swift in Sources */,
+				1000000000000033 /* QuickTimerDurationTests.swift in Sources */,
+				1000000000000040 /* WorkSchedule.swift in Sources */,
+				1000000000000041 /* Profile.swift in Sources */,
+				1000000000000042 /* QuickTimerDuration.swift in Sources */,
+				1000000000000043 /* ActivityMethod.swift in Sources */,
+				1000000000000044 /* ProfileManager.swift in Sources */,
+				1000000000000045 /* UpdateChecker.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -453,6 +529,32 @@
 			};
 			name = Release;
 		};
+		9000000000000005 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.alwayson.app.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		9000000000000006 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.alwayson.app.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -470,6 +572,15 @@
 			buildConfigurations = (
 				9000000000000003 /* Debug */,
 				9000000000000004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		7000000000000004 /* Build configuration list for PBXNativeTarget "AlwaysOnTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9000000000000005 /* Debug */,
+				9000000000000006 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
