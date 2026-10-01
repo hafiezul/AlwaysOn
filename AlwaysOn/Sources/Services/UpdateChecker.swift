@@ -31,21 +31,6 @@ enum AppUpdateRepository {
     }
 }
 
-enum AppUpdateMode: String {
-    case manual
-    case sparkle
-
-    static var current: AppUpdateMode {
-        Bundle.main
-            .infoPlistString(forKey: "AlwaysOnUpdateMode")
-            .flatMap(AppUpdateMode.init(rawValue:)) ?? .manual
-    }
-
-    var usesSparkle: Bool {
-        self == .sparkle
-    }
-}
-
 struct AppUpdateInfo {
     let version: String
     let releaseURL: URL
@@ -113,10 +98,6 @@ final class UpdateChecker {
 
     static var currentBuildNumber: String {
         Bundle.main.buildNumber
-    }
-
-    static var currentMode: AppUpdateMode {
-        AppUpdateMode.current
     }
 
     static var repositoryURL: URL {

@@ -5,12 +5,11 @@ AlwaysOn releases are built for manual installation without an Apple Developer I
 The GitHub Actions release workflow:
 
 1. Builds `AlwaysOn.app` in Release configuration.
-2. Forces `ALWAYSON_UPDATE_MODE=manual`.
-3. Disables Xcode-managed signing during the build.
-4. Ad-hoc signs the finished app bundle.
-5. Verifies the ad-hoc signature.
-6. Packages a single drag-install DMG.
-7. Publishes the DMG SHA-256 in the GitHub release notes.
+2. Disables Xcode-managed signing during the build.
+3. Ad-hoc signs the finished app bundle.
+4. Verifies the ad-hoc signature.
+5. Packages a single drag-install DMG.
+6. Publishes the DMG SHA-256 in the GitHub release notes.
 
 ## Signing Command
 
@@ -23,7 +22,7 @@ codesign --verify --deep --strict --verbose=2 build/Build/Products/Release/Alway
 
 This gives macOS a stable signed bundle to evaluate, but it does not make the app trusted as an identified developer download.
 
-Do not enable hardened runtime for unsigned releases. With the embedded Sparkle framework still linked into the app, hardened runtime library validation can reject the framework at launch after ad-hoc signing.
+Hardened runtime stays disabled for unsigned releases because the ad-hoc signature combined with Gatekeeper checks is sufficient for drag-install distribution, and it keeps the signing surface minimal.
 
 ## User Install Behavior
 

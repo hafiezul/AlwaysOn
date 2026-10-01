@@ -14,8 +14,6 @@
 		1000000000000006 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2000000000000006 /* Assets.xcassets */; };
 		1000000000000007 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000009 /* UpdateChecker.swift */; };
 		1000000000000008 /* LaunchAtLoginManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000A /* LaunchAtLoginManager.swift */; };
-		100000000000000A /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = A000000000000001 /* Sparkle */; };
-		100000000000000B /* SparkleUpdaterManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000C /* SparkleUpdaterManager.swift */; };
 		100000000000000C /* AccessibilityPermission.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000D /* AccessibilityPermission.swift */; };
 		100000000000000D /* PermissionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000E /* PermissionsView.swift */; };
 		100000000000000E /* PermissionsWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000000F /* PermissionsWindowController.swift */; };
@@ -34,7 +32,6 @@
 		100000000000001E /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 200000000000001F /* Profile.swift */; };
 		100000000000001F /* ProfileManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000020 /* ProfileManager.swift */; };
 		1000000000000020 /* ProfilesSettingsPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000021 /* ProfilesSettingsPane.swift */; };
-		1000000000000022 /* UpdateWindowNotifications.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000023 /* UpdateWindowNotifications.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -47,7 +44,6 @@
 		2000000000000008 /* AlwaysOn.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AlwaysOn.entitlements; sourceTree = "<group>"; };
 		2000000000000009 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
 		200000000000000A /* LaunchAtLoginManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchAtLoginManager.swift; sourceTree = "<group>"; };
-		200000000000000C /* SparkleUpdaterManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparkleUpdaterManager.swift; sourceTree = "<group>"; };
 		200000000000000D /* AccessibilityPermission.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccessibilityPermission.swift; sourceTree = "<group>"; };
 		200000000000000E /* PermissionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionsView.swift; sourceTree = "<group>"; };
 		200000000000000F /* PermissionsWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionsWindowController.swift; sourceTree = "<group>"; };
@@ -66,7 +62,6 @@
 		200000000000001F /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profile.swift; sourceTree = "<group>"; };
 		2000000000000020 /* ProfileManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileManager.swift; sourceTree = "<group>"; };
 		2000000000000021 /* ProfilesSettingsPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilesSettingsPane.swift; sourceTree = "<group>"; };
-		2000000000000023 /* UpdateWindowNotifications.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateWindowNotifications.swift; sourceTree = "<group>"; };
 		3000000000000001 /* AlwaysOn.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AlwaysOn.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -75,7 +70,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				100000000000000A /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -128,7 +122,6 @@
 				200000000000001F /* Profile.swift */,
 				2000000000000017 /* QuickTimerDuration.swift */,
 				2000000000000010 /* SettingsNavigationItem.swift */,
-				2000000000000023 /* UpdateWindowNotifications.swift */,
 				2000000000000018 /* WorkSchedule.swift */,
 			);
 			path = Models;
@@ -144,7 +137,6 @@
 				200000000000000F /* PermissionsWindowController.swift */,
 				2000000000000020 /* ProfileManager.swift */,
 				2000000000000015 /* SettingsWindowController.swift */,
-				200000000000000C /* SparkleUpdaterManager.swift */,
 				2000000000000009 /* UpdateChecker.swift */,
 				2000000000000019 /* WorkScheduleManager.swift */,
 			);
@@ -206,9 +198,6 @@
 			dependencies = (
 			);
 			name = AlwaysOn;
-			packageProductDependencies = (
-				A000000000000001 /* Sparkle */,
-			);
 			productName = AlwaysOn;
 			productReference = 3000000000000001 /* AlwaysOn.app */;
 			productType = "com.apple.product-type.application";
@@ -237,9 +226,6 @@
 				Base,
 			);
 			mainGroup = 5000000000000001;
-			packageReferences = (
-				B000000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */,
-			);
 			productRefGroup = 5000000000000009 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -271,7 +257,6 @@
 				1000000000000005 /* MenuBarView.swift in Sources */,
 				1000000000000007 /* UpdateChecker.swift in Sources */,
 				1000000000000008 /* LaunchAtLoginManager.swift in Sources */,
-				100000000000000B /* SparkleUpdaterManager.swift in Sources */,
 				100000000000000C /* AccessibilityPermission.swift in Sources */,
 				100000000000000D /* PermissionsView.swift in Sources */,
 				100000000000000E /* PermissionsWindowController.swift in Sources */,
@@ -290,7 +275,6 @@
 				100000000000001E /* Profile.swift in Sources */,
 				100000000000001F /* ProfileManager.swift in Sources */,
 				1000000000000020 /* ProfilesSettingsPane.swift in Sources */,
-				1000000000000022 /* UpdateWindowNotifications.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -418,7 +402,6 @@
 		9000000000000003 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYSON_UPDATE_MODE = manual;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = AlwaysOn/AlwaysOn.entitlements;
@@ -446,7 +429,6 @@
 		9000000000000004 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ALWAYSON_UPDATE_MODE = manual;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = AlwaysOn/AlwaysOn.entitlements;
@@ -493,25 +475,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-		B000000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/sparkle-project/Sparkle";
-			requirement = {
-				kind = exactVersion;
-				version = 2.8.1;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		A000000000000001 /* Sparkle */ = {
-			isa = XCSwiftPackageProductDependency;
-			package = B000000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */;
-			productName = Sparkle;
-		};
-/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 8000000000000001 /* Project object */;
 }
