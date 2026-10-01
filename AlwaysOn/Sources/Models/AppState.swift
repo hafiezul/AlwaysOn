@@ -6,7 +6,7 @@ import AppKit
 /// Keeps track of active status and coordinates with ActivitySimulator
 @MainActor
 final class AppState: ObservableObject {
-    enum SessionSource {
+    enum SessionSource: Codable {
         case manual
         case workSchedule(profileName: String)
         case quickTimer
@@ -96,7 +96,17 @@ final class AppState: ObservableObject {
     let notificationManager = NotificationManager()
 
     /// How the current or paused session was started
-    @Published private(set) var sessionSource: SessionSource?
+    /// Persisted so a relaunched schedule-started session can still be stopped by schedule end
+    @Published private(set) var sessionSource: SessionSource? {
+        didSet {
+            if let source = sessionSource,
+               let data = try? JSONEncoder().encode(source) {
+                UserDefaults.standard.set(data, forKey: Keys.sessionSource)
+            } else {
+                UserDefaults.standard.removeObject(forKey: Keys.sessionSource)
+            }
+        }
+    }
     
     // MARK: - Private Properties
     
@@ -125,6 +135,7 @@ final class AppState: ObservableObject {
         static let activityMethod = "activityMethod"
         static let quickTimerEndTime = "quickTimerEndTime"
         static let defaultTimerDuration = "defaultTimerDuration"
+        static let sessionSource = "sessionSource"
     }
     
     private enum Defaults {
@@ -192,6 +203,15 @@ final class AppState: ObservableObject {
                 // Timer expired while app was closed
                 defaults.removeObject(forKey: Keys.quickTimerEndTime)
             }
+        }
+
+        // Restore how the resumed session was started (only relevant for restored active sessions)
+        if isActive,
+           let sourceData = defaults.data(forKey: Keys.sessionSource),
+           let restoredSource = try? JSONDecoder().decode(SessionSource.self, from: sourceData) {
+            self._sessionSource = Published(initialValue: restoredSource)
+        } else {
+            defaults.removeObject(forKey: Keys.sessionSource)
         }
         
         // Set up Combine subscriptions
