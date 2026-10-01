@@ -8,6 +8,8 @@ struct AlwaysOnApp: App {
     private var menuBarIconName: String {
         if appState.isActive {
             return "circle.fill"
+        } else if appState.activeSessionDuration > 0 {
+            return "circle.inset.filled"
         } else {
             return "circle"
         }

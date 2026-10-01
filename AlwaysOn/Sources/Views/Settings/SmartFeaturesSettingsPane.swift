@@ -9,13 +9,6 @@ struct SmartFeaturesSettingsPane: View {
             // Work Schedule Section
             Section {
                 Toggle("Enable Work Hours Schedule", isOn: workScheduleEnabledBinding)
-                    .onChange(of: appState.workScheduleManager.schedule.isEnabled) { newValue in
-                        if newValue {
-                            appState.workScheduleManager.startMonitoring()
-                        } else {
-                            appState.workScheduleManager.stopMonitoring()
-                        }
-                    }
                 
                 if appState.workScheduleManager.schedule.isEnabled {
                     // Time pickers

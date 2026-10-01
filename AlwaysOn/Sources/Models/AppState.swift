@@ -1,12 +1,13 @@
 import Foundation
 import Combine
 import AppKit
+import Carbon
 
 /// Central state management for the AlwaysOn app
 /// Keeps track of active status and coordinates with ActivitySimulator
 @MainActor
-final class AppState: ObservableObject {
-    enum SessionSource {
+final class AppState: NSObject, ObservableObject {
+    enum SessionSource: Codable {
         case manual
         case workSchedule(profileName: String)
         case quickTimer
@@ -50,6 +51,38 @@ final class AppState: ObservableObject {
     @Published var defaultTimerDuration: QuickTimerDuration {
         didSet {
             syncActiveProfileSettings()
+        }
+    }
+
+    /// Whether simulation is skipped while the user was recently active
+    @Published var simulateOnlyWhenIdle: Bool {
+        didSet {
+            UserDefaults.standard.set(simulateOnlyWhenIdle, forKey: Keys.simulateOnlyWhenIdle)
+            activitySimulator.gate.idleOnlyEnabled = simulateOnlyWhenIdle
+        }
+    }
+
+    /// Whether simulation is skipped while no target app is running
+    @Published var requireTargetApp: Bool {
+        didSet {
+            UserDefaults.standard.set(requireTargetApp, forKey: Keys.requireTargetApp)
+            activitySimulator.gate.requireTargetApp = requireTargetApp
+        }
+    }
+
+    /// Bundle IDs counted as target apps when requireTargetApp is on
+    @Published var targetApps: Set<String> {
+        didSet {
+            UserDefaults.standard.set(Array(targetApps), forKey: Keys.targetApps)
+            activitySimulator.gate.targetBundleIDs = targetApps
+        }
+    }
+
+    /// Whether the system-wide ⌥⌘K hotkey toggles the session
+    @Published var globalHotKeyEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(globalHotKeyEnabled, forKey: Keys.globalHotKeyEnabled)
+            refreshGlobalHotKey()
         }
     }
     
@@ -96,11 +129,22 @@ final class AppState: ObservableObject {
     let notificationManager = NotificationManager()
 
     /// How the current or paused session was started
-    @Published private(set) var sessionSource: SessionSource?
+    /// Persisted so a relaunched schedule-started session can still be stopped by schedule end
+    @Published private(set) var sessionSource: SessionSource? {
+        didSet {
+            if let source = sessionSource,
+               let data = try? JSONEncoder().encode(source) {
+                UserDefaults.standard.set(data, forKey: Keys.sessionSource)
+            } else {
+                UserDefaults.standard.removeObject(forKey: Keys.sessionSource)
+            }
+        }
+    }
     
     // MARK: - Private Properties
     
     private let activitySimulator = ActivitySimulator()
+    private let globalHotKeyManager = GlobalHotKeyManager()
     private var sessionTimer: Timer?
     private var sessionStartTime: Date?
     private var cancellables = Set<AnyCancellable>()
@@ -125,6 +169,11 @@ final class AppState: ObservableObject {
         static let activityMethod = "activityMethod"
         static let quickTimerEndTime = "quickTimerEndTime"
         static let defaultTimerDuration = "defaultTimerDuration"
+        static let sessionSource = "sessionSource"
+        static let simulateOnlyWhenIdle = "simulateOnlyWhenIdle"
+        static let requireTargetApp = "requireTargetApp"
+        static let targetApps = "targetApps"
+        static let globalHotKeyEnabled = "globalHotKeyEnabled"
     }
     
     private enum Defaults {
@@ -166,7 +215,7 @@ final class AppState: ObservableObject {
     
     // MARK: - Initialization
     
-    init() {
+    override init() {
         let defaults = UserDefaults.standard
         ProfileManager.migrateIfNeeded(defaults: defaults)
 
@@ -183,6 +232,21 @@ final class AppState: ObservableObject {
         self._activityInterval = Published(initialValue: initialProfile.activityInterval > 0 ? initialProfile.activityInterval : Defaults.activityInterval)
         self._activityMethod = Published(initialValue: initialProfile.activityMethod)
         self._defaultTimerDuration = Published(initialValue: initialProfile.defaultTimerDuration)
+        self._simulateOnlyWhenIdle = Published(initialValue: defaults.bool(forKey: Keys.simulateOnlyWhenIdle))
+        self._requireTargetApp = Published(initialValue: defaults.bool(forKey: Keys.requireTargetApp))
+        self._targetApps = Published(initialValue: Set(defaults.stringArray(forKey: Keys.targetApps) ?? []))
+        self._globalHotKeyEnabled = Published(initialValue: defaults.object(forKey: Keys.globalHotKeyEnabled) as? Bool ?? true)
+        super.init()
+        activitySimulator.gate.idleOnlyEnabled = simulateOnlyWhenIdle
+        activitySimulator.gate.requireTargetApp = requireTargetApp
+        activitySimulator.gate.targetBundleIDs = targetApps
+        globalHotKeyManager.onKeyDown = { [weak self] in
+            Task { @MainActor in
+                self?.toggle()
+            }
+        }
+        refreshGlobalHotKey()
+        registerURLHandler()
         
         // Restore quick timer if still valid
         if let savedEndTime = defaults.object(forKey: Keys.quickTimerEndTime) as? Date {
@@ -192,6 +256,15 @@ final class AppState: ObservableObject {
                 // Timer expired while app was closed
                 defaults.removeObject(forKey: Keys.quickTimerEndTime)
             }
+        }
+
+        // Restore how the resumed session was started (only relevant for restored active sessions)
+        if isActive,
+           let sourceData = defaults.data(forKey: Keys.sessionSource),
+           let restoredSource = try? JSONDecoder().decode(SessionSource.self, from: sourceData) {
+            self._sessionSource = Published(initialValue: restoredSource)
+        } else {
+            defaults.removeObject(forKey: Keys.sessionSource)
         }
         
         // Set up Combine subscriptions
@@ -466,6 +539,66 @@ final class AppState: ObservableObject {
     private func restartActivitySimulatorWithCurrentSettings() {
         activitySimulator.stop()
         activitySimulator.start(interval: activityInterval, method: activityMethod)
+    }
+
+    private func refreshGlobalHotKey() {
+        if globalHotKeyEnabled {
+            globalHotKeyManager.register(keyCode: UInt32(kVK_ANSI_K),
+                                         modifiers: UInt32(optionKey | cmdKey))
+        } else {
+            globalHotKeyManager.unregister()
+        }
+    }
+    
+    // MARK: - URL Commands
+    
+    /// Launcher integrations (Raycast, Alfred, shell) open alwayson:// URLs
+    private func registerURLHandler() {
+        NSAppleEventManager.shared().setEventHandler(
+            self,
+            andSelector: #selector(handleGetURLEvent(_:withReplyEvent:)),
+            forEventClass: AEEventClass(kInternetEventClass),
+            andEventID: AEEventID(kAEGetURL)
+        )
+    }
+    
+    @objc private func handleGetURLEvent(_ event: NSAppleEventDescriptor, withReplyEvent reply: NSAppleEventDescriptor) {
+        guard let directObject = event.paramDescriptor(forKeyword: keyDirectObject),
+              let urlString = directObject.stringValue,
+              let url = URL(string: urlString),
+              let command = URLCommandParser.command(from: url) else { return }
+        
+        Task { @MainActor in
+            applyURLCommand(command)
+        }
+    }
+    
+    private func applyURLCommand(_ command: URLCommand) {
+        switch command {
+        case .start:
+            if !isActive {
+                if hasAccessibilityPermission {
+                    sessionSource = .manual
+                    isActive = true
+                } else {
+                    accessibilityPermission.request()
+                }
+            }
+        case .stop:
+            stopSession()
+        case .toggle:
+            toggle()
+        case .timer(let minutes):
+            let duration: QuickTimerDuration
+            if let minutes {
+                let clamped = min(max(minutes, QuickTimerDuration.customMinutesRange.lowerBound),
+                                  QuickTimerDuration.customMinutesRange.upperBound)
+                duration = .custom(minutes: clamped)
+            } else {
+                duration = defaultTimerDuration
+            }
+            startWithQuickTimer(duration)
+        }
     }
     
     private func handleActiveStateChange() {

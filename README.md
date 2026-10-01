@@ -20,7 +20,10 @@ If you find this app useful, consider supporting its development:
 ## Core Features
 
 - Start, pause, resume, or stop activity simulation from the menu bar
+- Toggle the session from anywhere with the ⌥⌘K global hotkey
 - Use mouse, keyboard, or alternating activity methods
+- Optionally skip simulated input while you are actively using the machine
+- Optionally pause simulation while no chat or meeting app is running
 - Run quick timers or automate sessions with work hours
 - Enable launch at login and optional notifications
 - Save profiles for different activity and schedule setups
@@ -61,6 +64,15 @@ AlwaysOn simulates minimal input on a configurable interval, with 45 seconds as 
 - Alternating: switches between mouse and keyboard input
 
 This keeps macOS from marking the system idle, which many workplace apps use to determine presence.
+
+## Launcher Commands
+
+AlwaysOn registers the `alwayson://` URL scheme, so launchers like Raycast and Alfred can drive it:
+
+- `alwayson://start` starts a session
+- `alwayson://stop` stops the session
+- `alwayson://toggle` starts or pauses
+- `alwayson://timer?minutes=30` keeps online for 30 minutes. Omit `minutes` to use the profile default.
 
 ## Permissions and Updates
 

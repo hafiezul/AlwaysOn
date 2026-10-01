@@ -19,6 +19,23 @@ final class ActivitySimulator {
     
     /// Tracks which method was used last (for alternating mode)
     private var lastMethodWasMouse = true
+
+    /// Suppression rules evaluated before each tick
+    var gate = ActivityGate()
+
+    /// Seconds since the last real or synthetic input event. Injectable for tests.
+    /// kCGAnyInputEventType (~0) matches any input class; stable for binary compatibility.
+    var idleSecondsProvider: () -> TimeInterval = {
+        CGEventSource.secondsSinceLastEventType(.combinedSessionState,
+                                                eventType: CGEventType(rawValue: ~0)!)
+    }
+
+    /// Whether any of the given bundle IDs is currently running. Injectable for tests.
+    var hasRunningTargetProvider: (Set<String>) -> Bool = { bundleIDs in
+        NSWorkspace.shared.runningApplications.contains { app in
+            app.bundleIdentifier.map(bundleIDs.contains) ?? false
+        }
+    }
     
     // MARK: - Public Methods
     
@@ -74,6 +91,14 @@ final class ActivitySimulator {
     
     /// Performs activity simulation based on the selected method
     private func simulateActivity() {
+        guard gate.shouldPost(idleSeconds: idleSecondsProvider(),
+                              hasRunningTarget: hasRunningTargetProvider(gate.targetBundleIDs)) else {
+            #if DEBUG
+            print("[ActivitySimulator] Skipped: gate suppressed this tick")
+            #endif
+            return
+        }
+
         switch activityMethod {
         case .mouse:
             simulateMouseActivity()
