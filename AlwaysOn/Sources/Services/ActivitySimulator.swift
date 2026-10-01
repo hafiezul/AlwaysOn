@@ -29,6 +29,13 @@ final class ActivitySimulator {
         CGEventSource.secondsSinceLastEventType(.combinedSessionState,
                                                 eventType: CGEventType(rawValue: ~0)!)
     }
+
+    /// Whether any of the given bundle IDs is currently running. Injectable for tests.
+    var hasRunningTargetProvider: (Set<String>) -> Bool = { bundleIDs in
+        NSWorkspace.shared.runningApplications.contains { app in
+            app.bundleIdentifier.map(bundleIDs.contains) ?? false
+        }
+    }
     
     // MARK: - Public Methods
     
@@ -84,9 +91,10 @@ final class ActivitySimulator {
     
     /// Performs activity simulation based on the selected method
     private func simulateActivity() {
-        guard gate.shouldPost(idleSeconds: idleSecondsProvider()) else {
+        guard gate.shouldPost(idleSeconds: idleSecondsProvider(),
+                              hasRunningTarget: hasRunningTargetProvider(gate.targetBundleIDs)) else {
             #if DEBUG
-            print("[ActivitySimulator] Skipped: user active within idle threshold")
+            print("[ActivitySimulator] Skipped: gate suppressed this tick")
             #endif
             return
         }

@@ -71,6 +71,32 @@ struct GeneralSettingsPane: View {
                 Text("Activity")
             }
             
+            // Target app section
+            Section {
+                Toggle("Only while a target app is running", isOn: $appState.requireTargetApp)
+
+                if appState.requireTargetApp {
+                    ForEach(TargetApp.catalog) { app in
+                        Toggle(isOn: targetAppBinding(app)) {
+                            HStack {
+                                Text(app.name)
+                                if !TargetApp.isInstalled(app) {
+                                    Text("(not installed)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Text("Skips simulated input while none of the selected apps are running. The session stays active and resumes simulating as soon as one starts.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } header: {
+                Text("Target Apps")
+            }
+            
             // Permission status section
             Section {
                 HStack {
@@ -113,6 +139,19 @@ struct GeneralSettingsPane: View {
         .onAppear {
             launchAtLogin = LaunchAtLoginManager.isEnabled
         }
+    }
+    
+    private func targetAppBinding(_ app: TargetApp) -> Binding<Bool> {
+        Binding(
+            get: { appState.targetApps.contains(app.bundleID) },
+            set: { selected in
+                if selected {
+                    appState.targetApps.insert(app.bundleID)
+                } else {
+                    appState.targetApps.remove(app.bundleID)
+                }
+            }
+        )
     }
 }
 

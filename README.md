@@ -22,6 +22,7 @@ If you find this app useful, consider supporting its development:
 - Start, pause, resume, or stop activity simulation from the menu bar
 - Use mouse, keyboard, or alternating activity methods
 - Optionally skip simulated input while you are actively using the machine
+- Optionally pause simulation while no chat or meeting app is running
 - Run quick timers or automate sessions with work hours
 - Enable launch at login and optional notifications
 - Save profiles for different activity and schedule setups

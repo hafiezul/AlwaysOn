@@ -60,6 +60,22 @@ final class AppState: ObservableObject {
             activitySimulator.gate.idleOnlyEnabled = simulateOnlyWhenIdle
         }
     }
+
+    /// Whether simulation is skipped while no target app is running
+    @Published var requireTargetApp: Bool {
+        didSet {
+            UserDefaults.standard.set(requireTargetApp, forKey: Keys.requireTargetApp)
+            activitySimulator.gate.requireTargetApp = requireTargetApp
+        }
+    }
+
+    /// Bundle IDs counted as target apps when requireTargetApp is on
+    @Published var targetApps: Set<String> {
+        didSet {
+            UserDefaults.standard.set(Array(targetApps), forKey: Keys.targetApps)
+            activitySimulator.gate.targetBundleIDs = targetApps
+        }
+    }
     
     // MARK: - Quick Timer Properties
     
@@ -145,6 +161,8 @@ final class AppState: ObservableObject {
         static let defaultTimerDuration = "defaultTimerDuration"
         static let sessionSource = "sessionSource"
         static let simulateOnlyWhenIdle = "simulateOnlyWhenIdle"
+        static let requireTargetApp = "requireTargetApp"
+        static let targetApps = "targetApps"
     }
     
     private enum Defaults {
@@ -204,7 +222,11 @@ final class AppState: ObservableObject {
         self._activityMethod = Published(initialValue: initialProfile.activityMethod)
         self._defaultTimerDuration = Published(initialValue: initialProfile.defaultTimerDuration)
         self._simulateOnlyWhenIdle = Published(initialValue: defaults.bool(forKey: Keys.simulateOnlyWhenIdle))
+        self._requireTargetApp = Published(initialValue: defaults.bool(forKey: Keys.requireTargetApp))
+        self._targetApps = Published(initialValue: Set(defaults.stringArray(forKey: Keys.targetApps) ?? []))
         activitySimulator.gate.idleOnlyEnabled = simulateOnlyWhenIdle
+        activitySimulator.gate.requireTargetApp = requireTargetApp
+        activitySimulator.gate.targetBundleIDs = targetApps
         
         // Restore quick timer if still valid
         if let savedEndTime = defaults.object(forKey: Keys.quickTimerEndTime) as? Date {
