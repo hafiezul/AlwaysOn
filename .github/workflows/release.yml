@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release version without the leading v (e.g. 1.8.0)"
+        required: true
+        type: string
 
 permissions:
   contents: write
@@ -19,20 +25,37 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Validate tag
+      - name: Resolve and validate version
         run: |
-          TAG_VERSION=${GITHUB_REF#refs/tags/}
-          if [[ ! "$TAG_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Invalid tag '$TAG_VERSION': release tags must look like v1.2.3" >&2
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            VERSION_INPUT="${{ inputs.version }}"
+          else
+            VERSION_INPUT="${GITHUB_REF#refs/tags/}"
+          fi
+
+          VERSION="${VERSION_INPUT#v}"
+          TAG_VERSION="v${VERSION}"
+
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Invalid version '$VERSION_INPUT': release versions must look like 1.8.0" >&2
             exit 1
           fi
-          echo "TAG_VERSION=$TAG_VERSION" >> "$GITHUB_ENV"
 
-      - name: Set version from tag
-        run: |
-          VERSION=${TAG_VERSION#v}
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            if git ls-remote --exit-code --tags origin "refs/tags/$TAG_VERSION" >/dev/null 2>&1; then
+              echo "Tag $TAG_VERSION already exists on origin." >&2
+              exit 1
+            fi
+
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag "$TAG_VERSION"
+            git push origin "$TAG_VERSION"
+          fi
+
           BUILD_NUMBER=$(git rev-list --count HEAD)
 
+          echo "TAG_VERSION=$TAG_VERSION" >> "$GITHUB_ENV"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
 
@@ -92,7 +115,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "$TAG_VERSION" \
-            --title "$TAG_VERSION (unsigned)" \
-            --notes-file release-notes.md \
-            "artifacts/AlwaysOn-${TAG_VERSION}.dmg"
+          DMG="artifacts/AlwaysOn-${TAG_VERSION}.dmg"
+          if gh release view "$TAG_VERSION" >/dev/null 2>&1; then
+            gh release upload "$TAG_VERSION" --clobber "$DMG"
+          else
+            gh release create "$TAG_VERSION" \
+              --title "$TAG_VERSION (unsigned)" \
+              --notes-file release-notes.md \
+              "$DMG"
+          fi
