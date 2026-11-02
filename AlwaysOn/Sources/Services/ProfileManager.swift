@@ -80,10 +80,14 @@ final class ProfileManager: ObservableObject {
     ) {
         guard let index = profiles.firstIndex(where: { $0.id == id }) else { return }
 
-        profiles[index].activityInterval = activityInterval
-        profiles[index].activityMethodId = activityMethod.rawValue
-        profiles[index].defaultTimerDurationId = defaultTimerDuration.id
-        profiles[index].workSchedule = workSchedule
+        var candidate = profiles[index]
+        candidate.activityInterval = activityInterval
+        candidate.activityMethodId = activityMethod.rawValue
+        candidate.defaultTimerDurationId = defaultTimerDuration.id
+        candidate.workSchedule = workSchedule
+        guard candidate != profiles[index] else { return }
+
+        profiles[index] = candidate
         persist()
     }
 

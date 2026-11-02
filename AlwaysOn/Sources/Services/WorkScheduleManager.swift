@@ -32,13 +32,10 @@ final class WorkScheduleManager: ObservableObject {
     init(schedule: WorkSchedule = .default) {
         self.schedule = schedule
         
-        // Initial check
-        updateScheduleState()
-        
-        // Start monitoring if schedule is already enabled
-        // This ensures the timer runs after app restart with an enabled schedule
         if schedule.isEnabled {
             startMonitoring()
+        } else {
+            updateScheduleState()
         }
     }
     
@@ -77,11 +74,6 @@ final class WorkScheduleManager: ObservableObject {
     /// Toggle the schedule on/off
     func toggleEnabled() {
         schedule.isEnabled.toggle()
-        if schedule.isEnabled {
-            startMonitoring()
-        } else {
-            stopMonitoring()
-        }
     }
     
     // MARK: - Private Methods
