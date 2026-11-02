@@ -59,6 +59,60 @@ final class ProfileManagerTests: XCTestCase {
         withExtendedLifetime(subscription) {}
     }
 
+    func testSwitchOnlyPersistsActiveIdAndIgnoresInvalidSwitches() {
+        let recordingDefaults = RecordingDefaults(suiteName: suiteName)!
+        let manager = ProfileManager(defaults: recordingDefaults)
+        let original = manager.profiles[0]
+        let second = Profile(id: UUID(), name: "Second", activityInterval: 60,
+                             activityMethodId: ActivityMethod.keyboard.rawValue,
+                             defaultTimerDurationId: QuickTimerDuration.hour1.id, workSchedule: .default)
+        manager.addProfile(second)
+        let savedBytes = recordingDefaults.data(forKey: "alwayson.profiles")
+        recordingDefaults.writes.removeAll()
+        var publications: [UUID] = []
+        let subscription = manager.$activeProfileId.dropFirst().sink { publications.append($0) }
+
+        XCTAssertNil(manager.switchProfile(to: original.id))
+        XCTAssertNil(manager.switchProfile(to: UUID()))
+        XCTAssertTrue(publications.isEmpty)
+        XCTAssertTrue(recordingDefaults.writes.isEmpty)
+
+        XCTAssertEqual(manager.switchProfile(to: second.id), second)
+        XCTAssertEqual(publications, [second.id])
+        XCTAssertEqual(recordingDefaults.writes, ["alwayson.activeProfileId"])
+        XCTAssertEqual(recordingDefaults.data(forKey: "alwayson.profiles"), savedBytes)
+        XCTAssertEqual(manager.profiles, [original, second])
+        XCTAssertEqual(ProfileManager(defaults: recordingDefaults).activeProfileId, second.id)
+        withExtendedLifetime(subscription) {}
+    }
+
+    func testNoOpRenamesAndUnknownDeletionDoNotPublishOrPersist() {
+        let recordingDefaults = RecordingDefaults(suiteName: suiteName)!
+        let manager = ProfileManager(defaults: recordingDefaults)
+        let original = manager.profiles[0]
+        let second = Profile(id: UUID(), name: "Second", activityInterval: 60,
+                             activityMethodId: ActivityMethod.keyboard.rawValue,
+                             defaultTimerDurationId: QuickTimerDuration.hour1.id, workSchedule: .default)
+        manager.addProfile(second)
+        recordingDefaults.writes.removeAll()
+        var publications: [[Profile]] = []
+        let subscription = manager.$profiles.dropFirst().sink { publications.append($0) }
+
+        manager.renameProfile(second.id, to: "Second")
+        manager.renameProfile(second.id, to: "  Second  ")
+        manager.deleteProfile(UUID())
+        XCTAssertTrue(publications.isEmpty)
+        XCTAssertTrue(recordingDefaults.writes.isEmpty)
+
+        manager.renameProfile(second.id, to: "  Renamed  ")
+        var renamed = second
+        renamed.name = "Renamed"
+        XCTAssertEqual(publications, [[original, renamed]])
+        XCTAssertEqual(ProfileManager.loadProfiles(from: recordingDefaults), [original, renamed])
+        XCTAssertEqual(recordingDefaults.writes, ["alwayson.profiles", "alwayson.activeProfileId"])
+        withExtendedLifetime(subscription) {}
+    }
+
     func testMigrationCreatesDefaultProfileFromLegacyKeys() {
         defaults.set(120.0, forKey: "activityInterval")
         defaults.set("keyboard", forKey: "activityMethod")
@@ -117,6 +171,7 @@ final class ProfileManagerTests: XCTestCase {
 
         XCTAssertEqual(profileManager.activeProfileId, secondProfile.id)
         XCTAssertEqual(profileManager.profiles.count, 1)
+        XCTAssertEqual(ProfileManager(defaults: defaults).activeProfileId, secondProfile.id)
     }
 
     func testDeleteLastProfileIsRefused() {

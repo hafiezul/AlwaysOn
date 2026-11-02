@@ -1,7 +1,7 @@
 import Foundation
 
 /// Quick timer duration options for auto-disable
-enum QuickTimerDuration: Identifiable {
+enum QuickTimerDuration: Identifiable, Hashable {
     case minutes30
     case hour1
     case hours2
@@ -79,17 +79,7 @@ enum QuickTimerDuration: Identifiable {
 
 // Presets only; the custom case exists outside the preset pickers
 extension QuickTimerDuration: CaseIterable {
-    static var allCases: [QuickTimerDuration] {
-        [.minutes30, .hour1, .hours2, .hours4, .hours8, .noLimit]
-    }
-}
-
-extension QuickTimerDuration: Hashable {
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.id == rhs.id
-    }
-
-    func hash(into hasher: inout Hasher) {
-        hasher.combine(id)
-    }
+    static let allCases: [QuickTimerDuration] = [
+        .minutes30, .hour1, .hours2, .hours4, .hours8, .noLimit
+    ]
 }
