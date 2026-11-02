@@ -39,7 +39,7 @@ final class ProfileManager: ObservableObject {
         guard let newProfile = profiles.first(where: { $0.id == id }) else { return nil }
 
         activeProfileId = id
-        persist()
+        defaults.set(id.uuidString, forKey: Keys.activeProfileId)
 
         return newProfile
     }
@@ -50,7 +50,7 @@ final class ProfileManager: ObservableObject {
     }
 
     func deleteProfile(_ id: UUID) {
-        guard profiles.count > 1 else { return }
+        guard profiles.count > 1, profiles.contains(where: { $0.id == id }) else { return }
 
         profiles.removeAll { $0.id == id }
 
@@ -65,7 +65,7 @@ final class ProfileManager: ObservableObject {
         guard let index = profiles.firstIndex(where: { $0.id == id }) else { return }
 
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty else { return }
+        guard !trimmedName.isEmpty, trimmedName != profiles[index].name else { return }
 
         profiles[index].name = trimmedName
         persist()
