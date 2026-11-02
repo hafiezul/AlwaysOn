@@ -34,3 +34,26 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGN_IDENTITY="" \
             test
+
+  optimization-benchmark:
+    name: Focused CPU comparison
+    if: github.event_name == 'pull_request' && github.event.pull_request.base.sha == 'b53797a96f36f3ff22e960d6f3583b306f5b6a0c' && github.head_ref == 't3/optimize-application-quick-wins'
+    runs-on: macos-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Compare production sources
+        run: python3 Scripts/benchmark-optimizations.py --baseline b53797a --candidate "${{ github.event.pull_request.head.sha }}"
+
+      - name: Upload benchmark evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: optimization-benchmark-${{ github.run_id }}-${{ github.run_attempt }}
+          path: benchmark-results/
+          if-no-files-found: error

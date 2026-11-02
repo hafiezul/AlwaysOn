@@ -1,0 +1,1310 @@
+{
+  "baseline_sha": "b53797a96f36f3ff22e960d6f3583b306f5b6a0c",
+  "candidate_sha": "609100bb56edda0f4c2a64814158f1b47931e088",
+  "script_sha256": {
+    "Scripts/benchmark-optimizations.py": "8c9a0d5979226440662d0b2661882e8c6784499fd7b61eedf2ab067c9cd4bc4d",
+    "Scripts/OptimizationBenchmark.swift": "0f74b41f5996c60b93dcba4b989edd46479ff5e11e24ca94eeb0f54b3efef6df"
+  },
+  "environment": {
+    "os": "macOS 26.4.1",
+    "architecture": "arm64",
+    "physical_cores": 12,
+    "logical_cores": 12,
+    "xcode": "26.2 (17C52)",
+    "swift": "Apple Swift 6.2.3",
+    "build": "-O -wmo -swift-version 5",
+    "load_averages": [
+      2.98,
+      3.61,
+      3.33
+    ]
+  },
+  "telemetry": {
+    "before": {
+      "timestamp": "2026-11-02T07:06:56.444465+00:00",
+      "battery": {
+        "AppleRawCurrentCapacity": 6561,
+        "AppleRawMaxCapacity": 6912,
+        "CurrentCapacity": 100,
+        "Voltage": 12269,
+        "Amperage": -720,
+        "InstantAmperage": -720,
+        "IsCharging": false,
+        "ExternalConnected": false,
+        "Temperature": 3058
+      },
+      "aggregate_cpu": {
+        "process_count": 996,
+        "sum_percent": 228.0,
+        "top10_percent": [
+          31.2,
+          27.4,
+          24.3,
+          17.6,
+          15.3,
+          15.0,
+          11.4,
+          10.4,
+          8.7,
+          7.7
+        ]
+      }
+    },
+    "after": {
+      "timestamp": "2026-11-02T07:07:33.015525+00:00",
+      "battery": {
+        "AppleRawCurrentCapacity": 6561,
+        "AppleRawMaxCapacity": 6912,
+        "CurrentCapacity": 100,
+        "Voltage": 12269,
+        "Amperage": -720,
+        "InstantAmperage": -720,
+        "IsCharging": false,
+        "ExternalConnected": false,
+        "Temperature": 3058
+      },
+      "aggregate_cpu": {
+        "process_count": 988,
+        "sum_percent": 168.3,
+        "top10_percent": [
+          30.0,
+          24.0,
+          21.9,
+          18.0,
+          12.9,
+          11.3,
+          10.5,
+          6.5,
+          5.5,
+          3.3
+        ]
+      }
+    }
+  },
+  "runs": [
+    {
+      "side": "baseline",
+      "scenario": "disabled-gates",
+      "label": "0",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.22936,
+        "failures": [],
+        "idle_queries": 1000,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "disabled-gates",
+        "target_queries": 1000,
+        "wall_seconds": 0.531693333
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "disabled-gates",
+      "label": "1",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.234044,
+        "failures": [],
+        "idle_queries": 1000,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "disabled-gates",
+        "target_queries": 1000,
+        "wall_seconds": 0.539533625
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "disabled-gates",
+      "label": "2",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.22608899999999998,
+        "failures": [],
+        "idle_queries": 1000,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "disabled-gates",
+        "target_queries": 1000,
+        "wall_seconds": 0.512316542
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "disabled-gates",
+      "label": "3",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.224654,
+        "failures": [],
+        "idle_queries": 1000,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "disabled-gates",
+        "target_queries": 1000,
+        "wall_seconds": 0.508340792
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "disabled-gates",
+      "label": "4",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.228064,
+        "failures": [],
+        "idle_queries": 1000,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "disabled-gates",
+        "target_queries": 1000,
+        "wall_seconds": 0.509603583
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "disabled-gates",
+      "label": "5",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.230513,
+        "failures": [],
+        "idle_queries": 1000,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "disabled-gates",
+        "target_queries": 1000,
+        "wall_seconds": 0.525861333
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "disabled-gates",
+      "label": "warmup",
+      "kind": "warmup",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.252179,
+        "failures": [],
+        "idle_queries": 1000,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "disabled-gates",
+        "target_queries": 1000,
+        "wall_seconds": 0.611608916
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "disabled-gates",
+      "label": "resources",
+      "kind": "resources",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.22997,
+        "failures": [],
+        "idle_queries": 1000,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "disabled-gates",
+        "target_queries": 1000,
+        "wall_seconds": 0.535782666
+      },
+      "resource_stderr": "        0.55 real         0.09 user         0.14 sys\n            14073856  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                7416  page reclaims\n                   1  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n               11673  involuntary context switches\n          1260245052  instructions retired\n           601441587  cycles elapsed\n             4702688  peak memory footprint\n"
+    },
+    {
+      "side": "candidate",
+      "scenario": "disabled-gates",
+      "label": "0",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 9.999999999999593e-06,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "disabled-gates",
+        "target_queries": 0,
+        "wall_seconds": 7.125e-06
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "disabled-gates",
+      "label": "1",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 9.999999999999593e-06,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "disabled-gates",
+        "target_queries": 0,
+        "wall_seconds": 6.667e-06
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "disabled-gates",
+      "label": "2",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 1.000000000000046e-05,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "disabled-gates",
+        "target_queries": 0,
+        "wall_seconds": 6.667e-06
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "disabled-gates",
+      "label": "3",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 7.000000000000062e-06,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "disabled-gates",
+        "target_queries": 0,
+        "wall_seconds": 5.875e-06
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "disabled-gates",
+      "label": "4",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 9.999999999999593e-06,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "disabled-gates",
+        "target_queries": 0,
+        "wall_seconds": 7.667e-06
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "disabled-gates",
+      "label": "5",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 8.99999999999946e-06,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "disabled-gates",
+        "target_queries": 0,
+        "wall_seconds": 6.334e-06
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "disabled-gates",
+      "label": "warmup",
+      "kind": "warmup",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 4.29999999999979e-05,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "disabled-gates",
+        "target_queries": 0,
+        "wall_seconds": 3.2e-05
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "disabled-gates",
+      "label": "resources",
+      "kind": "resources",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 1.1999999999999858e-05,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "disabled-gates",
+        "target_queries": 0,
+        "wall_seconds": 7.5e-06
+      },
+      "resource_stderr": "        0.01 real         0.00 user         0.00 sys\n             8781824  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                 751  page reclaims\n                   1  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                  54  involuntary context switches\n            41698922  instructions retired\n            20869346  cycles elapsed\n             2851272  peak memory footprint\n"
+    },
+    {
+      "side": "baseline",
+      "scenario": "identical-profile-settings",
+      "label": "0",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.077698,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "identical-profile-settings",
+        "target_queries": 0,
+        "wall_seconds": 0.157328
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "identical-profile-settings",
+      "label": "1",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.063813,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "identical-profile-settings",
+        "target_queries": 0,
+        "wall_seconds": 0.118508666
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "identical-profile-settings",
+      "label": "2",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.064374,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "identical-profile-settings",
+        "target_queries": 0,
+        "wall_seconds": 0.11941025
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "identical-profile-settings",
+      "label": "3",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.063482,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "identical-profile-settings",
+        "target_queries": 0,
+        "wall_seconds": 0.118224625
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "identical-profile-settings",
+      "label": "4",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.06717000000000001,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "identical-profile-settings",
+        "target_queries": 0,
+        "wall_seconds": 0.128580708
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "identical-profile-settings",
+      "label": "5",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.067124,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "identical-profile-settings",
+        "target_queries": 0,
+        "wall_seconds": 0.140407375
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "identical-profile-settings",
+      "label": "warmup",
+      "kind": "warmup",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.069773,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "identical-profile-settings",
+        "target_queries": 0,
+        "wall_seconds": 0.133437833
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "identical-profile-settings",
+      "label": "resources",
+      "kind": "resources",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.06740199999999999,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "identical-profile-settings",
+        "target_queries": 0,
+        "wall_seconds": 0.127171041
+      },
+      "resource_stderr": "        0.14 real         0.06 user         0.01 sys\n            11747328  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                 940  page reclaims\n                   1  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                1118  involuntary context switches\n           709771548  instructions retired\n           202687932  cycles elapsed\n             3293664  peak memory footprint\n"
+    },
+    {
+      "side": "candidate",
+      "scenario": "identical-profile-settings",
+      "label": "0",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.0010800000000000002,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "identical-profile-settings",
+        "target_queries": 0,
+        "wall_seconds": 0.001078875
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "identical-profile-settings",
+      "label": "1",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.0010600000000000002,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "identical-profile-settings",
+        "target_queries": 0,
+        "wall_seconds": 0.001057958
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "identical-profile-settings",
+      "label": "2",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.001065,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "identical-profile-settings",
+        "target_queries": 0,
+        "wall_seconds": 0.0010625
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "identical-profile-settings",
+      "label": "3",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.0010799999999999994,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "identical-profile-settings",
+        "target_queries": 0,
+        "wall_seconds": 0.001078917
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "identical-profile-settings",
+      "label": "4",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.001078,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "identical-profile-settings",
+        "target_queries": 0,
+        "wall_seconds": 0.001084791
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "identical-profile-settings",
+      "label": "5",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.001117,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "identical-profile-settings",
+        "target_queries": 0,
+        "wall_seconds": 0.001145958
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "identical-profile-settings",
+      "label": "warmup",
+      "kind": "warmup",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.001065,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "identical-profile-settings",
+        "target_queries": 0,
+        "wall_seconds": 0.001062291
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "identical-profile-settings",
+      "label": "resources",
+      "kind": "resources",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.0010610000000000003,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "identical-profile-settings",
+        "target_queries": 0,
+        "wall_seconds": 0.001057125
+      },
+      "resource_stderr": "        0.01 real         0.00 user         0.00 sys\n             8798208  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                 752  page reclaims\n                   1  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                  47  involuntary context switches\n            57951186  instructions retired\n            22891061  cycles elapsed\n             2851272  peak memory footprint\n"
+    },
+    {
+      "side": "baseline",
+      "scenario": "profile-switch",
+      "label": "0",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.074798,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "profile-switch",
+        "target_queries": 0,
+        "wall_seconds": 0.262596125
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "profile-switch",
+      "label": "1",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.074002,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "profile-switch",
+        "target_queries": 0,
+        "wall_seconds": 0.1948565
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "profile-switch",
+      "label": "2",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.074256,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "profile-switch",
+        "target_queries": 0,
+        "wall_seconds": 0.195243875
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "profile-switch",
+      "label": "3",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.073683,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "profile-switch",
+        "target_queries": 0,
+        "wall_seconds": 0.182883459
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "profile-switch",
+      "label": "4",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.074666,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "profile-switch",
+        "target_queries": 0,
+        "wall_seconds": 0.184815584
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "profile-switch",
+      "label": "5",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.076218,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "profile-switch",
+        "target_queries": 0,
+        "wall_seconds": 0.198961791
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "profile-switch",
+      "label": "warmup",
+      "kind": "warmup",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.075784,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "profile-switch",
+        "target_queries": 0,
+        "wall_seconds": 0.221720041
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "profile-switch",
+      "label": "resources",
+      "kind": "resources",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.07397400000000001,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "profile-switch",
+        "target_queries": 0,
+        "wall_seconds": 0.183727875
+      },
+      "resource_stderr": "        0.19 real         0.06 user         0.01 sys\n            11730944  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                 939  page reclaims\n                   1  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                2051  involuntary context switches\n           744564117  instructions retired\n           214312478  cycles elapsed\n             3277280  peak memory footprint\n"
+    },
+    {
+      "side": "candidate",
+      "scenario": "profile-switch",
+      "label": "0",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.016863,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "profile-switch",
+        "target_queries": 0,
+        "wall_seconds": 0.076510459
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "profile-switch",
+      "label": "1",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.016682000000000002,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "profile-switch",
+        "target_queries": 0,
+        "wall_seconds": 0.070035792
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "profile-switch",
+      "label": "2",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.016491,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "profile-switch",
+        "target_queries": 0,
+        "wall_seconds": 0.075739208
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "profile-switch",
+      "label": "3",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.01692,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "profile-switch",
+        "target_queries": 0,
+        "wall_seconds": 0.071242541
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "profile-switch",
+      "label": "4",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.016655999999999997,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "profile-switch",
+        "target_queries": 0,
+        "wall_seconds": 0.075346958
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "profile-switch",
+      "label": "5",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.016619000000000002,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "profile-switch",
+        "target_queries": 0,
+        "wall_seconds": 0.070358834
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "profile-switch",
+      "label": "warmup",
+      "kind": "warmup",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.016906,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "profile-switch",
+        "target_queries": 0,
+        "wall_seconds": 0.0707385
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "profile-switch",
+      "label": "resources",
+      "kind": "resources",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.016851,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "profile-switch",
+        "target_queries": 0,
+        "wall_seconds": 0.0709585
+      },
+      "resource_stderr": "        0.08 real         0.01 user         0.00 sys\n             8814592  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                 753  page reclaims\n                   1  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                1058  involuntary context switches\n           158324304  instructions retired\n            60669955  cycles elapsed\n             2867656  peak memory footprint\n"
+    },
+    {
+      "side": "baseline",
+      "scenario": "unchanged-profile-rename",
+      "label": "0",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.060454999999999995,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "unchanged-profile-rename",
+        "target_queries": 0,
+        "wall_seconds": 0.114527
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "unchanged-profile-rename",
+      "label": "1",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.060265000000000006,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "unchanged-profile-rename",
+        "target_queries": 0,
+        "wall_seconds": 0.125771875
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "unchanged-profile-rename",
+      "label": "2",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.06048,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "unchanged-profile-rename",
+        "target_queries": 0,
+        "wall_seconds": 0.11542775
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "unchanged-profile-rename",
+      "label": "3",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.060180000000000004,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "unchanged-profile-rename",
+        "target_queries": 0,
+        "wall_seconds": 0.114537125
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "unchanged-profile-rename",
+      "label": "4",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.060251000000000006,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "unchanged-profile-rename",
+        "target_queries": 0,
+        "wall_seconds": 0.114987
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "unchanged-profile-rename",
+      "label": "5",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.060525,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "unchanged-profile-rename",
+        "target_queries": 0,
+        "wall_seconds": 0.115180125
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "unchanged-profile-rename",
+      "label": "warmup",
+      "kind": "warmup",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.06055,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "unchanged-profile-rename",
+        "target_queries": 0,
+        "wall_seconds": 0.115434333
+      }
+    },
+    {
+      "side": "baseline",
+      "scenario": "unchanged-profile-rename",
+      "label": "resources",
+      "kind": "resources",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.060379,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "unchanged-profile-rename",
+        "target_queries": 0,
+        "wall_seconds": 0.121365042
+      },
+      "resource_stderr": "        0.13 real         0.05 user         0.01 sys\n            11747328  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                 940  page reclaims\n                   1  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                1047  involuntary context switches\n           665085303  instructions retired\n           180220107  cycles elapsed\n             3277280  peak memory footprint\n"
+    },
+    {
+      "side": "candidate",
+      "scenario": "unchanged-profile-rename",
+      "label": "0",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.0008150000000000006,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "unchanged-profile-rename",
+        "target_queries": 0,
+        "wall_seconds": 0.000814333
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "unchanged-profile-rename",
+      "label": "1",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.0008120000000000002,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "unchanged-profile-rename",
+        "target_queries": 0,
+        "wall_seconds": 0.000811
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "unchanged-profile-rename",
+      "label": "2",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.0008089999999999998,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "unchanged-profile-rename",
+        "target_queries": 0,
+        "wall_seconds": 0.000807333
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "unchanged-profile-rename",
+      "label": "3",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.0008129999999999995,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "unchanged-profile-rename",
+        "target_queries": 0,
+        "wall_seconds": 0.000811167
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "unchanged-profile-rename",
+      "label": "4",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.0008089999999999998,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "unchanged-profile-rename",
+        "target_queries": 0,
+        "wall_seconds": 0.000808292
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "unchanged-profile-rename",
+      "label": "5",
+      "kind": "measured",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.0008069999999999996,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "unchanged-profile-rename",
+        "target_queries": 0,
+        "wall_seconds": 0.000806875
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "unchanged-profile-rename",
+      "label": "warmup",
+      "kind": "warmup",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.000823,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "unchanged-profile-rename",
+        "target_queries": 0,
+        "wall_seconds": 0.000820708
+      }
+    },
+    {
+      "side": "candidate",
+      "scenario": "unchanged-profile-rename",
+      "label": "resources",
+      "kind": "resources",
+      "status": 0,
+      "output": {
+        "active_profile_id": "00000000-0000-0000-0000-000000000001",
+        "checksum": 1000,
+        "cpu_seconds": 0.0008089999999999998,
+        "failures": [],
+        "idle_queries": 0,
+        "iterations": 1000,
+        "profile_count": 5,
+        "scenario": "unchanged-profile-rename",
+        "target_queries": 0,
+        "wall_seconds": 0.00080725
+      },
+      "resource_stderr": "        0.01 real         0.00 user         0.00 sys\n             8798208  maximum resident set size\n                   0  average shared memory size\n                   0  average unshared data size\n                   0  average unshared stack size\n                 752  page reclaims\n                   1  page faults\n                   0  swaps\n                   0  block input operations\n                   0  block output operations\n                   0  messages sent\n                   0  messages received\n                   0  signals received\n                   0  voluntary context switches\n                  44  involuntary context switches\n            53131912  instructions retired\n            18492278  cycles elapsed\n             2818504  peak memory footprint\n"
+    }
+  ]
+}
