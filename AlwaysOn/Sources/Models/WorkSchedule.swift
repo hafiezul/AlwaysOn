@@ -65,9 +65,6 @@ struct WorkSchedule: Codable, Equatable {
             return "No days selected"
         }
         
-        let sortedDays = activeDays.sorted()
-        let dayNames = sortedDays.map { dayName(for: $0) }
-        
         // Check for common patterns
         if activeDays == Set([2, 3, 4, 5, 6]) {
             return "Weekdays"
@@ -77,6 +74,8 @@ struct WorkSchedule: Codable, Equatable {
             return "Every day"
         }
         
+        let sortedDays = activeDays.sorted()
+        let dayNames = sortedDays.map { dayName(for: $0) }
         return dayNames.joined(separator: ", ")
     }
     

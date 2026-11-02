@@ -23,17 +23,11 @@ struct ActivityGate: Equatable {
     /// event resets the idle counter, and the next check runs one interval later.
     static let idleThreshold: TimeInterval = 30
 
-    func shouldPost(idleSeconds: TimeInterval, hasRunningTarget: Bool) -> Bool {
-        idleGateOpen(idleSeconds) && targetGateOpen(hasRunningTarget)
+    func shouldPost(idleSeconds: @autoclosure () -> TimeInterval, hasRunningTarget: @autoclosure () -> Bool) -> Bool {
+        (!idleOnlyEnabled || idleSeconds() >= Self.idleThreshold) &&
+            (!requireTargetApp || hasRunningTarget())
     }
 
-    private func idleGateOpen(_ idleSeconds: TimeInterval) -> Bool {
-        !idleOnlyEnabled || idleSeconds >= Self.idleThreshold
-    }
-
-    private func targetGateOpen(_ hasRunningTarget: Bool) -> Bool {
-        !requireTargetApp || hasRunningTarget
-    }
 }
 
 /// A chat or meeting app that AlwaysOn can watch before simulating activity

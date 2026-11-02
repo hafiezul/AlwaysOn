@@ -1,4 +1,5 @@
 import XCTest
+import Combine
 @testable import AlwaysOnTests
 
 @MainActor
@@ -17,6 +18,45 @@ final class ProfileManagerTests: XCTestCase {
         defaults = nil
         suiteName = nil
         super.tearDown()
+    }
+
+    func testSettingsUpdatesPublishAndPersistOnlyWhenChanged() {
+        let recordingDefaults = RecordingDefaults(suiteName: suiteName)!
+        let manager = ProfileManager(defaults: recordingDefaults)
+        let original = manager.profiles[0]
+        let other = Profile(id: UUID(), name: "Other", activityInterval: 60,
+                            activityMethodId: ActivityMethod.keyboard.rawValue,
+                            defaultTimerDurationId: QuickTimerDuration.hour1.id, workSchedule: .default)
+        manager.addProfile(other)
+        let activeId = manager.activeProfileId
+        recordingDefaults.writes.removeAll()
+        var publications: [[Profile]] = []
+        let subscription = manager.$profiles.dropFirst().sink { publications.append($0) }
+
+        manager.updateProfileSettings(original.id, activityInterval: original.activityInterval,
+                                      activityMethod: original.activityMethod,
+                                      defaultTimerDuration: original.defaultTimerDuration,
+                                      workSchedule: original.workSchedule)
+        XCTAssertTrue(publications.isEmpty)
+        XCTAssertTrue(recordingDefaults.writes.isEmpty)
+
+        var expected = original
+        expected.activityInterval = 123
+        expected.activityMethodId = ActivityMethod.keyboard.rawValue
+        expected.defaultTimerDurationId = QuickTimerDuration.hour1.id
+        var schedule = original.workSchedule
+        schedule.isEnabled.toggle()
+        expected.workSchedule = schedule
+        manager.updateProfileSettings(original.id, activityInterval: 123, activityMethod: .keyboard,
+                                      defaultTimerDuration: .hour1, workSchedule: schedule)
+
+        XCTAssertEqual(publications, [[expected, other]])
+        XCTAssertEqual(manager.profiles, [expected, other])
+        XCTAssertEqual(ProfileManager.loadProfiles(from: recordingDefaults), [expected, other])
+        XCTAssertEqual(manager.activeProfileId, activeId)
+        XCTAssertEqual(recordingDefaults.string(forKey: "alwayson.activeProfileId"), activeId.uuidString)
+        XCTAssertEqual(recordingDefaults.writes, ["alwayson.profiles", "alwayson.activeProfileId"])
+        withExtendedLifetime(subscription) {}
     }
 
     func testMigrationCreatesDefaultProfileFromLegacyKeys() {
@@ -85,5 +125,14 @@ final class ProfileManagerTests: XCTestCase {
         profileManager.deleteProfile(profileManager.activeProfileId)
 
         XCTAssertEqual(profileManager.profiles.count, 1)
+    }
+}
+
+private final class RecordingDefaults: UserDefaults {
+    var writes: [String] = []
+
+    override func set(_ value: Any?, forKey defaultName: String) {
+        writes.append(defaultName)
+        super.set(value, forKey: defaultName)
     }
 }
