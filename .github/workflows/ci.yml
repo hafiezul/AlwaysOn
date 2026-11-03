@@ -25,6 +25,9 @@ jobs:
           VERSION: 0.0.0-ci
         run: ./Scripts/build-app.sh
 
+      - name: Test bundled native CLI
+        run: python3 CLI/Tests/acceptance.py build/Build/Products/Release/AlwaysOn.app/Contents/Helpers/alwayson
+
       - name: Run unit tests
         run: |
           xcodebuild \

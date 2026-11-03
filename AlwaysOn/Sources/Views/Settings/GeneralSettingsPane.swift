@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// General settings pane with launch at login, activity interval, activity method, and permission status
@@ -5,6 +6,12 @@ struct GeneralSettingsPane: View {
     @EnvironmentObject var appState: AppState
     @State private var launchAtLogin = LaunchAtLoginManager.isEnabled
     
+    @State private var cliInstallation = CLIInstallation()
+    @State private var cliStatus: CLIInstallation.Status = .absent
+    @State private var cliVersion: String?
+    @State private var cliCanUninstall = false
+    @State private var cliError: String?
+
     // Activity interval options in seconds
     private let intervalOptions: [(label: String, value: TimeInterval)] = [
         ("30 seconds", 30),
@@ -65,6 +72,8 @@ struct GeneralSettingsPane: View {
                 Text("Startup")
             }
             
+            commandLineToolSection
+
             // Activity section
             Section {
                 Picker("Activity Interval", selection: intervalPickerSelection) {
@@ -209,9 +218,100 @@ struct GeneralSettingsPane: View {
         .formStyle(.grouped)
         .onAppear {
             launchAtLogin = LaunchAtLoginManager.isEnabled
+            refreshCLIInstallation()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            refreshCLIInstallation()
         }
     }
     
+    private var commandLineToolSection: some View {
+        Section {
+            Text(cliStatusDescription)
+                .textSelection(.enabled)
+            LabeledContent("Bundled Version / Build", value: cliVersion ?? "Unavailable")
+            LabeledContent("Command Path") {
+                Text(cliInstallation.linkURL.path)
+                    .textSelection(.enabled)
+            }
+            Text("The CLI ships with this app and updates with it.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+
+            HStack {
+                switch cliStatus {
+                case .absent:
+                    Button("Install") { performCLIAction { try cliInstallation.install() } }
+                case .current:
+                    Button("Uninstall") { performCLIAction { try cliInstallation.uninstall() } }
+                case .anotherApp:
+                    Button("Use This App") { performCLIAction { try cliInstallation.install() } }
+                case .brokenOwnedLink:
+                    Button("Repair") { performCLIAction { try cliInstallation.install() } }
+                    Button("Uninstall") { performCLIAction { try cliInstallation.uninstall() } }
+                        .disabled(!cliCanUninstall)
+                case .missingBundledCLI:
+                    Button("Install") {}.disabled(true)
+                    Button("Uninstall") { performCLIAction { try cliInstallation.uninstall() } }
+                        .disabled(!cliCanUninstall)
+                case .conflict:
+                    Button("Install") {}.disabled(true)
+                    Button("Uninstall") {}.disabled(true)
+                }
+            }
+
+            if let cliError {
+                Text(cliError)
+                    .foregroundColor(.red)
+                    .textSelection(.enabled)
+                    .accessibilityLabel("Command line tool error: \(cliError)")
+            }
+
+            Text("Uses ~/.local/bin. Your shell may need PATH configuration.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Button("Copy PATH Command") {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(#"export PATH="$HOME/.local/bin:$PATH""#, forType: .string)
+            }
+        } header: {
+            Text("Command Line Tool")
+        }
+    }
+
+    private var cliStatusDescription: String {
+        switch cliStatus {
+        case .absent:
+            return "Not installed."
+        case .current:
+            return "Installed for this app."
+        case .anotherApp(let appURL):
+            return "Installed for a different copy at \(appURL.path). Use This App to replace that link."
+        case .brokenOwnedLink:
+            return "This app's command link is broken. Repair it or uninstall it."
+        case .missingBundledCLI:
+            return "Command line tool unavailable. Reinstall the full AlwaysOn app to restore the bundled CLI."
+        case .conflict:
+            return "Another file or command exists at this path. AlwaysOn will preserve it. Installation and removal are disabled."
+        }
+    }
+
+    private func refreshCLIInstallation() {
+        cliStatus = cliInstallation.status
+        cliVersion = cliInstallation.version
+        cliCanUninstall = cliInstallation.canUninstall
+    }
+
+    private func performCLIAction(_ action: () throws -> Void) {
+        cliError = nil
+        do {
+            try action()
+        } catch {
+            cliError = error.localizedDescription
+        }
+        refreshCLIInstallation()
+    }
+
     private func targetAppBinding(_ app: TargetApp) -> Binding<Bool> {
         Binding(
             get: { appState.targetApps.contains(app.bundleID) },

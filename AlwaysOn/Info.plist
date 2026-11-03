@@ -35,6 +35,10 @@
     </array>
     <key>NSHumanReadableCopyright</key>
     <string>Copyright © 2024 Hafiezul. All rights reserved.</string>
+    <key>NSCalendarsUsageDescription</key>
+    <string>AlwaysOn reads the titles and end times of your upcoming calendar events only when you choose Load Calendar Events, so you can keep your status active until an event ends. It never changes your calendar.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>AlwaysOn reads the titles and end times of your upcoming calendar events only when you choose Load Calendar Events, so you can keep your status active until an event ends. It never changes your calendar.</string>
     <key>NSAccessibilityUsageDescription</key>
     <string>AlwaysOn needs accessibility permission to simulate mouse movement and keep your status active.</string>
 </dict>

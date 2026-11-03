@@ -5,6 +5,23 @@
 	};
 	objectVersion = 56;
 	objects = {
+        C20000000000000000000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLI/Sources/alwayson/CLIInstallation.swift; sourceTree = SOURCE_ROOT; };
+        C20000000000000000000002 = {isa = PBXBuildFile; fileRef = C20000000000000000000001; };
+        C20000000000000000000003 = {isa = PBXBuildFile; fileRef = C20000000000000000000001; };
+/* Native CLI, shared with the dependency-free Swift package. */
+        C10000000000000000000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CLI/Sources/alwayson/main.swift; sourceTree = SOURCE_ROOT; };
+        C10000000000000000000002 = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; path = alwayson; sourceTree = BUILT_PRODUCTS_DIR; };
+        C10000000000000000000003 = {isa = PBXBuildFile; fileRef = C10000000000000000000001; };
+        C10000000000000000000004 = {isa = PBXBuildFile; fileRef = C10000000000000000000002; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+        C10000000000000000000005 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (C10000000000000000000003, C20000000000000000000002, ); runOnlyForDeploymentPostprocessing = 0; };
+        C10000000000000000000006 = {isa = PBXCopyFilesBuildPhase; buildActionMask = 2147483647; dstPath = Contents/Helpers; dstSubfolderSpec = 1; files = (C10000000000000000000004, ); name = "Embed native CLI"; runOnlyForDeploymentPostprocessing = 0; };
+        C10000000000000000000007 = {isa = PBXNativeTarget; buildConfigurationList = C10000000000000000000008; buildPhases = (C10000000000000000000005, ); buildRules = (); dependencies = (); name = AlwaysOnCLI; productName = alwayson; productReference = C10000000000000000000002; productType = "com.apple.product-type.tool"; };
+        C10000000000000000000008 = {isa = XCConfigurationList; buildConfigurations = (C10000000000000000000009, C1000000000000000000000A, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+        C10000000000000000000009 = {isa = XCBuildConfiguration; buildSettings = {PRODUCT_NAME = alwayson; SWIFT_VERSION = 5.0; SKIP_INSTALL = YES; MACOSX_DEPLOYMENT_TARGET = 13.0; CODE_SIGN_STYLE = Automatic; ENABLE_HARDENED_RUNTIME = YES; }; name = Debug; };
+        C1000000000000000000000A = {isa = XCBuildConfiguration; buildSettings = {PRODUCT_NAME = alwayson; SWIFT_VERSION = 5.0; SKIP_INSTALL = YES; MACOSX_DEPLOYMENT_TARGET = 13.0; CODE_SIGN_STYLE = Automatic; ENABLE_HARDENED_RUNTIME = YES; }; name = Release; };
+        C1000000000000000000000B = {isa = PBXContainerItemProxy; containerPortal = 8000000000000001; proxyType = 1; remoteGlobalIDString = C10000000000000000000007; remoteInfo = AlwaysOnCLI; };
+        C1000000000000000000000C = {isa = PBXTargetDependency; target = C10000000000000000000007; targetProxy = C1000000000000000000000B; };
+
 
 /* Begin PBXBuildFile section */
 		1000000000000001 /* AlwaysOnApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000001 /* AlwaysOnApp.swift */; };
@@ -35,12 +52,14 @@
 		1000000000000021 /* ActivityGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000022 /* ActivityGate.swift */; };
 		1000000000000022 /* GlobalHotKeyManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000023 /* GlobalHotKeyManager.swift */; };
 		1000000000000023 /* URLCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000024 /* URLCommand.swift */; };
+		1000000000000024 /* SessionSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000025 /* SessionSource.swift */; };
 		1000000000000030 /* WorkScheduleTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000030 /* WorkScheduleTests.swift */; };
 		1000000000000031 /* UpdateCheckerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000031 /* UpdateCheckerTests.swift */; };
 		1000000000000032 /* ProfileManagerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000032 /* ProfileManagerTests.swift */; };
 		1000000000000033 /* QuickTimerDurationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000033 /* QuickTimerDurationTests.swift */; };
 		1000000000000034 /* ActivityGateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000034 /* ActivityGateTests.swift */; };
 		1000000000000035 /* URLCommandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000035 /* URLCommandTests.swift */; };
+		1000000000000036 /* SessionSourceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000036 /* SessionSourceTests.swift */; };
 		1000000000000040 /* WorkSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000040 /* WorkSchedule.swift */; };
 		1000000000000041 /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000041 /* Profile.swift */; };
 		1000000000000042 /* QuickTimerDuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000042 /* QuickTimerDuration.swift */; };
@@ -49,6 +68,12 @@
 		1000000000000045 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000045 /* UpdateChecker.swift */; };
 		1000000000000046 /* ActivityGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000046 /* ActivityGate.swift */; };
 		1000000000000047 /* URLCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000047 /* URLCommand.swift */; };
+		1000000000000048 /* SessionSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000048 /* SessionSource.swift */; };
+		A1000000000000A1 /* UntilSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000A1 /* UntilSessionView.swift */; };
+		A1000000000000A2 /* PulseLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000A2 /* PulseLogView.swift */; };
+		A1000000000000A3 /* UntilSessionWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000A3 /* UntilSessionWindowController.swift */; };
+		A1000000000000A4 /* CalendarEventProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000A4 /* CalendarEventProvider.swift */; };
+		A1000000000000A5 /* PulseLogWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000A5 /* PulseLogWindowController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -82,6 +107,7 @@
 		2000000000000022 /* ActivityGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityGate.swift; sourceTree = "<group>"; };
 		2000000000000023 /* GlobalHotKeyManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalHotKeyManager.swift; sourceTree = "<group>"; };
 		2000000000000024 /* URLCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLCommand.swift; sourceTree = "<group>"; };
+		2000000000000025 /* SessionSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSource.swift; sourceTree = "<group>"; };
 		3000000000000001 /* AlwaysOn.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AlwaysOn.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2000000000000030 /* WorkScheduleTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkScheduleTests.swift; sourceTree = "<group>"; };
 		2000000000000031 /* UpdateCheckerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateCheckerTests.swift; sourceTree = "<group>"; };
@@ -89,6 +115,7 @@
 		2000000000000033 /* QuickTimerDurationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickTimerDurationTests.swift; sourceTree = "<group>"; };
 		2000000000000034 /* ActivityGateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityGateTests.swift; sourceTree = "<group>"; };
 		2000000000000035 /* URLCommandTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = URLCommandTests.swift; sourceTree = "<group>"; };
+		2000000000000036 /* SessionSourceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSourceTests.swift; sourceTree = "<group>"; };
 		3000000000000002 /* AlwaysOnTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AlwaysOnTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2000000000000040 /* WorkSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WorkSchedule.swift; path = ../AlwaysOn/Sources/Models/WorkSchedule.swift; sourceTree = "<group>"; };
 		2000000000000041 /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Profile.swift; path = ../AlwaysOn/Sources/Models/Profile.swift; sourceTree = "<group>"; };
@@ -98,6 +125,12 @@
 		2000000000000045 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = UpdateChecker.swift; path = ../AlwaysOn/Sources/Services/UpdateChecker.swift; sourceTree = "<group>"; };
 		2000000000000046 /* ActivityGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ActivityGate.swift; path = ../AlwaysOn/Sources/Models/ActivityGate.swift; sourceTree = "<group>"; };
 		2000000000000047 /* URLCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = URLCommand.swift; path = ../AlwaysOn/Sources/Models/URLCommand.swift; sourceTree = "<group>"; };
+		2000000000000048 /* SessionSource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SessionSource.swift; path = ../AlwaysOn/Sources/Models/SessionSource.swift; sourceTree = "<group>"; };
+		A2000000000000A1 /* UntilSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UntilSessionView.swift; sourceTree = "<group>"; };
+		A2000000000000A2 /* PulseLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulseLogView.swift; sourceTree = "<group>"; };
+		A2000000000000A3 /* UntilSessionWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UntilSessionWindowController.swift; sourceTree = "<group>"; };
+		A2000000000000A4 /* CalendarEventProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarEventProvider.swift; sourceTree = "<group>"; };
+		A2000000000000A5 /* PulseLogWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulseLogWindowController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -114,7 +147,8 @@
 		5000000000000001 = {
 			isa = PBXGroup;
 			children = (
-				5000000000000002 /* AlwaysOn */,
+				C10000000000000000000001,
+                5000000000000002 /* AlwaysOn */,
 				500000000000000B /* AlwaysOnTests */,
 				5000000000000009 /* Products */,
 			);
@@ -155,6 +189,7 @@
 			children = (
 				2000000000000022 /* ActivityGate.swift */,
 				2000000000000024 /* URLCommand.swift */,
+				2000000000000025 /* SessionSource.swift */,
 				2000000000000016 /* ActivityMethod.swift */,
 				2000000000000002 /* AppState.swift */,
 				200000000000001F /* Profile.swift */,
@@ -177,6 +212,9 @@
 				2000000000000020 /* ProfileManager.swift */,
 				2000000000000015 /* SettingsWindowController.swift */,
 				2000000000000009 /* UpdateChecker.swift */,
+				A2000000000000A5 /* PulseLogWindowController.swift */,
+				A2000000000000A4 /* CalendarEventProvider.swift */,
+				A2000000000000A3 /* UntilSessionWindowController.swift */,
 				2000000000000019 /* WorkScheduleManager.swift */,
 			);
 			path = Services;
@@ -188,6 +226,8 @@
 				500000000000000A /* Settings */,
 				2000000000000005 /* MenuBarView.swift */,
 				200000000000000E /* PermissionsView.swift */,
+				A2000000000000A2 /* PulseLogView.swift */,
+				A2000000000000A1 /* UntilSessionView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -217,6 +257,7 @@
 			isa = PBXGroup;
 			children = (
 				3000000000000001 /* AlwaysOn.app */,
+                C10000000000000000000002,
 				3000000000000002 /* AlwaysOnTests.xctest */,
 			);
 			name = Products;
@@ -231,6 +272,7 @@
 				2000000000000033 /* QuickTimerDurationTests.swift */,
 				2000000000000034 /* ActivityGateTests.swift */,
 				2000000000000035 /* URLCommandTests.swift */,
+				2000000000000036 /* SessionSourceTests.swift */,
 				2000000000000040 /* WorkSchedule.swift */,
 				2000000000000041 /* Profile.swift */,
 				2000000000000042 /* QuickTimerDuration.swift */,
@@ -239,6 +281,7 @@
 				2000000000000045 /* UpdateChecker.swift */,
 				2000000000000046 /* ActivityGate.swift */,
 				2000000000000047 /* URLCommand.swift */,
+				2000000000000048 /* SessionSource.swift */,
 			);
 			path = AlwaysOnTests;
 			sourceTree = "<group>";
@@ -253,10 +296,12 @@
 				6000000000000002 /* Sources */,
 				4000000000000001 /* Frameworks */,
 				6000000000000003 /* Resources */,
+                C10000000000000000000006,
 			);
 			buildRules = (
 			);
 			dependencies = (
+                C1000000000000000000000C,
 			);
 			name = AlwaysOn;
 			productName = AlwaysOn;
@@ -309,6 +354,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
+                C10000000000000000000007,
 				6000000000000001 /* AlwaysOn */,
 				6000000000000005 /* AlwaysOnTests */,
 			);
@@ -332,6 +378,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				1000000000000001 /* AlwaysOnApp.swift in Sources */,
+                C20000000000000000000003,
 				1000000000000002 /* AppState.swift in Sources */,
 				1000000000000003 /* ActivitySimulator.swift in Sources */,
 				1000000000000005 /* MenuBarView.swift in Sources */,
@@ -358,6 +405,12 @@
 				1000000000000021 /* ActivityGate.swift in Sources */,
 				1000000000000022 /* GlobalHotKeyManager.swift in Sources */,
 				1000000000000023 /* URLCommand.swift in Sources */,
+				1000000000000024 /* SessionSource.swift in Sources */,
+				A1000000000000A5 /* PulseLogWindowController.swift in Sources */,
+				A1000000000000A4 /* CalendarEventProvider.swift in Sources */,
+				A1000000000000A3 /* UntilSessionWindowController.swift in Sources */,
+				A1000000000000A2 /* PulseLogView.swift in Sources */,
+				A1000000000000A1 /* UntilSessionView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -371,6 +424,7 @@
 				1000000000000033 /* QuickTimerDurationTests.swift in Sources */,
 				1000000000000034 /* ActivityGateTests.swift in Sources */,
 				1000000000000035 /* URLCommandTests.swift in Sources */,
+				1000000000000036 /* SessionSourceTests.swift in Sources */,
 				1000000000000040 /* WorkSchedule.swift in Sources */,
 				1000000000000041 /* Profile.swift in Sources */,
 				1000000000000042 /* QuickTimerDuration.swift in Sources */,
@@ -379,6 +433,7 @@
 				1000000000000045 /* UpdateChecker.swift in Sources */,
 				1000000000000046 /* ActivityGate.swift in Sources */,
 				1000000000000047 /* URLCommand.swift in Sources */,
+				1000000000000048 /* SessionSource.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

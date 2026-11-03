@@ -3,12 +3,18 @@ import SwiftUI
 @main
 struct AlwaysOnApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
-    @StateObject private var appState = AppState()
+    @StateObject private var appState: AppState
+
+    init() {
+        let state = AppState()
+        _appState = StateObject(wrappedValue: state)
+        appDelegate.appState = state
+    }
 
     private var menuBarIconName: String {
         if appState.isActive {
             return "circle.fill"
-        } else if appState.activeSessionDuration > 0 {
+        } else if appState.hasActiveOrPausedSession {
             return "circle.inset.filled"
         } else {
             return "circle"
@@ -50,6 +56,15 @@ struct AlwaysOnApp: App {
 
 /// Handles app lifecycle events, particularly for showing the permissions window on first launch
 final class AppDelegate: NSObject, NSApplicationDelegate {
+    weak var appState: AppState?
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls {
+            guard let command = URLCommandParser.command(from: url) else { continue }
+            appState?.applyURLCommand(command)
+        }
+    }
+
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         // The menu bar scene needs a beat to install its window hooks before a dialog shows

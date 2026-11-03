@@ -1,5 +1,6 @@
 import Foundation
 import AppKit
+import Combine
 
 /// The single decision point for whether a simulation tick posts synthetic
 /// input. AppState owns the persisted settings; the simulator consults the
@@ -23,9 +24,23 @@ struct ActivityGate: Equatable {
     /// event resets the idle counter, and the next check runs one interval later.
     static let idleThreshold: TimeInterval = 30
 
+    enum Decision: Equatable {
+        case post
+        case skip(SkipReason)
+    }
+
+    enum SkipReason: String, Hashable {
+        case userActive, noTarget
+    }
+
+    func decision(idleSeconds: @autoclosure () -> TimeInterval, hasRunningTarget: @autoclosure () -> Bool) -> Decision {
+        if idleOnlyEnabled && idleSeconds() < Self.idleThreshold { return .skip(.userActive) }
+        if requireTargetApp && !hasRunningTarget() { return .skip(.noTarget) }
+        return .post
+    }
+
     func shouldPost(idleSeconds: @autoclosure () -> TimeInterval, hasRunningTarget: @autoclosure () -> Bool) -> Bool {
-        (!idleOnlyEnabled || idleSeconds() >= Self.idleThreshold) &&
-            (!requireTargetApp || hasRunningTarget())
+        decision(idleSeconds: idleSeconds(), hasRunningTarget: hasRunningTarget()) == .post
     }
 
 }
@@ -50,4 +65,33 @@ struct TargetApp: Identifiable, Equatable {
         TargetApp(bundleID: "us.zoom.xos", name: "Zoom"),
         TargetApp(bundleID: "com.hnc.Discord", name: "Discord")
     ]
+}
+
+
+final class PulseLog: ObservableObject {
+    enum Outcome: Hashable {
+        case posted, userActive, noTarget, inputCreationFailed
+    }
+    struct Entry: Identifiable {
+        let id = UUID()
+        let date: Date
+        let outcome: Outcome
+        var summary: String {
+            switch outcome {
+            case .posted: return "Input posted"
+            case .userActive: return "Skipped: user active"
+            case .noTarget: return "Skipped: no target app"
+            case .inputCreationFailed: return "Input creation failed"
+            }
+        }
+    }
+    @Published private(set) var history: [Entry] = []
+    @Published private(set) var counts: [Outcome: Int] = [:]
+    var latestOutcome: Outcome? { history.last?.outcome }
+    func record(_ outcome: Outcome, date: Date = Date()) {
+        history.append(Entry(date: date, outcome: outcome))
+        if history.count > 200 { history.removeFirst(history.count - 200) }
+        counts[outcome, default: 0] += 1
+    }
+    func clear() { history.removeAll(); counts.removeAll() }
 }

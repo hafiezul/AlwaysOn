@@ -22,6 +22,8 @@ final class ActivitySimulator {
 
     /// Suppression rules evaluated before each tick
     var gate = ActivityGate()
+    let pulseLog = PulseLog()
+    var deadline: Date?
 
     /// Seconds since the last real or synthetic input event. Injectable for tests.
     /// kCGAnyInputEventType (~0) matches any input class; stable for binary compatibility.
@@ -91,28 +93,30 @@ final class ActivitySimulator {
     
     /// Performs activity simulation based on the selected method
     private func simulateActivity() {
-        guard gate.shouldPost(idleSeconds: idleSecondsProvider(),
-                              hasRunningTarget: hasRunningTargetProvider(gate.targetBundleIDs)) else {
-            #if DEBUG
-            print("[ActivitySimulator] Skipped: gate suppressed this tick")
-            #endif
-            return
+        if let deadline, deadline <= Date() { return }
+        switch gate.decision(idleSeconds: idleSecondsProvider(),
+                             hasRunningTarget: hasRunningTargetProvider(gate.targetBundleIDs)) {
+        case .skip(.userActive): pulseLog.record(.userActive); return
+        case .skip(.noTarget): pulseLog.record(.noTarget); return
+        case .post: break
         }
+        let posted: Bool
 
         switch activityMethod {
         case .mouse:
-            simulateMouseActivity()
+            posted = simulateMouseActivity()
         case .keyboard:
-            simulateKeyboardActivity()
+            posted = simulateKeyboardActivity()
         case .alternating:
             if lastMethodWasMouse {
-                simulateKeyboardActivity()
+                posted = simulateKeyboardActivity()
             } else {
-                simulateMouseActivity()
+                posted = simulateMouseActivity()
             }
             lastMethodWasMouse.toggle()
         }
         
+        pulseLog.record(posted ? .posted : .inputCreationFailed)
         #if DEBUG
         print("[ActivitySimulator] Activity simulated at \(Date())")
         #endif
@@ -120,57 +124,53 @@ final class ActivitySimulator {
     
     /// Performs minimal mouse movement to simulate user activity
     /// Moves the cursor by 1 pixel, then back, to avoid visible movement
-    private func simulateMouseActivity() {
+    private func simulateMouseActivity() -> Bool {
         // Get current mouse location
         let currentLocation = NSEvent.mouseLocation
         
         // Convert from bottom-left origin (AppKit) to top-left origin (CoreGraphics)
         // using the screen the cursor is on; multi-display setups offset screen
         // origins, so a plain height subtraction would teleport the cursor
-        guard let screen = NSScreen.screens.first(where: { $0.frame.contains(currentLocation) }) ?? NSScreen.main else { return }
+        guard let screen = NSScreen.screens.first(where: { $0.frame.contains(currentLocation) }) ?? NSScreen.main else { return false }
         let cgPoint = CGPoint(x: currentLocation.x, y: screen.frame.maxY - currentLocation.y)
         
         // Calculate new position (move by 1 pixel)
         let newPoint = CGPoint(x: cgPoint.x + moveDirection, y: cgPoint.y)
         
         // Create and post mouse move event
-        if let moveEvent = CGEvent(mouseEventSource: nil,
+        guard let moveEvent = CGEvent(mouseEventSource: nil,
                                     mouseType: .mouseMoved,
                                     mouseCursorPosition: newPoint,
-                                    mouseButton: .left) {
-            moveEvent.post(tap: .cghidEventTap)
-        }
+                                    mouseButton: .left),
+              let returnEvent = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved,
+                                        mouseCursorPosition: cgPoint, mouseButton: .left) else { return false }
+        moveEvent.post(tap: .cghidEventTap)
         
         // Move back to original position after a tiny delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
-            if let returnEvent = CGEvent(mouseEventSource: nil,
-                                         mouseType: .mouseMoved,
-                                         mouseCursorPosition: cgPoint,
-                                         mouseButton: .left) {
-                returnEvent.post(tap: .cghidEventTap)
-            }
+            returnEvent.post(tap: .cghidEventTap)
             
             // Alternate direction for next time
             self?.moveDirection *= -1
         }
+        return true
     }
     
     /// Performs keyboard activity by pressing and releasing the Shift key
     /// Shift is used because it doesn't produce any visible output
-    private func simulateKeyboardActivity() {
+    private func simulateKeyboardActivity() -> Bool {
         // Shift key virtual keycode
         let shiftKeyCode: CGKeyCode = 56
         
         // Create key down event
-        if let keyDownEvent = CGEvent(keyboardEventSource: nil, virtualKey: shiftKeyCode, keyDown: true) {
-            keyDownEvent.post(tap: .cghidEventTap)
-        }
+        guard let keyDownEvent = CGEvent(keyboardEventSource: nil, virtualKey: shiftKeyCode, keyDown: true),
+              let keyUpEvent = CGEvent(keyboardEventSource: nil, virtualKey: shiftKeyCode, keyDown: false) else { return false }
+        keyDownEvent.post(tap: .cghidEventTap)
         
         // Release key after a tiny delay
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            if let keyUpEvent = CGEvent(keyboardEventSource: nil, virtualKey: shiftKeyCode, keyDown: false) {
-                keyUpEvent.post(tap: .cghidEventTap)
-            }
+            keyUpEvent.post(tap: .cghidEventTap)
         }
+        return true
     }
 }

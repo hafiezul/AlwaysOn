@@ -33,7 +33,7 @@ struct MenuBarView: View {
             }
             
             // Session info when active or paused with saved duration
-            if appState.isActive || appState.activeSessionDuration > 0 {
+            if appState.hasActiveOrPausedSession {
                 sessionInfo
                 
                 // Quick timer info if active
@@ -43,14 +43,16 @@ struct MenuBarView: View {
             }
             
             // Stop Session button (shown for active and paused sessions, AFTER session info)
-            if appState.isActive || appState.activeSessionDuration > 0 {
+            if appState.hasActiveOrPausedSession {
                 stopSessionButton
             }
             
             Divider()
                 .padding(.vertical, 4)
             
-            // Settings and Quit
+            // Until, Pulse Log, Settings and Quit (available even when inactive)
+            untilButton
+            pulseLogButton
             settingsButton
             quitButton
         }
@@ -63,10 +65,10 @@ struct MenuBarView: View {
     private var statusHeader: some View {
         HStack(spacing: 8) {
             Circle()
-                .fill(appState.isActive ? Color.green : (appState.activeSessionDuration > 0 ? Color.orange : Color.gray))
+                .fill(appState.isActive ? Color.green : (appState.hasActiveOrPausedSession ? Color.orange : Color.gray))
                 .frame(width: 8, height: 8)
 
-            Text(appState.isActive ? "Active" : (appState.activeSessionDuration > 0 ? "Paused" : "Inactive"))
+            Text(appState.isActive ? "Active" : (appState.hasActiveOrPausedSession ? "Paused" : "Inactive"))
                 .font(.headline)
 
             Spacer()
@@ -82,7 +84,7 @@ struct MenuBarView: View {
             HStack(spacing: 8) {
                 Image(systemName: appState.isActive ? "pause.circle" : "play.circle")
                     .frame(width: 16)
-                Text(appState.isActive ? "Pause" : (appState.activeSessionDuration > 0 ? "Resume" : "Keep Online"))
+                Text(appState.isActive ? "Pause" : (appState.hasActiveOrPausedSession ? "Resume" : "Keep Online"))
                 Spacer()
                 Text("⌘K")
                     .font(.caption)
@@ -111,7 +113,7 @@ struct MenuBarView: View {
         Menu {
             ForEach(appState.profileManager.profiles) { profile in
                 Button {
-                    if appState.isActive || appState.activeSessionDuration > 0 {
+                    if appState.hasActiveOrPausedSession {
                         pendingProfileId = profile.id
                     } else {
                         appState.switchProfile(profile.id)
@@ -288,6 +290,14 @@ struct MenuBarView: View {
                     .foregroundColor(.secondary)
                     .padding(.leading, 24)
             }
+
+            // Until and command sessions stop at an absolute time; show it, not only the countdown
+            if let endDate = appState.sessionSource?.chosenEndDate {
+                Text("Ends \(endDate.formatted(date: .abbreviated, time: .shortened))")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .padding(.leading, 24)
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 6)
@@ -326,6 +336,44 @@ struct MenuBarView: View {
         .padding(.vertical, 2)
     }
     
+    private var untilButton: some View {
+        Button(action: {
+            UntilSessionWindowController.shared.show(appState: appState)
+        }) {
+            HStack(spacing: 8) {
+                Image(systemName: "calendar")
+                    .frame(width: 16)
+                Text("Until...")
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background(HoverBackground())
+    }
+
+    private var pulseLogButton: some View {
+        Button(action: {
+            PulseLogWindowController.shared.show(appState: appState)
+        }) {
+            HStack(spacing: 8) {
+                Image(systemName: "waveform.path.ecg")
+                    .frame(width: 16)
+                Text("Pulse Log...")
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background(HoverBackground())
+    }
+
     private var settingsButton: some View {
         Button(action: {
             SettingsWindowController.shared.show(appState: appState)
