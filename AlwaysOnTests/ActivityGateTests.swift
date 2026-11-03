@@ -77,4 +77,33 @@ final class ActivityGateTests: XCTestCase {
         }
     }
 
+    func testSkipReasonsAndPulseHistory() {
+        let gate = ActivityGate(idleOnlyEnabled: true, requireTargetApp: true)
+        XCTAssertEqual(gate.decision(idleSeconds: 0, hasRunningTarget: false), .skip(.userActive))
+        XCTAssertEqual(gate.decision(idleSeconds: 60, hasRunningTarget: false), .skip(.noTarget))
+        XCTAssertEqual(gate.decision(idleSeconds: 60, hasRunningTarget: true), .post)
+        let log = PulseLog()
+        let date = Date(timeIntervalSince1970: 1_000)
+        log.record(.userActive, date: date)
+        XCTAssertEqual(log.history.first?.summary, "Skipped: user active")
+        XCTAssertEqual(log.history.first?.date, date)
+        let firstID = log.history.first?.id
+        log.record(.noTarget, date: date)
+        XCTAssertEqual(log.history.last?.summary, "Skipped: no target app")
+        XCTAssertNotEqual(log.history.last?.id, firstID)
+        log.record(.inputCreationFailed)
+        XCTAssertEqual(log.history.last?.summary, "Input creation failed")
+        for offset in 0..<201 { log.record(.posted, date: date.addingTimeInterval(Double(offset))) }
+        XCTAssertEqual(log.history.count, 200)
+        XCTAssertEqual(log.history.first?.date, Date(timeIntervalSince1970: 1_001))
+        XCTAssertEqual(log.history.last?.date, Date(timeIntervalSince1970: 1_200))
+        XCTAssertEqual(log.counts, [.userActive: 1, .noTarget: 1, .inputCreationFailed: 1, .posted: 201])
+        XCTAssertEqual(log.latestOutcome, .posted)
+        log.clear()
+        XCTAssertEqual(log.history.count, 0)
+        XCTAssertEqual(log.counts, [:])
+        XCTAssertNil(log.latestOutcome)
+        log.record(.noTarget)
+        XCTAssertEqual(log.counts, [.noTarget: 1])
+    }
 }

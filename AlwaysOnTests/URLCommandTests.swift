@@ -23,4 +23,24 @@ final class URLCommandTests: XCTestCase {
         XCTAssertNil(parse("alwayson://dance"))
         XCTAssertNil(parse("alwayson://"))
     }
+    func testCommandTokens() {
+        let value = "11111111-1111-1111-1111-111111111111"
+        let token = UUID(uuidString: value)!
+        XCTAssertEqual(parse("alwayson://run?token=\(value)"), .run(token: token))
+        XCTAssertEqual(parse("alwayson://finish?token=\(value)"), .finish(token: token))
+        for action in ["run", "finish"] {
+            for query in ["", "?token", "?token=", "?token=nope", "?token=\(value)&token=\(value)", "?token=\(value)&TOKEN=bad"] {
+                XCTAssertNil(parse("alwayson://\(action)\(query)"))
+            }
+        }
+    }
+    func testUntilDateValidation() {
+        let date = Date(timeIntervalSince1970: 4102444800)
+        XCTAssertEqual(parse("alwayson://until?date=2100-01-01T00:00:00Z"), .until(date: date))
+        XCTAssertEqual(parse("alwayson://until?date=2100-01-01T00:00:00.000Z"), .until(date: date))
+        for query in ["", "?date=", "?date=bad", "?date=2000-01-01T00:00:00Z",
+                      "?date=2100-01-01T00:00:00Z&DATE=2100-01-01T00:00:00Z"] {
+            XCTAssertNil(parse("alwayson://until\(query)"))
+        }
+    }
 }

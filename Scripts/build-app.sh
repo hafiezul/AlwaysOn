@@ -26,7 +26,11 @@ xcodebuild \
   DEVELOPMENT_TEAM="" \
   build
 
-codesign --force --deep --sign - "$APP_PATH"
+CLI_PATH="$APP_PATH/Contents/Helpers/alwayson"
+test -x "$CLI_PATH"
+codesign --force --sign - "$CLI_PATH"
+codesign --verify --strict "$CLI_PATH"
+codesign --force --entitlements "$REPO_ROOT/AlwaysOn/AlwaysOn.entitlements" --sign - "$APP_PATH"
 codesign --verify --deep --strict "$APP_PATH"
 
 printf 'Built and ad-hoc signed: %s\n' "$APP_PATH"

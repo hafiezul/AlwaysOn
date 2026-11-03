@@ -25,6 +25,9 @@ If you find this app useful, consider supporting its development:
 - Optionally skip simulated input while you are actively using the machine
 - Optionally pause simulation while no chat or meeting app is running
 - Run quick timers or automate sessions with work hours
+- Keep online until a chosen time or until a calendar event ends
+- Keep online while a terminal command runs, with the `alwayson` CLI
+- Review recent input attempts in the Pulse Log
 - Enable launch at login and optional notifications
 - Save profiles for different activity and schedule setups
 
@@ -74,9 +77,88 @@ AlwaysOn registers the `alwayson://` URL scheme, so launchers like Raycast and A
 - `alwayson://toggle` starts or pauses
 - `alwayson://timer?minutes=30` keeps online for 30 minutes. Omit `minutes` to use the profile default.
 
+## Keep online until a set time
+
+Choose **Until...** in the menu to start a session now that stops at a time you pick. The window has two tabs:
+
+- **Time**: pick a date and time, or use **+30 min**, **+1 hr**, **+2 hr**, or **+4 hr**. Add an optional label.
+- **Calendar**: choose **Load Calendar Events**, then pick a timed event that is in progress or starts in the next 24 hours. The session uses the event's title as its label and stops when the event ends.
+
+AlwaysOn copies the end time when you start the session. If the event moves or gets shorter in Calendar later, the session keeps the copied end time. AlwaysOn does not detect meetings or start sessions on its own.
+
+The menu shows the end date and time under the session and, while it runs, a countdown. The end time is absolute:
+
+- If you pause, the session still ends at that time, and resuming continues to the same end time.
+- If AlwaysOn quits while the session runs, it resumes the session on relaunch only if the end time is still in the future.
+- **Cancel Timer** removes the end time and keeps the session running with no limit.
+
+AlwaysOn refuses to start if the time has already passed or Accessibility permission is missing. In both cases the current session keeps running unchanged.
+
+AlwaysOn asks for calendar access only when you choose **Load Calendar Events**. It reads event titles and times and never changes your calendar. If you deny access, the **Time** tab still works. To turn access on later, open **System Settings > Privacy & Security > Calendars**. On macOS 14 and later, AlwaysOn needs **Full Access**. Add-only access cannot read events.
+
+## Check what AlwaysOn sent
+
+Choose **Pulse Log...** in the menu to see each input attempt as it happens. Each entry shows its time and one outcome:
+
+- **Input posted**: AlwaysOn sent the mouse or Shift input.
+- **Skipped: user active**: you used the machine in the last 30 seconds and the idle-only option is on.
+- **Skipped: no target app**: no chosen chat or meeting app was running and that option is on.
+- **Input creation failed**: macOS did not create the input event.
+
+The log shows the newest 200 entries and counts each outcome since launch or the last clear. **Clear Log** empties both. The log stays in memory and disappears when AlwaysOn quits. It records what AlwaysOn sent, not the status that Teams, Slack, or other apps show.
+
+## Keep online while a command runs
+
+The native `alwayson` CLI is bundled inside AlwaysOn.app. It requires the installed macOS app and Accessibility permission granted beforehand. There is no Python runtime dependency.
+
+Open **Settings > General > Command Line Tool** and click **Install**. The section shows the installation state, command path, and bundled version/build. Click **Uninstall** there to remove this app's link. If another AlwaysOn copy owns the link, **Use This App** switches it to the current copy.
+
+You can also install through the bundled CLI:
+
+```bash
+"/Applications/AlwaysOn.app/Contents/Helpers/alwayson" install
+# Add this to your shell configuration if ~/.local/bin is not on PATH:
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+Installation creates a symlink in `~/.local/bin`, or in `install --directory PATH`. It refuses to replace unrelated files or symlinks. Use `alwayson uninstall [--directory PATH]` to remove only this app's managed link. The symlink follows app replacements at the same path. `alwayson --version` or `alwayson version` reads that app's marketing version and build; there are no independent CLI versions or binaries. Controls route explicitly to the owning app, even when multiple AlwaysOn apps exist. `~/.local/bin` needs to be on PATH only for interactive shell lookup.
+
+Other requests are `alwayson start`, `stop`, `toggle`, `timer MINUTES` with integer minutes 1...1440, and `until HH:MM` or `until ISO8601`. A local HH:MM must be in the future today; it never rolls into tomorrow. Requests report transport success, without app acknowledgement.
+
+For development, use `swift build --package-path CLI`, then `python3 CLI/Tests/acceptance.py CLI/.build/debug/alwayson`. The package has no external dependencies. The tests copy the built executable into app fixtures and replace the OS URL launcher through `ALWAYSON_URL_OPENER`. Production macOS requests use Launch Services with running-app substitution disabled. Unbundled development builds support help/version but refuse installation and control; install the full app for those operations. The macOS app does not run on Linux.
+
+Put the command after `--`:
+
+```bash
+alwayson run -- make test
+alwayson run -- python3 long_job.py
+```
+
+The helper runs the command with its arguments unchanged, without a shell. Output streams to your terminal as the command writes it, and the helper exits with the command's exit status. A command killed by a signal gives the shell-style status 128 plus the signal number.
+
+### How the helper starts and stops sessions
+
+Before the command starts, the helper opens `alwayson://run?token=UUID`. After the command exits, it opens `alwayson://finish?token=UUID` with the same token. Each run gets a new token. AlwaysOn ignores a `run` or `finish` URL whose token is missing, malformed, or repeated.
+
+- A `run` request replaces the current session, and the menu shows the session's end time. If Accessibility permission is missing, AlwaysOn asks for it and keeps the current session.
+- A `finish` request stops the session only if its token matches the current command session.
+- The latest command wins. When overlapping commands finish, an older command cannot stop a newer session.
+- Pausing, resuming, starting another session, cancelling the timer, stopping, or switching profiles ends command ownership. A later `finish` from that command does nothing.
+- After you pause and resume, the session keeps the command's 24-hour safety end time.
+
+Ctrl-C reaches the command directly. The helper waits for the command to exit, then releases the session. If the helper itself receives SIGTERM (for example, from `kill`) or SIGHUP (for example, when the terminal closes), it forwards the signal to the command and still releases the session.
+
+### Limits
+
+- URL delivery has no application acknowledgement. Successful delivery does not confirm permission, that the session started, or the order in which requests arrived.
+- If the helper exits without sending `finish` (for example, after SIGKILL), the session stops at its 24-hour safety end time.
+- Command sessions do not resume after AlwaysOn relaunches.
+- AlwaysOn does not prevent system sleep.
+
 ## Permissions and Updates
 
 - Accessibility permission is required because the app simulates keyboard or mouse input.
+- Calendar access is optional. AlwaysOn asks for it only when you load events in the **Until...** window.
 - Releases are unsigned and updated manually from [GitHub Releases](../../releases/latest).
 - If Accessibility stops working after an upgrade or reinstall, remove the old entry in Accessibility settings and add `AlwaysOn.app` again.
 - The app does not collect data.

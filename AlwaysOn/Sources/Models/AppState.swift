@@ -7,12 +7,6 @@ import Carbon
 /// Keeps track of active status and coordinates with ActivitySimulator
 @MainActor
 final class AppState: NSObject, ObservableObject {
-    enum SessionSource: Codable {
-        case manual
-        case workSchedule(profileName: String)
-        case quickTimer
-    }
-    
     // MARK: - Published Properties
     
     /// Whether the activity simulation is currently active
@@ -144,6 +138,7 @@ final class AppState: NSObject, ObservableObject {
     // MARK: - Private Properties
     
     private let activitySimulator = ActivitySimulator()
+    var pulseLog: PulseLog { activitySimulator.pulseLog }
     private let globalHotKeyManager = GlobalHotKeyManager()
     private var sessionTimer: Timer?
     private var sessionStartTime: Date?
@@ -192,20 +187,31 @@ final class AppState: NSObject, ObservableObject {
     // MARK: - Computed Properties
 
     var sessionSourceLabel: String? {
-        guard (isActive || activeSessionDuration > 0), let source = sessionSource else { return nil }
+        guard let source = sessionSource else { return nil }
 
         switch source {
         case .manual:
             return nil
         case .quickTimer:
             return "via Quick Timer"
+        case .until(_, let label):
+            return label.map { "Until · \($0)" } ?? "Until time"
+        case .command:
+            return "via Command"
         case .workSchedule(let name):
             return name.isEmpty ? "via Work Schedule" : "via Work Schedule · \(name)"
         }
     }
 
-    private var hasActiveOrPausedSession: Bool {
-        isActive || pausedSessionDuration > 0 || activeSessionDuration > 0
+    var sessionEndCondition: SessionEndCondition {
+        sessionSource?.endCondition(quickTimerDeadline: quickTimerEndTime) ??
+            quickTimerEndTime.map { .deadline($0) } ?? .unlimited
+    }
+
+    var sessionDeadline: Date? { sessionEndCondition.deadline }
+
+    var hasActiveOrPausedSession: Bool {
+        isActive || sessionSource != nil || pausedSessionDuration > 0 || activeSessionDuration > 0
     }
 
     private var isScheduleControlledSession: Bool {
@@ -246,27 +252,23 @@ final class AppState: NSObject, ObservableObject {
             }
         }
         refreshGlobalHotKey()
-        registerURLHandler()
         
-        // Restore quick timer if still valid
-        if let savedEndTime = defaults.object(forKey: Keys.quickTimerEndTime) as? Date {
-            if savedEndTime > Date() {
-                self._quickTimerEndTime = Published(initialValue: savedEndTime)
-            } else {
-                // Timer expired while app was closed
-                defaults.removeObject(forKey: Keys.quickTimerEndTime)
-            }
+        let savedEndTime = defaults.object(forKey: Keys.quickTimerEndTime) as? Date
+        let sourceData = defaults.data(forKey: Keys.sessionSource)
+        let restoredSource = sourceData.flatMap { try? JSONDecoder().decode(SessionSource.self, from: $0) }
+        let now = Date()
+        let expiredTimer = savedEndTime.map { SessionEndCondition.deadline($0).hasExpired(at: now) } ?? false
+        let shouldRestore = restoredSource.map {
+            $0.canRestore(isActive: isActive, quickTimerDeadline: savedEndTime, now: now)
+        } ?? (isActive && sourceData == nil)
+        if shouldRestore && !expiredTimer {
+            self._quickTimerEndTime = Published(initialValue: savedEndTime)
+            self._sessionSource = Published(initialValue: restoredSource)
+            self._quickTimerRemaining = Published(initialValue: max(0, sessionDeadline?.timeIntervalSince(now) ?? 0))
+        } else {
+            stopSession()
         }
 
-        // Restore how the resumed session was started (only relevant for restored active sessions)
-        if isActive,
-           let sourceData = defaults.data(forKey: Keys.sessionSource),
-           let restoredSource = try? JSONDecoder().decode(SessionSource.self, from: sourceData) {
-            self._sessionSource = Published(initialValue: restoredSource)
-        } else {
-            defaults.removeObject(forKey: Keys.sessionSource)
-        }
-        
         // Set up Combine subscriptions
         setupPermissionObserver()
         setupAutomationObservers()
@@ -283,6 +285,8 @@ final class AppState: NSObject, ObservableObject {
         } else if isActive && !hasAccessibilityPermission {
             // Reset active state if permissions are missing
             isActive = false
+        } else if sessionSource?.chosenEndDate != nil {
+            scheduleSessionHeartbeat()
         }
     }
     
@@ -296,15 +300,22 @@ final class AppState: NSObject, ObservableObject {
             return
         }
         
+        if expireSessionIfNeeded() { return }
+        sessionSource = sessionSource?.relinquishingCommand
         if isActive {
             // PAUSING - Save current session state
             pausedSessionDuration = activeSessionDuration
             pausedQuickTimerEndTime = quickTimerEndTime
         } else {
-            sessionSource = .manual
+            switch sessionSource {
+            case .until: break
+            default: sessionSource = .manual
+            }
             
             // Restore quick timer if it was active when paused
-            if let savedTimerEndTime = pausedQuickTimerEndTime {
+            if let absoluteDeadline = sessionSource?.endCondition(quickTimerDeadline: nil).deadline {
+                quickTimerEndTime = absoluteDeadline
+            } else if let savedTimerEndTime = pausedQuickTimerEndTime {
                 quickTimerEndTime = savedTimerEndTime
             } else {
                 // No saved timer, apply default timer if set
@@ -334,6 +345,7 @@ final class AppState: NSObject, ObservableObject {
     }
 
     func applyProfile(_ profile: Profile) {
+        stopSession()
         isApplyingProfile = true
         suppressScheduleAutoStart = true
         defer {
@@ -373,6 +385,7 @@ final class AppState: NSObject, ObservableObject {
             return
         }
 
+        stopSession()
         sessionSource = .quickTimer
         
         if let seconds = duration.seconds {
@@ -386,9 +399,32 @@ final class AppState: NSObject, ObservableObject {
         }
     }
     
+    @discardableResult
+    func startUntil(date: Date, label: String? = nil) -> Bool {
+        guard let source = SessionSource.validatedUntil(date: date, label: label, now: Date(),
+                                                       hasPermission: hasAccessibilityPermission) else { return false }
+        replaceSession(source: source)
+        return true
+    }
+
+    private func replaceSession(source: SessionSource) {
+        stopSession()
+        sessionSource = source
+        quickTimerEndTime = source.endCondition(quickTimerDeadline: nil).deadline
+        quickTimerRemaining = max(0, quickTimerEndTime?.timeIntervalSinceNow ?? 0)
+        isActive = true
+    }
+
     /// Cancel the quick timer but keep activity running
     func cancelQuickTimer() {
+        sessionSource = sessionSource?.cancellingCountdown
+        pausedQuickTimerEndTime = nil
         quickTimerEndTime = nil
+        activitySimulator.deadline = nil
+        if !isActive {
+            sessionTimer?.invalidate()
+            sessionTimer = nil
+        }
         quickTimerRemaining = 0
     }
     
@@ -487,6 +523,7 @@ final class AppState: NSObject, ObservableObject {
             guard let self else { return }
             // Resume activity if not already active
             if !self.isActive && self.hasAccessibilityPermission {
+                self.stopSession()
                 self.sessionSource = .manual
                 self.isActive = true
             }
@@ -524,6 +561,7 @@ final class AppState: NSObject, ObservableObject {
             
             // Auto-enable only when there is no active or paused session to preserve manual control.
             if !hasActiveOrPausedSession && hasAccessibilityPermission {
+                stopSession()
                 sessionSource = .workSchedule(profileName: profileManager.activeProfile?.name ?? "")
                 isActive = true
                 notificationManager.notifyWorkScheduleStarted()
@@ -537,7 +575,9 @@ final class AppState: NSObject, ObservableObject {
     }
     
     private func restartActivitySimulatorWithCurrentSettings() {
+        guard !expireSessionIfNeeded() else { return }
         activitySimulator.stop()
+        activitySimulator.deadline = sessionDeadline
         activitySimulator.start(interval: activityInterval, method: activityMethod)
     }
 
@@ -552,33 +592,22 @@ final class AppState: NSObject, ObservableObject {
     
     // MARK: - URL Commands
     
-    /// Launcher integrations (Raycast, Alfred, shell) open alwayson:// URLs
-    private func registerURLHandler() {
-        NSAppleEventManager.shared().setEventHandler(
-            self,
-            andSelector: #selector(handleGetURLEvent(_:withReplyEvent:)),
-            forEventClass: AEEventClass(kInternetEventClass),
-            andEventID: AEEventID(kAEGetURL)
-        )
-    }
-    
-    @objc private func handleGetURLEvent(_ event: NSAppleEventDescriptor, withReplyEvent reply: NSAppleEventDescriptor) {
-        guard let directObject = event.paramDescriptor(forKeyword: keyDirectObject),
-              let urlString = directObject.stringValue,
-              let url = URL(string: urlString),
-              let command = URLCommandParser.command(from: url) else { return }
-        
-        Task { @MainActor in
-            applyURLCommand(command)
-        }
-    }
-    
-    private func applyURLCommand(_ command: URLCommand) {
+    func applyURLCommand(_ command: URLCommand) {
         switch command {
+        case .run(let token):
+            guard hasAccessibilityPermission else { accessibilityPermission.request(); return }
+            replaceSession(source: .runningCommand(token: token, now: Date()))
+        case .finish(let token):
+            if sessionEndCondition.matchesFinish(token: token) { stopSession() }
         case .start:
+            sessionSource = sessionSource?.relinquishingCommand
             if !isActive {
                 if hasAccessibilityPermission {
-                    sessionSource = .manual
+                    if expireSessionIfNeeded() { return }
+                    switch sessionSource {
+                    case .until: break
+                    default: sessionSource = .manual
+                    }
                     isActive = true
                 } else {
                     accessibilityPermission.request()
@@ -588,6 +617,10 @@ final class AppState: NSObject, ObservableObject {
             stopSession()
         case .toggle:
             toggle()
+        case .until(let date):
+            guard date.timeIntervalSince1970.isFinite, date > Date() else { return }
+            guard hasAccessibilityPermission else { accessibilityPermission.request(); return }
+            startUntil(date: date)
         case .timer(let minutes):
             let duration: QuickTimerDuration
             if let minutes {
@@ -610,11 +643,13 @@ final class AppState: NSObject, ObservableObject {
     }
     
     private func startActivitySimulation() {
+        guard !expireSessionIfNeeded() else { return }
         guard hasAccessibilityPermission else {
             isActive = false
             return
         }
         
+        activitySimulator.deadline = sessionDeadline
         activitySimulator.start(interval: activityInterval, method: activityMethod)
         
         // Set session start time accounting for paused duration
@@ -635,6 +670,7 @@ final class AppState: NSObject, ObservableObject {
         // Stop the heartbeat but preserve duration for pause/resume
         sessionTimer?.invalidate()
         sessionTimer = nil
+        if sessionDeadline != nil { scheduleSessionHeartbeat() }
         
         // Save current session duration for pause (don't reset to 0)
         // The pausedSessionDuration is set in toggle() before stopping
@@ -656,6 +692,7 @@ final class AppState: NSObject, ObservableObject {
                 self?.tickSessionState()
             }
         }
+        if let sessionTimer { RunLoop.main.add(sessionTimer, forMode: .common) }
     }
     
     private func tickSessionState() {
@@ -663,22 +700,19 @@ final class AppState: NSObject, ObservableObject {
             activeSessionDuration = Date().timeIntervalSince(startTime)
         }
         
-        if let endTime = quickTimerEndTime {
-            let remaining = endTime.timeIntervalSince(Date())
-            if remaining <= 0 {
-                // Timer expired - disable activity
-                quickTimerEndTime = nil
-                quickTimerRemaining = 0
-                sessionSource = nil
-                isActive = false
-                
-                // Send notification if timer expired during work hours
-                if workScheduleManager.schedule.isEnabled && workScheduleManager.isWithinSchedule {
-                    notificationManager.notifyQuickTimerExpired()
-                }
-            } else {
-                quickTimerRemaining = remaining
-            }
+        if expireSessionIfNeeded() { return }
+        if let endTime = sessionDeadline {
+            quickTimerRemaining = max(0, endTime.timeIntervalSinceNow)
         }
+    }
+
+    @discardableResult
+    private func expireSessionIfNeeded() -> Bool {
+        guard sessionEndCondition.hasExpired(at: Date()) else { return false }
+        stopSession()
+        if workScheduleManager.schedule.isEnabled && workScheduleManager.isWithinSchedule {
+            notificationManager.notifyQuickTimerExpired()
+        }
+        return true
     }
 }
