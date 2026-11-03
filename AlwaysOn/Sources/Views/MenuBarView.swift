@@ -50,7 +50,9 @@ struct MenuBarView: View {
             Divider()
                 .padding(.vertical, 4)
             
-            // Settings and Quit
+            // Until, Pulse Log, Settings and Quit (available even when inactive)
+            untilButton
+            pulseLogButton
             settingsButton
             quitButton
         }
@@ -326,6 +328,44 @@ struct MenuBarView: View {
         .padding(.vertical, 2)
     }
     
+    private var untilButton: some View {
+        Button(action: {
+            UntilSessionWindowController.shared.show(appState: appState)
+        }) {
+            HStack(spacing: 8) {
+                Image(systemName: "calendar")
+                    .frame(width: 16)
+                Text("Until...")
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background(HoverBackground())
+    }
+
+    private var pulseLogButton: some View {
+        Button(action: {
+            PulseLogWindowController.shared.show(appState: appState)
+        }) {
+            HStack(spacing: 8) {
+                Image(systemName: "waveform.path.ecg")
+                    .frame(width: 16)
+                Text("Pulse Log...")
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .background(HoverBackground())
+    }
+
     private var settingsButton: some View {
         Button(action: {
             SettingsWindowController.shared.show(appState: appState)

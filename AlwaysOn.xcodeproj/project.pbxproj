@@ -49,6 +49,11 @@
 		1000000000000045 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000045 /* UpdateChecker.swift */; };
 		1000000000000046 /* ActivityGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000046 /* ActivityGate.swift */; };
 		1000000000000047 /* URLCommand.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000047 /* URLCommand.swift */; };
+		A1000000000000A1 /* UntilSessionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000A1 /* UntilSessionView.swift */; };
+		A1000000000000A2 /* PulseLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000A2 /* PulseLogView.swift */; };
+		A1000000000000A3 /* UntilSessionWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000A3 /* UntilSessionWindowController.swift */; };
+		A1000000000000A4 /* CalendarEventProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000A4 /* CalendarEventProvider.swift */; };
+		A1000000000000A5 /* PulseLogWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000A5 /* PulseLogWindowController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -98,6 +103,11 @@
 		2000000000000045 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = UpdateChecker.swift; path = ../AlwaysOn/Sources/Services/UpdateChecker.swift; sourceTree = "<group>"; };
 		2000000000000046 /* ActivityGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ActivityGate.swift; path = ../AlwaysOn/Sources/Models/ActivityGate.swift; sourceTree = "<group>"; };
 		2000000000000047 /* URLCommand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = URLCommand.swift; path = ../AlwaysOn/Sources/Models/URLCommand.swift; sourceTree = "<group>"; };
+		A2000000000000A1 /* UntilSessionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UntilSessionView.swift; sourceTree = "<group>"; };
+		A2000000000000A2 /* PulseLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulseLogView.swift; sourceTree = "<group>"; };
+		A2000000000000A3 /* UntilSessionWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UntilSessionWindowController.swift; sourceTree = "<group>"; };
+		A2000000000000A4 /* CalendarEventProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarEventProvider.swift; sourceTree = "<group>"; };
+		A2000000000000A5 /* PulseLogWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulseLogWindowController.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -177,6 +187,9 @@
 				2000000000000020 /* ProfileManager.swift */,
 				2000000000000015 /* SettingsWindowController.swift */,
 				2000000000000009 /* UpdateChecker.swift */,
+				A2000000000000A5 /* PulseLogWindowController.swift */,
+				A2000000000000A4 /* CalendarEventProvider.swift */,
+				A2000000000000A3 /* UntilSessionWindowController.swift */,
 				2000000000000019 /* WorkScheduleManager.swift */,
 			);
 			path = Services;
@@ -188,6 +201,8 @@
 				500000000000000A /* Settings */,
 				2000000000000005 /* MenuBarView.swift */,
 				200000000000000E /* PermissionsView.swift */,
+				A2000000000000A2 /* PulseLogView.swift */,
+				A2000000000000A1 /* UntilSessionView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -358,6 +373,11 @@
 				1000000000000021 /* ActivityGate.swift in Sources */,
 				1000000000000022 /* GlobalHotKeyManager.swift in Sources */,
 				1000000000000023 /* URLCommand.swift in Sources */,
+				A1000000000000A5 /* PulseLogWindowController.swift in Sources */,
+				A1000000000000A4 /* CalendarEventProvider.swift in Sources */,
+				A1000000000000A3 /* UntilSessionWindowController.swift in Sources */,
+				A1000000000000A2 /* PulseLogView.swift in Sources */,
+				A1000000000000A1 /* UntilSessionView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
