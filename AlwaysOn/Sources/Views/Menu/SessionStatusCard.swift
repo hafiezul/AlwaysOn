@@ -22,7 +22,16 @@ struct StatusCardModel {
     var remainingFraction: Double?
     var detail: String?
     var today: TimeInterval
+    /// Elapsed time of the current session, to tell whether today's total adds anything
+    var sessionElapsed: TimeInterval = 0
     var isSuspended: Bool
+
+    /// Today's total is worth showing when AlwaysOn is off, or when earlier
+    /// sessions today make it differ from the current session's elapsed time
+    var showsTodayTotal: Bool {
+        guard today >= 60 else { return false }
+        return phase == .off || today - sessionElapsed >= 60
+    }
 
     @MainActor
     init(appState: AppState) {
@@ -31,6 +40,7 @@ struct StatusCardModel {
         seconds = isTimed ? appState.quickTimerRemaining : appState.activeSessionDuration
         remainingFraction = appState.sessionProgress.map { 1 - $0 }
         today = appState.onlineTimeToday
+        sessionElapsed = appState.activeSessionDuration
         isSuspended = appState.systemSuspension != nil
         detail = Self.detail(label: appState.sessionSourceLabel, deadline: appState.sessionDeadline,
                              isOff: phase == .off)
@@ -103,11 +113,12 @@ struct StatusCardContent: View {
                     Text(title)
                         .font(.headline)
                     Spacer(minLength: 8)
-                    if model.today > 0 {
-                        Text("Today \(ActivityDurationFormat.long(model.today))")
+                    if model.showsTodayTotal {
+                        Text("\(ActivityDurationFormat.long(model.today)) online today")
                             .font(.caption)
                             .foregroundColor(.secondary)
                             .monospacedDigit()
+                            .help("Total time AlwaysOn kept you online today, across all sessions")
                     }
                 }
 

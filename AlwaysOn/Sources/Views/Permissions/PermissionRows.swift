@@ -116,6 +116,8 @@ extension PermissionRowModel {
 struct PermissionRow: View {
     let model: PermissionRowModel
     var compact = false
+    /// The setup window already groups rows under a Required heading
+    var showsRequiredBadge = true
 
     private var toneColor: Color {
         switch model.tone {
@@ -149,7 +151,7 @@ struct PermissionRow: View {
                 HStack(spacing: 6) {
                     Text(model.title)
                         .font(.body.weight(.medium))
-                    if model.isRequired {
+                    if model.isRequired && showsRequiredBadge {
                         Text("Required")
                             .font(.caption2.weight(.semibold))
                             .padding(.horizontal, 5)

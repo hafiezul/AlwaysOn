@@ -11,7 +11,7 @@ struct UntilSessionView: View {
 
     private enum Mode: String, CaseIterable, Identifiable {
         case time = "Time"
-        case calendar = "Calendar"
+        case calendar = "Calendar Event"
         var id: String { rawValue }
     }
 
@@ -22,12 +22,26 @@ struct UntilSessionView: View {
     @State private var selectedEventID: String?
     @State private var errorMessage: String?
 
-    private static let presets: [(title: String, minutes: Int)] = [
-        ("+30 min", 30), ("+1 hr", 60), ("+2 hr", 120), ("+4 hr", 240)
+    private static let presets: [(title: String, spoken: String, minutes: Int)] = [
+        ("+15m", "15 minutes", 15), ("+30m", "30 minutes", 30), ("+1h", "1 hour", 60),
+        ("+2h", "2 hours", 120), ("+4h", "4 hours", 240)
     ]
 
+    private var selectedEvent: CalendarEventSnapshot? {
+        calendar.events.first { $0.id == selectedEventID }
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Keep Online Until")
+                    .font(.title2.weight(.bold))
+                Text("Starts now and stops at the time you choose, even if you pause in between.")
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             Picker("Source", selection: $mode) {
                 ForEach(Mode.allCases) { mode in
                     Text(mode.rawValue).tag(mode)
@@ -57,77 +71,136 @@ struct UntilSessionView: View {
             footer
         }
         .padding(20)
-        .frame(minWidth: 440, minHeight: 480)
+        .frame(minWidth: 460, minHeight: 500)
     }
 
     // MARK: - Time mode
 
     private var timeSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Start keeping you online now and stop at the time you choose.")
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+        VStack(alignment: .leading, spacing: 14) {
+            endPreview
 
-            DatePicker(
-                "Stop at",
-                selection: $endDate,
-                in: earliestSelectable...,
-                displayedComponents: [.date, .hourAndMinute]
-            )
-            .onChange(of: endDate) { _ in errorMessage = nil }
-
-            HStack(spacing: 6) {
-                ForEach(Self.presets, id: \.minutes) { preset in
-                    Button(preset.title) {
-                        let now = Date()
-                        earliestSelectable = Self.roundedDownToMinute(now)
-                        endDate = Self.roundedUpToMinute(now.addingTimeInterval(TimeInterval(preset.minutes * 60)))
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Quick picks")
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(.secondary)
+                HStack(spacing: 6) {
+                    ForEach(Self.presets, id: \.minutes) { preset in
+                        TimeChip(title: preset.title, accessibilityText: "Stop in \(preset.spoken)") {
+                            setEnd(Date().addingTimeInterval(TimeInterval(preset.minutes * 60)))
+                        }
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+                }
+                if let workEnd = workHoursEnd {
+                    TimeChip(title: "End of work hours · \(workEnd.formatted(date: .omitted, time: .shortened))",
+                             accessibilityText: "Stop at the end of work hours") {
+                        setEnd(workEnd)
+                    }
                 }
             }
 
-            TextField("Label (optional)", text: $label)
-                .textFieldStyle(.roundedBorder)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Or pick a time")
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(.secondary)
+                DatePicker("Stop at", selection: $endDate, in: earliestSelectable...,
+                           displayedComponents: [.date, .hourAndMinute])
+                    .datePickerStyle(.compact)
+                    .labelsHidden()
+                    .onChange(of: endDate) { _ in errorMessage = nil }
+            }
 
-            Label(
-                "Ends \(endDate.formatted(date: .abbreviated, time: .shortened))",
-                systemImage: "clock"
-            )
-            .font(.subheadline)
-            .foregroundColor(.secondary)
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Label")
+                    .font(.caption.weight(.semibold))
+                    .foregroundColor(.secondary)
+                TextField("Optional, e.g. Standup or Deploy", text: $label)
+                    .textFieldStyle(.roundedBorder)
+            }
         }
     }
 
+    /// The chosen end time, large, with how far away it is
+    private var endPreview: some View {
+        HStack(spacing: 14) {
+            Image(systemName: "clock.badge.checkmark")
+                .font(.system(size: 26, weight: .regular))
+                .foregroundColor(.accentColor)
+                .frame(width: 40)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(endDate.formatted(date: .omitted, time: .shortened))
+                    .font(.system(.largeTitle, design: .rounded).weight(.semibold))
+                    .monospacedDigit()
+                Text(Self.relativeDescription(endDate, now: Date()))
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+            }
+            Spacer()
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.primary.opacity(0.05))
+        )
+        .accessibilityElement(children: .combine)
+    }
+
+    /// Today's work hours end, when work hours are under way and it is still ahead
+    private var workHoursEnd: Date? {
+        let schedule = appState.workScheduleManager.schedule
+        let now = Date()
+        guard schedule.isWithinSchedule(on: now),
+              let end = Calendar.current.date(bySettingHour: schedule.endTimeMinutes / 60,
+                                              minute: schedule.endTimeMinutes % 60, second: 0, of: now),
+              end > now else { return nil }
+        return end
+    }
+
+    private func setEnd(_ date: Date) {
+        earliestSelectable = Self.roundedDownToMinute(Date())
+        endDate = Self.roundedUpToMinute(date)
+        errorMessage = nil
+    }
+
     // MARK: - Footer
+
+    private var primaryTitle: String {
+        switch mode {
+        case .time:
+            return "Keep Online Until \(endDate.formatted(date: .omitted, time: .shortened))"
+        case .calendar:
+            guard let event = selectedEvent else { return "Choose an Event" }
+            return "Keep Online Until \(event.title) Ends"
+        }
+    }
 
     private var footer: some View {
         HStack {
             Button("Cancel") {
                 onClose()
             }
+            .buttonStyle(ActionButtonStyle())
             .keyboardShortcut(.cancelAction)
 
             Spacer()
 
-            Button(mode == .time ? "Start Until Chosen Time" : "Start Until Event Ends") {
+            Button(primaryTitle) {
                 start()
             }
+            .buttonStyle(ActionButtonStyle(kind: .prominent))
+            .lineLimit(1)
             .keyboardShortcut(.defaultAction)
             .disabled(mode == .calendar && selectedEventID == nil)
         }
     }
 
     private func errorBanner(_ message: String) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top, spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundColor(.yellow)
+                    .foregroundColor(.orange)
                 Text(message)
-                    .font(.caption)
-                    .foregroundColor(.red)
+                    .font(.callout)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
@@ -135,9 +208,15 @@ struct UntilSessionView: View {
                 Button("Grant Accessibility Permission") {
                     appState.requestPermission()
                 }
-                .controlSize(.small)
+                .buttonStyle(ActionButtonStyle(kind: .prominent, compact: true))
             }
         }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color.orange.opacity(0.12))
+        )
         .accessibilityElement(children: .combine)
     }
 
@@ -156,13 +235,13 @@ struct UntilSessionView: View {
             submit(endDate: endDate, label: label)
 
         case .calendar:
-            guard let event = calendar.events.first(where: { $0.id == selectedEventID }) else {
+            guard let event = selectedEvent else {
                 errorMessage = "Choose an event first."
                 return
             }
             // The list may be old; check this exact event again at the moment of starting
             guard event.endDate > Date() else {
-                errorMessage = "“\(event.title)” has already ended. Reload events and choose another."
+                errorMessage = "\u{201C}\(event.title)\u{201D} has already ended. Reload events and choose another."
                 return
             }
             submit(endDate: event.endDate, label: event.title)
@@ -183,6 +262,23 @@ struct UntilSessionView: View {
     }
 
     // MARK: - Helpers
+
+    /// "Today · in 1h 5m", "Tomorrow · in 14h", or "Friday, Nov 13 · in 3 days"
+    static func relativeDescription(_ date: Date, now: Date, calendar: Calendar = .current) -> String {
+        let day: String
+        if calendar.isDate(date, inSameDayAs: now) {
+            day = "Today"
+        } else if let tomorrow = calendar.date(byAdding: .day, value: 1, to: now), calendar.isDate(date, inSameDayAs: tomorrow) {
+            day = "Tomorrow"
+        } else {
+            day = date.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())
+        }
+        let seconds = date.timeIntervalSince(now)
+        guard seconds > 0 else { return "\(day) · already passed" }
+        let days = Int(seconds / 86_400)
+        let span = days >= 2 ? "\(days) days" : ActivityDurationFormat.long(seconds)
+        return "\(day) · in \(span)"
+    }
 
     private static func roundedUpToMinute(_ date: Date) -> Date {
         let seconds = date.timeIntervalSinceReferenceDate
@@ -205,14 +301,14 @@ private struct UntilCalendarSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Pick a current or upcoming event (next 24 hours) and keep online until it ends. AlwaysOn only reads events; it never changes your calendar.")
-                .font(.subheadline)
+            Text("Pick a meeting in the next 24 hours and stay online until it ends. AlwaysOn only reads events; it never changes your calendar.")
+                .font(.callout)
                 .foregroundColor(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             content
 
-            Text("The end time is copied when you start. If the event is moved or shortened later, the session keeps the original end time. AlwaysOn does not detect meetings or start automatically.")
+            Text("The end time is copied when you start, so moving the event later doesn't change the session.")
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -262,6 +358,7 @@ private struct UntilCalendarSection: View {
         switch calendar.phase {
         case .idle:
             Button("Load Calendar Events") { load() }
+                .buttonStyle(ActionButtonStyle(kind: .prominent, compact: true))
             if calendar.accessState == .notDetermined {
                 Text("macOS will ask for calendar access when you press this button.")
                     .font(.caption)
@@ -290,38 +387,75 @@ private struct UntilCalendarSection: View {
                 Button("Reload Events") { load() }
             } else {
                 eventList
-                if let event = calendar.events.first(where: { $0.id == selectedEventID }) {
-                    Label(
-                        "Will stop at \(event.endDate.formatted(date: .abbreviated, time: .shortened))",
-                        systemImage: "clock"
-                    )
-                    .font(.subheadline)
-                }
                 Button("Reload Events") { load() }
-                    .controlSize(.small)
+                    .buttonStyle(.link)
+                    .font(.caption)
             }
         }
     }
 
     private var eventList: some View {
-        List(calendar.events, selection: $selectedEventID) { event in
-            VStack(alignment: .leading, spacing: 2) {
-                Text(event.title)
-                    .font(.body)
-                    .lineLimit(1)
-                Text("\(startDescription(for: event)) · ends \(event.endDate.formatted(date: .omitted, time: .shortened))")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                if let calendarTitle = event.calendarTitle, !calendarTitle.isEmpty {
-                    Text(calendarTitle)
-                        .font(.caption2)
-                        .foregroundColor(.secondary)
+        ScrollView {
+            VStack(spacing: 6) {
+                ForEach(calendar.events) { event in
+                    eventCard(event)
                 }
             }
-            .padding(.vertical, 2)
+            .padding(1)
         }
-        .frame(minHeight: 150)
-        .overlay(RoundedRectangle(cornerRadius: 6).stroke(Color.primary.opacity(0.12)))
+        .frame(minHeight: 160, maxHeight: 260)
+    }
+
+    private func eventCard(_ event: CalendarEventSnapshot) -> some View {
+        let isSelected = event.id == selectedEventID
+        let inProgress = event.startDate <= Date()
+        return Button {
+            selectedEventID = event.id
+        } label: {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .foregroundColor(isSelected ? .accentColor : .secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(spacing: 6) {
+                        Text(event.title)
+                            .font(.body.weight(.medium))
+                            .lineLimit(1)
+                        if inProgress {
+                            Text("Now")
+                                .font(.caption2.weight(.semibold))
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 1)
+                                .background(Capsule().fill(Color.green.opacity(0.18)))
+                                .foregroundColor(.green)
+                        }
+                    }
+                    Text(timeRange(for: event) + (event.calendarTitle.map { " · \($0)" } ?? ""))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(isSelected ? Color.accentColor.opacity(0.12) : Color.primary.opacity(0.05))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .strokeBorder(isSelected ? Color.accentColor.opacity(0.6) : Color.clear)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private func timeRange(for event: CalendarEventSnapshot) -> String {
+        let start = event.startDate.formatted(date: .omitted, time: .shortened)
+        let end = event.endDate.formatted(date: .omitted, time: .shortened)
+        return "\(start) – \(end)"
     }
 
     private var retryButton: some View {
@@ -343,13 +477,6 @@ private struct UntilCalendarSection: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-    }
-
-    private func startDescription(for event: CalendarEventSnapshot) -> String {
-        if event.startDate <= Date() {
-            return "In progress"
-        }
-        return "Starts \(event.startDate.formatted(date: .omitted, time: .shortened))"
     }
 
     private func load() {

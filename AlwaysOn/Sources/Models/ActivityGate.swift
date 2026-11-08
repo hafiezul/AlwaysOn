@@ -97,7 +97,28 @@ final class PulseLog: ObservableObject {
             }
         }
     }
+    /// How the Pulse Log groups outcomes
+    enum Category: String, CaseIterable, Identifiable {
+        case posted, skipped, paused, problem
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .posted: return "Posted"
+            case .skipped: return "Skipped"
+            case .paused: return "Paused"
+            case .problem: return "Problems"
+            }
+        }
+    }
+
     @Published private(set) var history: [Entry] = []
+
+    /// Recorded attempts per category since launch or the last clear
+    func count(of category: Category) -> Int {
+        counts.reduce(0) { $0 + ($1.key.category == category ? $1.value : 0) }
+    }
     @Published private(set) var counts: [Outcome: Int] = [:]
     var latestOutcome: Outcome? { history.last?.outcome }
     func record(_ outcome: Outcome, date: Date = Date()) {
@@ -106,4 +127,29 @@ final class PulseLog: ObservableObject {
         counts[outcome, default: 0] += 1
     }
     func clear() { history.removeAll(); counts.removeAll() }
+}
+
+extension PulseLog.Outcome {
+    var category: PulseLog.Category {
+        switch self {
+        case .posted: return .posted
+        case .userActive, .noTarget: return .skipped
+        case .systemPaused: return .paused
+        case .inputCreationFailed, .permissionMissing, .stoppedAway, .stoppedLowBattery: return .problem
+        }
+    }
+
+    /// Why this happened, in plain words
+    var explanation: String {
+        switch self {
+        case .posted: return "Sent simulated input to keep you active."
+        case .userActive: return "You used the Mac in the last 30 seconds, so no input was needed."
+        case .noTarget: return "None of your target apps were running."
+        case .inputCreationFailed: return "macOS didn't create the input event."
+        case .systemPaused: return "Waiting until the Mac is awake, unlocked, and back on your session."
+        case .permissionMissing: return "Accessibility permission was turned off, so the session stopped."
+        case .stoppedAway: return "You were away longer than your away limit, so the session stopped."
+        case .stoppedLowBattery: return "The battery reached your stop level, so the session stopped."
+        }
+    }
 }

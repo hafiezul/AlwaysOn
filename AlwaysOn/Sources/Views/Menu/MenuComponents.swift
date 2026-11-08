@@ -205,7 +205,8 @@ extension PulseLog.Outcome {
         switch self {
         case .posted: return .green
         case .userActive, .stoppedAway, .stoppedLowBattery: return .orange
-        case .noTarget, .systemPaused: return .secondary
+        case .noTarget: return .secondary
+        case .systemPaused: return .indigo
         case .inputCreationFailed, .permissionMissing: return .red
         }
     }

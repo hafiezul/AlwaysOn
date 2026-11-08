@@ -21,10 +21,10 @@ struct SettingsView: View {
         } detail: {
             // Detail pane
             detailView
-                .frame(minWidth: 400, minHeight: 300)
+                .frame(minWidth: 480, minHeight: 460)
         }
         .navigationTitle("Settings")
-        .frame(minWidth: 580, minHeight: 350)
+        .frame(minWidth: 680, minHeight: 500)
     }
     
     @ViewBuilder

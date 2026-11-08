@@ -13,7 +13,7 @@ If you find this app useful, consider supporting its development:
 ## At a Glance
 
 - macOS 13.0 or later
-- Requires Accessibility permission
+- Requires Accessibility permission; Notifications, Location, and Calendar are optional
 - Runs in the menu bar with no Dock icon
 - Built with Xcode 15+ and Swift 5.9+
 
@@ -34,6 +34,7 @@ If you find this app useful, consider supporting its development:
 - Control sessions from Shortcuts, Spotlight, and Siri
 - Enable launch at login and optional notifications
 - Save profiles for different activity and schedule setups
+- Switch profiles automatically when you join a Wi-Fi network
 
 ## Getting Started
 
@@ -43,7 +44,7 @@ If you find this app useful, consider supporting its development:
 2. Open the DMG and drag `AlwaysOn.app` to Applications.
 3. Launch AlwaysOn from Applications.
 4. If macOS says Apple could not verify the app is free of malware, open **System Settings > Privacy & Security**, scroll to **Security**, click **Open Anyway** for AlwaysOn, then confirm **Open Anyway**.
-5. Grant Accessibility permission when prompted.
+5. The setup window lists every permission AlwaysOn uses. Allow **Accessibility**, which is required. **Notifications**, **Location** (for Wi-Fi profile switching), and **Calendar** (for Keep Online Until a meeting ends) are optional, and you can change them later in **Settings > General > Permissions**.
 
 If Accessibility breaks after a reinstall or update, remove the old AlwaysOn entry from **System Settings > Privacy & Security > Accessibility**, then add and enable `/Applications/AlwaysOn.app` again.
 
@@ -107,8 +108,10 @@ AlwaysOn registers the `alwayson://` URL scheme, so launchers like Raycast and A
 
 Choose **Keep Online Until…** in the menu to start a session now that stops at a time you pick. The window has two tabs:
 
-- **Time**: pick a date and time, or use **+30 min**, **+1 hr**, **+2 hr**, or **+4 hr**. Add an optional label.
-- **Calendar**: choose **Load Calendar Events**, then pick a timed event that is in progress or starts in the next 24 hours. The session uses the event's title as its label and stops when the event ends.
+- **Time**: the chosen end time shows large, with how far away it is. Use a quick pick (**+15m** to **+4h**, or **End of work hours** while work hours are under way), or pick any date and time. Add an optional label.
+- **Calendar Event**: choose **Load Calendar Events**, then pick a timed event that is in progress (marked **Now**) or starts in the next 24 hours. The session uses the event's title as its label and stops when the event ends.
+
+The start button names what will happen, for example **Keep Online Until 5:30 PM**.
 
 AlwaysOn copies the end time when you start the session. If the event moves or gets shorter in Calendar later, the session keeps the copied end time. AlwaysOn does not detect meetings or start sessions on its own.
 
@@ -124,7 +127,7 @@ AlwaysOn asks for calendar access only when you choose **Load Calendar Events**.
 
 ## Check what AlwaysOn sent
 
-Choose **Pulse Log...** in the menu to see each input attempt as it happens. Each entry shows its time and one outcome:
+Click the activity strip in the menu to open the **Pulse Log**. It shows totals for Posted, Skipped, Paused, and Problems, a timeline of the last 60 attempts, and a list you can filter by category. Each entry shows its time, its outcome, and why it happened:
 
 - **Input posted**: AlwaysOn sent the mouse or Shift input.
 - **Skipped: user active**: you used the machine in the last 30 seconds and the idle-only option is on.
@@ -133,7 +136,17 @@ Choose **Pulse Log...** in the menu to see each input attempt as it happens. Eac
 - **Paused: Mac asleep, locked, or switched user**: simulation stopped until the Mac is back in use.
 - **Stopped: Accessibility permission missing**: permission was revoked, so the session stopped.
 
-The log shows the newest 200 entries and counts each outcome since launch or the last clear. **Clear Log** empties both. The log stays in memory and disappears when AlwaysOn quits. It records what AlwaysOn sent, not the status that Teams, Slack, or other apps show.
+The list shows the newest 200 entries, and the totals count since launch or the last clear. **Clear Log** empties both. The log stays in memory and disappears when AlwaysOn quits. It records what AlwaysOn sent, not the status that Teams, Slack, or other apps show.
+
+## Switch profiles by Wi-Fi network
+
+Turn on **Settings > Profiles > Switch profiles by Wi-Fi network**, then use a profile's Wi-Fi button and choose **Use on “network”** while you're connected. Joining that network later switches to that profile. A network belongs to one profile at a time.
+
+- A running or paused session always finishes first. The menu says which profile will apply when it ends.
+- A network applies its profile once per join. If you pick another profile by hand, it stays until you join a different network.
+- If the new profile's work hours are under way, its schedule starts the session.
+
+macOS shows Wi-Fi network names only to apps with Location access, so turning this on asks for it. AlwaysOn reads only the network name and never your position. Network changes arrive as system events, so there is no polling.
 
 ## Activity history
 

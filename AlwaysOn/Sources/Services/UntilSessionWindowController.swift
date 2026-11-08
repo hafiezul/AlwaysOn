@@ -37,8 +37,8 @@ final class UntilSessionWindowController {
         window.title = "Keep Online Until"
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
         window.isReleasedWhenClosed = false
-        window.setContentSize(NSSize(width: 460, height: 520))
-        window.minSize = NSSize(width: 440, height: 480)
+        window.setContentSize(NSSize(width: 480, height: 540))
+        window.minSize = NSSize(width: 460, height: 500)
         window.center()
         window.level = .floating
 
