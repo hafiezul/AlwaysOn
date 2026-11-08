@@ -1,0 +1,10 @@
+{
+  "_comment": "Installer window geometry in points, shared by make-background.py and settings.py. Finder may or may not count the title bar in the window height, so the window is opened at windowHeight + bleed and only the top windowHeight is guaranteed visible: keep everything that matters inside it.",
+  "windowWidth": 660,
+  "windowHeight": 400,
+  "bleed": 28,
+  "iconSize": 128,
+  "iconY": 208,
+  "appX": 170,
+  "applicationsX": 490
+}
