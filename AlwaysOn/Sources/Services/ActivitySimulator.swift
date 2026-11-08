@@ -48,6 +48,16 @@ final class ActivitySimulator {
 
     /// Called on the main queue when a tick finds the permission revoked
     var onPermissionLost: (() -> Void)?
+
+    /// Whether to work out how long the user has been away. Off by default so
+    /// a tick reads the idle time only when a feature needs it.
+    var tracksRealInput = false
+    private(set) var inputTracker = RealInputTracker(start: Date())
+
+    /// Asked at each tick, before posting, with how long the user has been
+    /// away (0 when not tracked). Return false to skip the tick because the
+    /// session is being stopped.
+    var shouldContinue: ((_ awayFor: TimeInterval) -> Bool)?
     
     // MARK: - Public Methods
     
@@ -60,6 +70,8 @@ final class ActivitySimulator {
         
         isRunning = true
         activityMethod = method
+        // Starting or resuming happens at the Mac, so the user is present now
+        inputTracker = RealInputTracker(start: Date())
         
         // Use a repeating timer on the main run loop. Tolerance lets macOS
         // batch this wake-up with others; a few seconds' drift is far inside
@@ -104,13 +116,29 @@ final class ActivitySimulator {
     
     /// Performs activity simulation based on the selected method
     private func simulateActivity() {
-        if let deadline, deadline <= Date() { return }
+        let now = Date()
+        if let deadline, deadline <= now { return }
         guard permissionProvider() else {
             pulseLog.record(.permissionMissing)
             onPermissionLost?()
             return
         }
-        switch gate.decision(idleSeconds: idleSecondsProvider(),
+
+        // Read the idle time at most once per tick, and only when needed
+        var measuredIdle: TimeInterval?
+        func idleSeconds() -> TimeInterval {
+            if let measuredIdle { return measuredIdle }
+            let value = idleSecondsProvider()
+            measuredIdle = value
+            return value
+        }
+        if tracksRealInput { inputTracker.observe(idleSeconds: idleSeconds(), now: now) }
+        if let shouldContinue,
+           !shouldContinue(tracksRealInput ? inputTracker.awayDuration(now: now) : 0) {
+            return
+        }
+
+        switch gate.decision(idleSeconds: idleSeconds(),
                              hasRunningTarget: hasRunningTargetProvider(gate.targetBundleIDs)) {
         case .skip(.userActive): pulseLog.record(.userActive); return
         case .skip(.noTarget): pulseLog.record(.noTarget); return
@@ -132,6 +160,7 @@ final class ActivitySimulator {
             lastMethodWasMouse.toggle()
         }
         
+        if posted { inputTracker.recordSyntheticPost(at: now) }
         pulseLog.record(posted ? .posted : .inputCreationFailed)
         #if DEBUG
         print("[ActivitySimulator] Activity simulated at \(Date())")

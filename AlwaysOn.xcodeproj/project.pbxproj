@@ -24,6 +24,16 @@
 
 
 /* Begin PBXBuildFile section */
+		B100000000000010 /* ActivityHistoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000010 /* ActivityHistoryTests.swift */; };
+		B10000000000000F /* ActivitySettingsPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000F /* ActivitySettingsPane.swift */; };
+		B10000000000000E /* ShortcutsActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000E /* ShortcutsActions.swift */; };
+		B10000000000000D /* PowerSourceMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000D /* PowerSourceMonitor.swift */; };
+		B10000000000000C /* ActivityHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000C /* ActivityHistoryStore.swift */; };
+		B10000000000000B /* ActivityHistoryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000B /* ActivityHistoryStore.swift */; };
+		B10000000000000A /* SafetyStops.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000A /* SafetyStops.swift */; };
+		B100000000000009 /* SafetyStops.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000009 /* SafetyStops.swift */; };
+		B100000000000008 /* ActivityHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000008 /* ActivityHistory.swift */; };
+		B100000000000007 /* ActivityHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000007 /* ActivityHistory.swift */; };
 		B100000000000006 /* PowerPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000006 /* PowerPolicyTests.swift */; };
 		B100000000000005 /* SystemEventMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000005 /* SystemEventMonitor.swift */; };
 		B100000000000004 /* RunningAppMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000004 /* RunningAppMonitor.swift */; };
@@ -83,6 +93,16 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		B200000000000010 /* ActivityHistoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityHistoryTests.swift; sourceTree = "<group>"; };
+		B20000000000000F /* ActivitySettingsPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivitySettingsPane.swift; sourceTree = "<group>"; };
+		B20000000000000E /* ShortcutsActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutsActions.swift; sourceTree = "<group>"; };
+		B20000000000000D /* PowerSourceMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerSourceMonitor.swift; sourceTree = "<group>"; };
+		B20000000000000C /* ActivityHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ActivityHistoryStore.swift; path = ../AlwaysOn/Sources/Services/ActivityHistoryStore.swift; sourceTree = "<group>"; };
+		B20000000000000B /* ActivityHistoryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityHistoryStore.swift; sourceTree = "<group>"; };
+		B20000000000000A /* SafetyStops.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SafetyStops.swift; path = ../AlwaysOn/Sources/Models/SafetyStops.swift; sourceTree = "<group>"; };
+		B200000000000009 /* SafetyStops.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafetyStops.swift; sourceTree = "<group>"; };
+		B200000000000008 /* ActivityHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ActivityHistory.swift; path = ../AlwaysOn/Sources/Models/ActivityHistory.swift; sourceTree = "<group>"; };
+		B200000000000007 /* ActivityHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityHistory.swift; sourceTree = "<group>"; };
 		B200000000000006 /* PowerPolicyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PowerPolicyTests.swift; sourceTree = "<group>"; };
 		B200000000000005 /* SystemEventMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemEventMonitor.swift; sourceTree = "<group>"; };
 		B200000000000004 /* RunningAppMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = RunningAppMonitor.swift; path = ../AlwaysOn/Sources/Services/RunningAppMonitor.swift; sourceTree = "<group>"; };
@@ -199,6 +219,8 @@
 		5000000000000005 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				B200000000000009 /* SafetyStops.swift */,
+				B200000000000007 /* ActivityHistory.swift */,
 				B200000000000001 /* PowerPolicy.swift */,
 				2000000000000022 /* ActivityGate.swift */,
 				2000000000000024 /* URLCommand.swift */,
@@ -216,6 +238,9 @@
 		5000000000000006 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				B20000000000000E /* ShortcutsActions.swift */,
+				B20000000000000D /* PowerSourceMonitor.swift */,
+				B20000000000000B /* ActivityHistoryStore.swift */,
 				B200000000000005 /* SystemEventMonitor.swift */,
 				B200000000000003 /* RunningAppMonitor.swift */,
 				200000000000000D /* AccessibilityPermission.swift */,
@@ -250,6 +275,7 @@
 		500000000000000A /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				B20000000000000F /* ActivitySettingsPane.swift */,
 				2000000000000014 /* AboutSettingsPane.swift */,
 				2000000000000012 /* GeneralSettingsPane.swift */,
 				2000000000000021 /* ProfilesSettingsPane.swift */,
@@ -281,6 +307,10 @@
 		500000000000000B /* AlwaysOnTests */ = {
 			isa = PBXGroup;
 			children = (
+				B200000000000010 /* ActivityHistoryTests.swift */,
+				B20000000000000C /* ActivityHistoryStore.swift */,
+				B20000000000000A /* SafetyStops.swift */,
+				B200000000000008 /* ActivityHistory.swift */,
 				B200000000000006 /* PowerPolicyTests.swift */,
 				B200000000000004 /* RunningAppMonitor.swift */,
 				B200000000000002 /* PowerPolicy.swift */,
@@ -395,6 +425,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B10000000000000F /* ActivitySettingsPane.swift in Sources */,
+				B10000000000000E /* ShortcutsActions.swift in Sources */,
+				B10000000000000D /* PowerSourceMonitor.swift in Sources */,
+				B10000000000000B /* ActivityHistoryStore.swift in Sources */,
+				B100000000000009 /* SafetyStops.swift in Sources */,
+				B100000000000007 /* ActivityHistory.swift in Sources */,
 				B100000000000005 /* SystemEventMonitor.swift in Sources */,
 				B100000000000003 /* RunningAppMonitor.swift in Sources */,
 				B100000000000001 /* PowerPolicy.swift in Sources */,
@@ -439,6 +475,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B100000000000010 /* ActivityHistoryTests.swift in Sources */,
+				B10000000000000C /* ActivityHistoryStore.swift in Sources */,
+				B10000000000000A /* SafetyStops.swift in Sources */,
+				B100000000000008 /* ActivityHistory.swift in Sources */,
 				B100000000000006 /* PowerPolicyTests.swift in Sources */,
 				B100000000000004 /* RunningAppMonitor.swift in Sources */,
 				B100000000000002 /* PowerPolicy.swift in Sources */,

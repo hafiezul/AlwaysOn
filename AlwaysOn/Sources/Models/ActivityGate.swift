@@ -75,6 +75,10 @@ final class PulseLog: ObservableObject {
         case systemPaused
         /// A tick found Accessibility permission revoked
         case permissionMissing
+        /// The session stopped after the away limit passed with no input from the user
+        case stoppedAway
+        /// The session stopped because the battery reached the chosen level
+        case stoppedLowBattery
     }
     struct Entry: Identifiable {
         let id = UUID()
@@ -88,6 +92,8 @@ final class PulseLog: ObservableObject {
             case .inputCreationFailed: return "Input creation failed"
             case .systemPaused: return "Paused: Mac asleep, locked, or switched user"
             case .permissionMissing: return "Stopped: Accessibility permission missing"
+            case .stoppedAway: return "Stopped: away limit reached"
+            case .stoppedLowBattery: return "Stopped: low battery"
             }
         }
     }

@@ -96,6 +96,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func applicationWillTerminate(_ notification: Notification) {
-        // Cleanup if needed
+        MainActor.assumeIsolated {
+            appState?.prepareForTermination()
+        }
     }
 }

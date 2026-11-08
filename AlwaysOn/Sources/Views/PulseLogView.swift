@@ -136,6 +136,10 @@ private struct PulseEntryRow: View {
             return ("Paused", "moon.zzz", .secondary)
         case .permissionMissing:
             return ("Stopped", "lock.slash", .red)
+        case .stoppedAway:
+            return ("Stopped", "figure.walk", .orange)
+        case .stoppedLowBattery:
+            return ("Stopped", "battery.25", .orange)
         }
     }
 

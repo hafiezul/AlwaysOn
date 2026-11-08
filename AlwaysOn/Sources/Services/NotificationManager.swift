@@ -48,6 +48,7 @@ final class NotificationManager: NSObject, ObservableObject {
         case workScheduleEnded = "com.alwayson.workschedule.ended"
         case quickTimerExpired = "com.alwayson.quicktimer.expired"
         case profileSwitched = "com.alwayson.profile.switched"
+        case safetyStop = "com.alwayson.session.safetystop"
     }
     
     private enum NotificationAction: String {
@@ -183,6 +184,13 @@ final class NotificationManager: NSObject, ObservableObject {
             title: "Profile Switched",
             body: "Switched to \"\(newProfileName)\". Previous session was stopped."
         )
+    }
+    
+    /// Send notification when a safety stop (away limit, low battery) ends a session
+    func notifySafetyStop(title: String, body: String) {
+        guard canSendNotifications else { return }
+
+        sendNotification(identifier: .safetyStop, title: title, body: body)
     }
     
     // MARK: - Private Methods

@@ -29,6 +29,9 @@ If you find this app useful, consider supporting its development:
 - Keep online until a chosen time or until a calendar event ends
 - Keep online while a terminal command runs, with the `alwayson` CLI
 - Review recent input attempts in the Pulse Log
+- See daily online time for the last week in Settings > Activity
+- Stop automatically after you've been away too long or the battery runs low
+- Control sessions from Shortcuts, Spotlight, and Siri
 - Enable launch at login and optional notifications
 - Save profiles for different activity and schedule setups
 
@@ -120,6 +123,34 @@ Choose **Pulse Log...** in the menu to see each input attempt as it happens. Eac
 - **Stopped: Accessibility permission missing**: permission was revoked, so the session stopped.
 
 The log shows the newest 200 entries and counts each outcome since launch or the last clear. **Clear Log** empties both. The log stays in memory and disappears when AlwaysOn quits. It records what AlwaysOn sent, not the status that Teams, Slack, or other apps show.
+
+## Activity history
+
+**Settings > Activity** shows today's online time, the last 7 days, and a daily chart split by how each session started (manual, work hours, timer, Until, or command). The menu shows today's total next to the status.
+
+Online time counts while a session is active and the Mac is awake. Time paused for sleep, a locked screen, or a switched-out user isn't counted. History stays on this Mac in `~/Library/Application Support/AlwaysOn/activity-history.json`, keeps the last 30 days, and is written only when a session starts or stops, plus a checkpoint at most every 5 minutes. **Clear History…** removes it.
+
+## Safety stops
+
+Two optional limits in **Settings > General > Safety** end a session on their own. Both are off by default.
+
+- **Stop after I'm away for** 1, 2, 4, or 8 hours: ends the session once you haven't touched the keyboard or mouse for that long. AlwaysOn tells your input apart from its own, so its simulated input doesn't reset the clock. Starting or resuming a session counts as being present.
+- **Stop on low battery** at 10, 20, 30, or 50%: ends the session when the battery reaches that level while unplugged, and refuses to start below it. It follows the power source through macOS notifications instead of polling.
+
+A safety stop appears in the menu and the Pulse Log, and sends a notification when notifications are on.
+
+## Shortcuts
+
+AlwaysOn adds these actions to the Shortcuts app:
+
+- **Keep Online**, with optional minutes (1–1440)
+- **Keep Online Until** a date and time, with an optional label
+- **Pause or Resume**, which returns whether AlwaysOn is now active
+- **Stop Session**
+- **Switch Profile**, which stops the current session like switching from the menu
+- **Get Status**, which returns whether AlwaysOn is active
+
+They follow the same rules as the `alwayson://` links and report an error if Accessibility permission is missing. "Start AlwaysOn", "Stop AlwaysOn", and "AlwaysOn status" also work from Spotlight and Siri.
 
 ## Keep online while a command runs
 
