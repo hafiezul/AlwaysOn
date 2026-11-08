@@ -227,7 +227,7 @@ Ctrl-C reaches the command directly. The helper waits for the command to exit, t
 ## Permissions and Updates
 
 - Accessibility permission is required because the app simulates keyboard or mouse input.
-- Calendar access is optional. AlwaysOn asks for it only when you load events in the **Until...** window.
+- Calendar access is optional. AlwaysOn asks for it only when you allow it in the setup window or load events in the **Keep Online Until…** window.
 - Releases are unsigned and updated manually from [GitHub Releases](../../releases/latest).
 - If Accessibility stops working after an upgrade or reinstall, remove the old entry in Accessibility settings and add `AlwaysOn.app` again.
 - The app does not collect data.
