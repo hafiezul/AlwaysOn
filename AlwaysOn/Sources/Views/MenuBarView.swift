@@ -76,6 +76,12 @@ struct MenuBarView: View {
             if let stop = appState.lastAutoStop, !appState.hasActiveOrPausedSession {
                 NoticeRow(text: stop.shortSummary, systemImage: stop.symbol, tint: .orange)
             }
+            if let pending = appState.pendingNetworkProfileId,
+               let name = appState.profileManager.profiles.first(where: { $0.id == pending })?.name {
+                NoticeRow(text: "Switches to \(name) when this session ends", systemImage: "wifi")
+            } else if let change = appState.lastNetworkSwitch, !appState.hasActiveOrPausedSession {
+                NoticeRow(text: change.summary, systemImage: "wifi")
+            }
             if appState.isActive, appState.systemSuspension != nil {
                 NoticeRow(text: "Paused while the Mac is locked or asleep", systemImage: "moon.zzz")
             } else if appState.isActive, appState.requireTargetApp,

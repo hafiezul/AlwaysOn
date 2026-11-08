@@ -38,7 +38,9 @@ struct ProfilesSettingsPane: View {
             }
             .listStyle(.inset)
 
-            Text("Per-profile settings: activity interval, activity method, auto-disable timer, and work hours schedule. Onboarding, permissions, notifications, and launch at login stay global.")
+            wifiSwitching
+
+            Text("Per-profile settings: activity interval, activity method, auto-disable timer, work hours schedule, and Wi-Fi networks. Onboarding, permissions, notifications, and launch at login stay global.")
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
@@ -90,6 +92,15 @@ struct ProfilesSettingsPane: View {
                     .foregroundColor(.secondary)
                     .lineLimit(1)
                     .truncationMode(.tail)
+
+                if !profile.wifiNetworks.isEmpty {
+                    Label(profile.wifiNetworks.joined(separator: ", "), systemImage: "wifi")
+                        .font(.caption)
+                        .foregroundColor(appState.switchProfilesByNetwork ? .secondary : .secondary.opacity(0.6))
+                        .lineLimit(1)
+                        .help(appState.switchProfilesByNetwork ? "Joining these networks switches to \(profile.name)"
+                                                               : "Wi-Fi switching is off")
+                }
             }
 
             Spacer()
@@ -98,6 +109,10 @@ struct ProfilesSettingsPane: View {
                 Text("Active")
                     .font(.caption)
                     .foregroundColor(.secondary)
+            }
+
+            if appState.switchProfilesByNetwork {
+                networkMenu(for: profile)
             }
 
             Button {
@@ -146,6 +161,63 @@ struct ProfilesSettingsPane: View {
             }
             .disabled(!canDelete)
         }
+    }
+
+    // MARK: - Wi-Fi switching
+
+    private var wifiSwitching: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Toggle("Switch profiles by Wi-Fi network", isOn: $appState.switchProfilesByNetwork)
+
+            if appState.switchProfilesByNetwork {
+                if appState.wifiMonitor.locationAccess == .granted {
+                    Label(appState.wifiMonitor.currentNetwork.map { "Connected to \u{201C}\($0)\u{201D}" } ?? "Not connected to Wi-Fi",
+                          systemImage: appState.wifiMonitor.currentNetwork == nil ? "wifi.slash" : "wifi")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                } else {
+                    PermissionRow(model: .location(appState), compact: true)
+                }
+                if let pending = appState.pendingNetworkProfileId,
+                   let name = appState.profileManager.profiles.first(where: { $0.id == pending })?.name {
+                    Label("Switches to \(name) when the current session ends", systemImage: "clock.arrow.circlepath")
+                        .font(.caption)
+                        .foregroundColor(.orange)
+                }
+            }
+
+            Text("Use a profile's Wi-Fi button to add the network you're on. A running session always finishes before the profile changes, and a profile you pick by hand stays until you join another network.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: 8).fill(Color.primary.opacity(0.04)))
+    }
+
+    private func networkMenu(for profile: Profile) -> some View {
+        Menu {
+            if let current = appState.wifiMonitor.currentNetwork {
+                Button("Use on \u{201C}\(current)\u{201D}") { appState.useCurrentNetwork(for: profile.id) }
+                    .disabled(profile.wifiNetworks.contains(current))
+            } else {
+                Text(appState.wifiMonitor.locationAccess == .granted ? "Not connected to Wi-Fi" : "Allow Location to see the network")
+            }
+            if !profile.wifiNetworks.isEmpty {
+                Divider()
+                ForEach(profile.wifiNetworks, id: \.self) { network in
+                    Button("Remove \u{201C}\(network)\u{201D}") {
+                        appState.profileManager.removeNetwork(network, from: profile.id)
+                    }
+                }
+            }
+        } label: {
+            Image(systemName: profile.wifiNetworks.isEmpty ? "wifi" : "wifi.circle.fill")
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help("Wi-Fi networks for \(profile.name)")
     }
 
     private var addProfileSheet: some View {

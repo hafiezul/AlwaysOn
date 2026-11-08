@@ -49,6 +49,7 @@ final class NotificationManager: NSObject, ObservableObject {
         case quickTimerExpired = "com.alwayson.quicktimer.expired"
         case profileSwitched = "com.alwayson.profile.switched"
         case safetyStop = "com.alwayson.session.safetystop"
+        case networkProfile = "com.alwayson.profile.network"
     }
     
     private enum NotificationAction: String {
@@ -186,6 +187,15 @@ final class NotificationManager: NSObject, ObservableObject {
         )
     }
     
+    /// Send notification when joining a Wi-Fi network switched the profile
+    func notifyProfileSwitchedByNetwork(profileName: String, network: String) {
+        guard canSendNotifications else { return }
+
+        sendNotification(identifier: .networkProfile,
+                         title: "Switched to \(profileName)",
+                         body: "AlwaysOn switched profiles because you joined \u{201C}\(network)\u{201D}.")
+    }
+
     /// Send notification when a safety stop (away limit, low battery) ends a session
     func notifySafetyStop(title: String, body: String) {
         guard canSendNotifications else { return }

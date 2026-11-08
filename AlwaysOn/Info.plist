@@ -39,6 +39,10 @@
     <string>AlwaysOn reads the titles and end times of your upcoming calendar events only when you choose Load Calendar Events, so you can keep your status active until an event ends. It never changes your calendar.</string>
     <key>NSCalendarsFullAccessUsageDescription</key>
     <string>AlwaysOn reads the titles and end times of your upcoming calendar events only when you choose Load Calendar Events, so you can keep your status active until an event ends. It never changes your calendar.</string>
+    <key>NSLocationUsageDescription</key>
+    <string>AlwaysOn reads the name of your Wi-Fi network to switch profiles when you join a network you chose. macOS requires Location access to see network names. AlwaysOn never uses your position.</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>AlwaysOn reads the name of your Wi-Fi network to switch profiles when you join a network you chose. macOS requires Location access to see network names. AlwaysOn never uses your position.</string>
     <key>NSAccessibilityUsageDescription</key>
     <string>AlwaysOn needs accessibility permission to simulate mouse movement and keep your status active.</string>
 </dict>

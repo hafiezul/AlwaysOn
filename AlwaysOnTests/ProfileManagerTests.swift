@@ -181,6 +181,62 @@ final class ProfileManagerTests: XCTestCase {
 
         XCTAssertEqual(profileManager.profiles.count, 1)
     }
+
+    // MARK: - Wi-Fi networks
+
+    private func makeProfile(_ name: String, networks: [String] = []) -> Profile {
+        Profile(id: UUID(), name: name, activityInterval: 45, activityMethodId: ActivityMethod.mouse.rawValue,
+                defaultTimerDurationId: QuickTimerDuration.noLimit.id, workSchedule: .default, wifiNetworks: networks)
+    }
+
+    func testProfilesSavedBeforeWiFiSwitchingStillLoad() throws {
+        let legacy = """
+        [{"id":"\(UUID().uuidString)","name":"Old","activityInterval":45,"activityMethodId":"mouse",
+          "defaultTimerDurationId":"none","workSchedule":{"isEnabled":false,"activeDays":[2],"startTimeMinutes":540,"endTimeMinutes":1020}}]
+        """
+        let profiles = try JSONDecoder().decode([Profile].self, from: Data(legacy.utf8))
+        XCTAssertEqual(profiles.first?.name, "Old")
+        XCTAssertEqual(profiles.first?.wifiNetworks, [])
+    }
+
+    func testWiFiNetworksRoundTrip() throws {
+        let profile = makeProfile("Office", networks: ["Acme", "Acme Guest"])
+        let decoded = try JSONDecoder().decode(Profile.self, from: JSONEncoder().encode(profile))
+        XCTAssertEqual(decoded, profile)
+    }
+
+    func testRulePicksTheProfileListingTheNetwork() {
+        let home = makeProfile("Home", networks: ["HomeNet"])
+        let office = makeProfile("Office", networks: ["Acme"])
+        XCTAssertEqual(NetworkProfileRule.profileID(forNetwork: "Acme", in: [home, office]), office.id)
+        XCTAssertNil(NetworkProfileRule.profileID(forNetwork: "Cafe", in: [home, office]))
+        XCTAssertNil(NetworkProfileRule.profileID(forNetwork: nil, in: [home, office]))
+        XCTAssertNil(NetworkProfileRule.profileID(forNetwork: "", in: [home, office]))
+    }
+
+    func testAssigningANetworkMovesItFromAnyOtherProfile() {
+        let manager = ProfileManager(defaults: defaults)
+        let first = manager.profiles[0]
+        let second = makeProfile("Office")
+        manager.addProfile(second)
+
+        manager.assignNetwork("Acme", to: first.id)
+        manager.assignNetwork("  Acme ", to: second.id)
+
+        XCTAssertEqual(manager.profiles.first { $0.id == first.id }?.wifiNetworks, [])
+        XCTAssertEqual(manager.profiles.first { $0.id == second.id }?.wifiNetworks, ["Acme"])
+
+        let reloaded = ProfileManager(defaults: defaults)
+        XCTAssertEqual(reloaded.profiles.first { $0.id == second.id }?.wifiNetworks, ["Acme"])
+    }
+
+    func testRemovingANetwork() {
+        let manager = ProfileManager(defaults: defaults)
+        let id = manager.profiles[0].id
+        manager.assignNetwork("Acme", to: id)
+        manager.removeNetwork("Acme", from: id)
+        XCTAssertEqual(manager.profiles[0].wifiNetworks, [])
+    }
 }
 
 private final class RecordingDefaults: UserDefaults {

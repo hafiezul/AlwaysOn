@@ -1,200 +1,147 @@
 import SwiftUI
 
-/// First-launch permissions window view
-/// Presents a clear, friendly UI to guide users through granting accessibility permission
+/// The setup window: every permission AlwaysOn uses, what each one is for,
+/// where it stands, and the next step. Only Accessibility is required.
 struct PermissionsView: View {
-    @ObservedObject var accessibilityPermission: AccessibilityPermission
+    @ObservedObject var appState: AppState
+    /// First run shows Quit and requires Accessibility before continuing
+    let isFirstRun: Bool
     var onContinue: () -> Void
     var onQuit: () -> Void
-    
+
+    @State private var calendarAccess = CalendarEventProvider.currentAccessState()
+    @State private var calendarProvider = CalendarEventProvider()
+    @State private var showsTroubleshooting = false
+
+    private var rows: [PermissionRowModel] {
+        PermissionRowModel.all(appState: appState, calendarAccess: calendarAccess) {
+            Task { @MainActor in calendarAccess = await calendarProvider.requestAccessOnly() }
+        }
+    }
+
+    private var hasAccessibility: Bool { appState.hasAccessibilityPermission }
+
     var body: some View {
-        VStack(spacing: 0) {
-            // Header with app icon and title
-            headerSection
-            
-            // Privacy notice
-            privacyNotice
-            
-            // Permission card
-            permissionCard
-            
-            // Footer with Quit/Continue buttons
-            footerSection
-        }
-        .padding(24)
-        .frame(width: 460)
-        .background(Color(NSColor.windowBackgroundColor))
-    }
-    
-    // MARK: - Header Section
-    
-    private var headerSection: some View {
-        VStack(spacing: 12) {
-            // App Icon
-            Image(nsImage: NSApp.applicationIconImage)
-                .resizable()
-                .frame(width: 80, height: 80)
-            
-            // Title
-            Text("Permissions")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-        }
-        .padding(.bottom, 16)
-    }
-    
-    // MARK: - Privacy Notice
-    
-    private var privacyNotice: some View {
-        VStack(spacing: 8) {
-            Text("AlwaysOn needs permission to keep your status active.")
-                .font(.body)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-            
-            Text("No personal information is collected or stored.")
-                .font(.callout)
-                .foregroundColor(.green)
-                .fontWeight(.medium)
-        }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .frame(maxWidth: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color(NSColor.controlBackgroundColor))
-        )
-        .padding(.bottom, 16)
-    }
-    
-    // MARK: - Permission Card
-    
-    private var permissionCard: some View {
-        VStack(spacing: 16) {
-            // Title with underline
-            Text(accessibilityPermission.title)
-                .font(.title2)
-                .fontWeight(.semibold)
-                .underline()
-            
-            // Explanation
-            VStack(alignment: .leading, spacing: 8) {
-                Text("AlwaysOn needs this to:")
-                    .font(.headline)
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    ForEach(accessibilityPermission.details, id: \.self) { detail in
-                        HStack(alignment: .top, spacing: 8) {
-                            Text("•")
-                                .fontWeight(.bold)
-                            Text(detail)
-                        }
-                    }
+        VStack(alignment: .leading, spacing: 18) {
+            header
+
+            section("Required") {
+                PermissionRow(model: rows[0])
+                if !hasAccessibility { troubleshooting }
+            }
+
+            section("Optional") {
+                ForEach(Array(rows.dropFirst().enumerated()), id: \.element.id) { index, row in
+                    if index > 0 { Divider() }
+                    PermissionRow(model: row)
                 }
-                .font(.body)
             }
-            
-            // Grant Permission button
-            Button(action: {
-                accessibilityPermission.request()
-            }) {
-                HStack(spacing: 8) {
-                    if accessibilityPermission.hasPermission {
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(.green)
-                        Text("Permission Granted")
-                            .foregroundColor(.green)
-                    } else {
-                        Image(systemName: "lock.open")
-                        Text("Grant Permission")
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-            }
-            .buttonStyle(.bordered)
-            .disabled(accessibilityPermission.hasPermission)
-            .animation(.easeInOut(duration: 0.2), value: accessibilityPermission.hasPermission)
-            
-            // Troubleshooting tip
-            if !accessibilityPermission.hasPermission {
-                troubleshootingTip
-            }
-        }
-        .padding(20)
-        .frame(maxWidth: .infinity)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color(NSColor.controlBackgroundColor))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color(NSColor.separatorColor), lineWidth: 1)
-                )
-        )
-        .padding(.bottom, 16)
-    }
-    
-    // MARK: - Troubleshooting Tip
-    
-    private var troubleshootingTip: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: "lightbulb.fill")
-                    .foregroundColor(.yellow)
-                Text("Tip")
-                    .fontWeight(.medium)
-            }
-            .font(.caption)
-            
-            Text("If you reinstalled the app, you may need to remove the old entry from System Settings > Privacy & Security > Accessibility first.")
+
+            Label("Nothing leaves your Mac. AlwaysOn has no account or analytics; it only checks GitHub for updates.",
+                  systemImage: "lock.shield")
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
-            
-            Button(action: {
-                accessibilityPermission.openSettings()
-            }) {
-                Text("Open Settings...")
-                    .font(.caption)
-            }
-            .buttonStyle(.link)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(Color.yellow.opacity(0.1))
-        )
-    }
-    
-    // MARK: - Footer Section
-    
-    private var footerSection: some View {
-        HStack(spacing: 12) {
-            Button(action: onQuit) {
-                Text("Quit")
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 4)
-            }
-            .buttonStyle(.bordered)
-            .keyboardShortcut(.cancelAction)
-            
-            Button(action: onContinue) {
-                Text("Continue")
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 4)
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(!accessibilityPermission.hasPermission)
-            .keyboardShortcut(.defaultAction)
-        }
-    }
-}
 
-#Preview {
-    PermissionsView(
-        accessibilityPermission: .shared,
-        onContinue: {},
-        onQuit: {}
-    )
+            footer
+        }
+        .padding(24)
+        .frame(width: 520)
+        .background(Color(nsColor: .windowBackgroundColor))
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            // The user may be back from System Settings with a new answer
+            refreshStatuses()
+        }
+        .onAppear(perform: refreshStatuses)
+        .animation(.easeInOut(duration: 0.2), value: hasAccessibility)
+    }
+
+    // MARK: - Sections
+
+    private var header: some View {
+        HStack(alignment: .center, spacing: 14) {
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .frame(width: 56, height: 56)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(isFirstRun ? "Set Up AlwaysOn" : "Permissions")
+                    .font(.title2.weight(.bold))
+                Text(hasAccessibility
+                     ? "You're ready. Optional permissions turn on extra features, and you can change them any time."
+                     : "AlwaysOn needs Accessibility to keep you active. The others turn on optional features.")
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundColor(.secondary)
+                .textCase(.uppercase)
+            VStack(alignment: .leading, spacing: 10) {
+                content()
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(Color.primary.opacity(0.04))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(Color.primary.opacity(0.07))
+            )
+        }
+    }
+
+    private var troubleshooting: some View {
+        DisclosureGroup(isExpanded: $showsTroubleshooting) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("1. Open Privacy & Security > Accessibility.")
+                Text("2. If AlwaysOn is listed but doesn't work, select it and click the minus button. This happens after a reinstall or update.")
+                Text("3. Click Allow… above, or add /Applications/AlwaysOn.app with the plus button and switch it on.")
+                Button("Open Accessibility Settings") { appState.openAccessibilitySettings() }
+                    .buttonStyle(.link)
+                    .padding(.top, 2)
+            }
+            .font(.caption)
+            .foregroundColor(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.top, 6)
+        } label: {
+            Text("Switched on but still not working?")
+                .font(.caption.weight(.medium))
+        }
+        .padding(.leading, 42)
+    }
+
+    private var footer: some View {
+        HStack(spacing: 10) {
+            if isFirstRun {
+                Button("Quit AlwaysOn", action: onQuit)
+                    .keyboardShortcut(.cancelAction)
+            }
+            Spacer()
+            if isFirstRun && !hasAccessibility {
+                Text("Allow Accessibility to continue")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+            Button(isFirstRun ? "Continue" : "Done", action: onContinue)
+                .buttonStyle(ActionButtonStyle(kind: .prominent))
+                .keyboardShortcut(.defaultAction)
+                .disabled(isFirstRun && !hasAccessibility)
+        }
+    }
+
+    private func refreshStatuses() {
+        appState.accessibilityPermission.refresh()
+        calendarAccess = CalendarEventProvider.currentAccessState()
+        Task { await appState.notificationManager.checkAuthorizationStatus() }
+    }
 }

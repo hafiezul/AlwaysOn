@@ -102,6 +102,27 @@ final class AppState: NSObject, ObservableObject {
     /// safety stop), shown in the menu until the next session starts
     @Published private(set) var lastAutoStop: AutoStopEvent?
 
+    /// Whether joining a Wi-Fi network listed on a profile switches to that profile
+    @Published var switchProfilesByNetwork: Bool {
+        didSet {
+            UserDefaults.standard.set(switchProfilesByNetwork, forKey: Keys.switchProfilesByNetwork)
+            wifiMonitor.setMonitoring(switchProfilesByNetwork)
+            if switchProfilesByNetwork {
+                if wifiMonitor.locationAccess == .notDetermined { wifiMonitor.requestLocationAccess() }
+                handledNetwork = nil
+                applyNetworkProfile()
+            } else {
+                pendingNetworkProfileId = nil
+            }
+        }
+    }
+
+    /// A network profile waiting for the current session to end
+    @Published private(set) var pendingNetworkProfileId: UUID?
+
+    /// The last automatic switch by network, shown in the menu until a session starts
+    @Published private(set) var lastNetworkSwitch: NetworkSwitchEvent?
+
     /// What the menu bar item shows next to its icon
     @Published var menuBarLabelStyle: MenuBarLabelStyle {
         didSet {
@@ -207,6 +228,13 @@ final class AppState: NSObject, ObservableObject {
     /// Daily online time, kept on this Mac for 30 days
     let activityHistory = ActivityHistoryStore()
 
+    /// Current Wi-Fi network and the Location permission needed to read it
+    let wifiMonitor = WiFiNetworkMonitor()
+
+    /// The network whose profile rule already ran, so a manual profile choice
+    /// sticks until the Mac joins a different network
+    private var handledNetwork: String?
+
     /// How the current or paused session was started
     /// Persisted so a relaunched schedule-started session can still be stopped by schedule end
     @Published private(set) var sessionSource: SessionSource? {
@@ -275,6 +303,7 @@ final class AppState: NSObject, ObservableObject {
         static let batteryStopThreshold = "batteryStopThreshold"
         static let timerStartedAt = "quickTimerStartedAt"
         static let menuBarLabelStyle = "menuBarLabelStyle"
+        static let switchProfilesByNetwork = "switchProfilesByNetwork"
     }
     
     private enum Defaults {
@@ -351,6 +380,7 @@ final class AppState: NSObject, ObservableObject {
         self._pauseWhileScreenLocked = Published(initialValue: defaults.object(forKey: Keys.pauseWhileScreenLocked) as? Bool ?? true)
         self._awayLimit = Published(initialValue: AwayLimit(rawValue: defaults.integer(forKey: Keys.awayLimit)) ?? .off)
         self._batteryStopThreshold = Published(initialValue: BatteryStopThreshold(rawValue: defaults.integer(forKey: Keys.batteryStopThreshold)) ?? .off)
+        self._switchProfilesByNetwork = Published(initialValue: defaults.bool(forKey: Keys.switchProfilesByNetwork))
         self._menuBarLabelStyle = Published(initialValue: MenuBarLabelStyle(rawValue: defaults.string(forKey: Keys.menuBarLabelStyle) ?? "") ?? .iconAndTime)
         super.init()
         Self.shared = self
@@ -373,6 +403,13 @@ final class AppState: NSObject, ObservableObject {
             MainActor.assumeIsolated { self?.handleBatteryChange(state) }
         }
         powerSourceMonitor.setEnabled(batteryStopThreshold != .off)
+        wifiMonitor.onNetworkChange = { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                self.handledNetwork = nil
+                self.applyNetworkProfile()
+            }
+        }
         globalHotKeyManager.onKeyDown = { [weak self] in
             Task { @MainActor in
                 self?.toggle()
@@ -405,6 +442,7 @@ final class AppState: NSObject, ObservableObject {
         setupProfileSync()
         setupSystemEventHandling()
         setupActivityHistory()
+        setupNetworkProfiles()
         accessibilityPermission.refresh()
         
         // Resume active state if was active before quit (and has permission)
@@ -496,6 +534,9 @@ final class AppState: NSObject, ObservableObject {
 
     func switchProfile(_ id: UUID) {
         guard id != profileManager.activeProfileId else { return }
+        // Any switch, by hand or by network, settles the current network's rule
+        pendingNetworkProfileId = nil
+        handledNetwork = wifiMonitor.currentNetwork
 
         syncActiveProfileSettings()
         let wasActive = isActive || activeSessionDuration > 0
@@ -585,7 +626,7 @@ final class AppState: NSObject, ObservableObject {
     /// Show the permissions window
     func showPermissionsWindow() {
         PermissionsWindowController.shared.show(
-            accessibilityPermission: accessibilityPermission,
+            appState: self,
             onContinue: { [weak self] in
                 guard let self else { return }
                 self.accessibilityPermission.onboardingCompleted = true
@@ -643,6 +684,13 @@ final class AppState: NSObject, ObservableObject {
             .store(in: &cancellables)
         
         notificationManager.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] (_: Void) in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
+
+        wifiMonitor.objectWillChange
             .receive(on: DispatchQueue.main)
             .sink { [weak self] (_: Void) in
                 self?.objectWillChange.send()
@@ -771,6 +819,53 @@ final class AppState: NSObject, ObservableObject {
             return "AlwaysOn is active."
         }
         return hasActiveOrPausedSession ? "AlwaysOn is paused." : "AlwaysOn is off."
+    }
+
+    // MARK: - Network Profiles
+
+    private func setupNetworkProfiles() {
+        wifiMonitor.setMonitoring(switchProfilesByNetwork)
+        // A switch that waited for a session applies once the session ends
+        Publishers.CombineLatest($isActive, $sessionSource)
+            .debounce(for: .zero, scheduler: DispatchQueue.main)
+            .sink { [weak self] _, _ in
+                guard let self, self.pendingNetworkProfileId != nil, !self.hasActiveOrPausedSession else { return }
+                self.applyNetworkProfile()
+            }
+            .store(in: &cancellables)
+    }
+
+    /// Makes the current Wi-Fi network switch to the given profile, and applies it now
+    func useCurrentNetwork(for profileID: UUID) {
+        guard let network = wifiMonitor.currentNetwork else { return }
+        profileManager.assignNetwork(network, to: profileID)
+        handledNetwork = nil
+        applyNetworkProfile()
+    }
+
+    /// Switches to the profile listed for the current network, once per network.
+    /// A running session is never interrupted: the switch waits for it to end.
+    private func applyNetworkProfile() {
+        guard switchProfilesByNetwork, let network = wifiMonitor.currentNetwork, network != handledNetwork else { return }
+        guard let target = NetworkProfileRule.profileID(forNetwork: network, in: profileManager.profiles),
+              target != profileManager.activeProfileId else {
+            pendingNetworkProfileId = nil
+            handledNetwork = network
+            return
+        }
+        if hasActiveOrPausedSession {
+            pendingNetworkProfileId = target
+            return
+        }
+        switchProfile(target)
+        let name = profileManager.activeProfile?.name ?? ""
+        lastNetworkSwitch = NetworkSwitchEvent(profileName: name, network: network, date: Date())
+        notificationManager.notifyProfileSwitchedByNetwork(profileName: name, network: network)
+        // Let the new profile's work hours start now if they are under way
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.workScheduleManager.isWithinSchedule else { return }
+            self.handleWorkScheduleChange(isWithinSchedule: true)
+        }
     }
 
     // MARK: - Safety Stops
@@ -922,6 +1017,7 @@ final class AppState: NSObject, ObservableObject {
             return
         }
         lastAutoStop = nil
+        lastNetworkSwitch = nil
         
         startSimulatorUnlessSuspended()
         

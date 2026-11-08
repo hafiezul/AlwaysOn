@@ -91,6 +91,28 @@ final class ProfileManager: ObservableObject {
         persist()
     }
 
+    /// Makes joining `network` switch to the given profile. A network belongs
+    /// to one profile at a time, so it is removed from any other profile.
+    func assignNetwork(_ network: String, to id: UUID) {
+        let name = network.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, profiles.contains(where: { $0.id == id }) else { return }
+        var next = profiles
+        for index in next.indices {
+            next[index].wifiNetworks.removeAll { $0 == name }
+            if next[index].id == id { next[index].wifiNetworks.append(name) }
+        }
+        guard next != profiles else { return }
+        profiles = next
+        persist()
+    }
+
+    func removeNetwork(_ network: String, from id: UUID) {
+        guard let index = profiles.firstIndex(where: { $0.id == id }),
+              profiles[index].wifiNetworks.contains(network) else { return }
+        profiles[index].wifiNetworks.removeAll { $0 == network }
+        persist()
+    }
+
     static func migrateIfNeeded(defaults: UserDefaults = .standard) {
         guard !defaults.bool(forKey: Keys.profilesMigrated) else { return }
 

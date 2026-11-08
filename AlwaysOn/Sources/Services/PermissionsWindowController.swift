@@ -20,17 +20,19 @@ final class PermissionsWindowController {
     
     // MARK: - Public Methods
     
-    /// Show the permissions window
+    /// Show the setup window
     /// - Parameters:
-    ///   - accessibilityPermission: The permission object to bind to
-    ///   - onContinue: Called when user clicks Continue (permission granted)
-    ///   - onQuit: Called when user clicks Quit
+    ///   - appState: State the permission rows read and act on
+    ///   - onContinue: Called when user clicks Continue or Done
+    ///   - onQuit: Called when user clicks Quit (first run only)
     @MainActor
     func show(
-        accessibilityPermission: AccessibilityPermission,
+        appState: AppState,
         onContinue: @escaping () -> Void,
         onQuit: @escaping () -> Void
     ) {
+        let accessibilityPermission = appState.accessibilityPermission
+        let isFirstRun = !accessibilityPermission.onboardingCompleted
         // If window already exists, just bring it forward
         if let existingWindow = window {
             existingWindow.makeKeyAndOrderFront(nil)
@@ -43,7 +45,8 @@ final class PermissionsWindowController {
         
         // Create the SwiftUI view
         let permissionsView = PermissionsView(
-            accessibilityPermission: accessibilityPermission,
+            appState: appState,
+            isFirstRun: isFirstRun,
             onContinue: { [weak self] in
                 self?.close()
                 onContinue()
@@ -60,10 +63,13 @@ final class PermissionsWindowController {
         
         // Create the window
         let window = NSWindow(contentViewController: hostingController)
-        window.title = "Permissions"
+        window.title = isFirstRun ? "Set Up AlwaysOn" : "Permissions"
         window.titlebarAppearsTransparent = true
         window.titleVisibility = .hidden
-        window.styleMask = [.titled, .fullSizeContentView]
+        // First run must end with Continue or Quit; later visits close like any window
+        window.styleMask = isFirstRun ? [.titled, .fullSizeContentView] : [.titled, .closable, .fullSizeContentView]
+        window.isReleasedWhenClosed = false
+        window.delegate = closeObserver
         window.isMovableByWindowBackground = true
         window.backgroundColor = NSColor.windowBackgroundColor
         window.level = .floating
@@ -75,6 +81,19 @@ final class PermissionsWindowController {
         NSApp.activate(ignoringOtherApps: true)
     }
     
+    /// Clears state when the user closes the window with the close button
+    private lazy var closeObserver = CloseObserver { [weak self] in
+        self?.window = nil
+        self?.hostingController = nil
+        Task { @MainActor in AccessibilityPermission.shared.stopPolling() }
+    }
+
+    private final class CloseObserver: NSObject, NSWindowDelegate {
+        let onClose: () -> Void
+        init(onClose: @escaping () -> Void) { self.onClose = onClose }
+        func windowWillClose(_ notification: Notification) { onClose() }
+    }
+
     /// Close the permissions window
     func close() {
         window?.close()
