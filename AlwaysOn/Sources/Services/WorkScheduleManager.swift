@@ -20,8 +20,10 @@ final class WorkScheduleManager: ObservableObject {
     // MARK: - Private Properties
     
     private var checkTimer: Timer?
-    private let checkInterval: TimeInterval = 60 // Check every minute
-    
+
+    /// Lands each check just past a minute boundary, after the schedule's minute flips
+    private let transitionLead: TimeInterval = 0.5
+
     // MARK: - Callbacks
     
     /// Called when schedule state changes (enters or exits work hours)
@@ -41,23 +43,35 @@ final class WorkScheduleManager: ObservableObject {
     
     // MARK: - Public Methods
     
-    /// Start monitoring the schedule; a minute-granularity repeating timer is
-    /// all this needs because no consumer reacts faster than a minute boundary
+    /// Start monitoring the schedule. Instead of polling, one timer waits for
+    /// the next start or end time, so the app stays asleep between them.
+    /// Callers re-check after wake and clock changes, when that timer may be stale.
     func startMonitoring() {
         guard schedule.isEnabled else { return }
-        
+
         // Stop any existing timer
         stopMonitoring()
-        
+
         // Initial state update
         updateScheduleState()
-        
-        // Start periodic checking
-        checkTimer = Timer.scheduledTimer(withTimeInterval: checkInterval, repeats: true) { [weak self] _ in
+        scheduleNextCheck()
+    }
+
+    private func scheduleNextCheck() {
+        checkTimer?.invalidate()
+        checkTimer = nil
+        guard schedule.isEnabled,
+              let transition = schedule.nextTransition(after: Date()) else { return }
+        let timer = Timer(fire: transition.addingTimeInterval(transitionLead), interval: 0, repeats: false) { [weak self] _ in
             Task { @MainActor in
-                self?.updateScheduleState()
+                guard let self else { return }
+                self.updateScheduleState()
+                self.scheduleNextCheck()
             }
         }
+        timer.tolerance = 1
+        RunLoop.main.add(timer, forMode: .common)
+        checkTimer = timer
     }
     
     /// Stop monitoring the schedule
@@ -69,6 +83,7 @@ final class WorkScheduleManager: ObservableObject {
     /// Force a schedule check
     func checkNow() {
         updateScheduleState()
+        if schedule.isEnabled { scheduleNextCheck() }
     }
     
     /// Toggle the schedule on/off
@@ -79,13 +94,11 @@ final class WorkScheduleManager: ObservableObject {
     // MARK: - Private Methods
     
     private func updateScheduleState() {
-        let wasWithinSchedule = isWithinSchedule
-        isWithinSchedule = schedule.isCurrentlyWithinSchedule
-        
-        // Notify if state changed
-        if wasWithinSchedule != isWithinSchedule {
-            onScheduleStateChanged?(isWithinSchedule)
-        }
+        let nowWithinSchedule = schedule.isCurrentlyWithinSchedule
+        // Publish only real changes, so observers don't redraw on every check
+        guard nowWithinSchedule != isWithinSchedule else { return }
+        isWithinSchedule = nowWithinSchedule
+        onScheduleStateChanged?(nowWithinSchedule)
     }
 
     private func handleScheduleChange() {

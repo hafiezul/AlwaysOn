@@ -132,6 +132,10 @@ private struct PulseEntryRow: View {
             return ("Skipped", "app.dashed", .secondary)
         case .inputCreationFailed:
             return ("Failed", "xmark.octagon", .red)
+        case .systemPaused:
+            return ("Paused", "moon.zzz", .secondary)
+        case .permissionMissing:
+            return ("Stopped", "lock.slash", .red)
         }
     }
 

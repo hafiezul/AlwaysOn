@@ -145,6 +145,25 @@ struct WorkSchedule: Codable, Equatable {
         return formatter.shortWeekdaySymbols ?? ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
     }()
     
+    /// The next moment after `date` when the schedule starts or ends, nil when it never changes.
+    /// Built from calendar dates rather than fixed second offsets so it stays correct across
+    /// daylight saving changes.
+    func nextTransition(after date: Date, calendar: Calendar = .current) -> Date? {
+        guard isEnabled, !activeDays.isEmpty else { return nil }
+        let today = calendar.startOfDay(for: date)
+        for dayOffset in 0...7 {
+            guard let day = calendar.date(byAdding: .day, value: dayOffset, to: today),
+                  activeDays.contains(calendar.component(.weekday, from: day)) else { continue }
+            for minutes in [startTimeMinutes, endTimeMinutes] {
+                if let moment = calendar.date(bySettingHour: minutes / 60, minute: minutes % 60, second: 0, of: day),
+                   moment > date {
+                    return moment
+                }
+            }
+        }
+        return nil
+    }
+
     /// Calculate time until next schedule start (nil if currently within schedule or schedule disabled)
     func timeUntilNextStart() -> TimeInterval? {
         guard isEnabled, !isCurrentlyWithinSchedule else { return nil }

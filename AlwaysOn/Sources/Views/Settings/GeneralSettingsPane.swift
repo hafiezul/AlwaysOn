@@ -142,6 +142,12 @@ struct GeneralSettingsPane: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
 
+                Toggle("Pause while screen is locked", isOn: $appState.pauseWhileScreenLocked)
+
+                Text("Most chat apps show you as Away on a locked Mac anyway, and simulated input would keep waking the display. Simulation always pauses while the Mac sleeps or another user is switched in, and resumes on its own.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
                 Toggle("Global hotkey (⌥⌘K)", isOn: $appState.globalHotKeyEnabled)
 
                 Text("Toggles your session from any app, even with the menu closed.")

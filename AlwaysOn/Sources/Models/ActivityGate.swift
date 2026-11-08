@@ -71,6 +71,10 @@ struct TargetApp: Identifiable, Equatable {
 final class PulseLog: ObservableObject {
     enum Outcome: Hashable {
         case posted, userActive, noTarget, inputCreationFailed
+        /// Simulation stopped because the Mac slept, locked, or switched users
+        case systemPaused
+        /// A tick found Accessibility permission revoked
+        case permissionMissing
     }
     struct Entry: Identifiable {
         let id = UUID()
@@ -82,6 +86,8 @@ final class PulseLog: ObservableObject {
             case .userActive: return "Skipped: user active"
             case .noTarget: return "Skipped: no target app"
             case .inputCreationFailed: return "Input creation failed"
+            case .systemPaused: return "Paused: Mac asleep, locked, or switched user"
+            case .permissionMissing: return "Stopped: Accessibility permission missing"
             }
         }
     }

@@ -58,6 +58,8 @@ struct MenuBarView: View {
         }
         .padding(.vertical, 8)
         .frame(width: 260)
+        .background(MenuVisibilityReader { appState.isMenuVisible = $0 })
+        .onDisappear { appState.isMenuVisible = false }
     }
     
     // MARK: - View Components
@@ -431,6 +433,49 @@ struct MenuBarView: View {
             return String(format: "%d:%02d:%02d", hours, minutes, seconds)
         } else {
             return String(format: "%d:%02d", minutes, seconds)
+        }
+    }
+}
+
+/// Reports whether the menu's window is on screen. MenuBarExtra windows are
+/// reused and ordered out rather than closed, so this follows the window's
+/// occlusion state instead of relying on onAppear alone.
+private struct MenuVisibilityReader: NSViewRepresentable {
+    let onChange: (Bool) -> Void
+
+    func makeNSView(context: Context) -> VisibilityView {
+        let view = VisibilityView()
+        view.onChange = onChange
+        return view
+    }
+
+    func updateNSView(_ view: VisibilityView, context: Context) {
+        view.onChange = onChange
+    }
+
+    final class VisibilityView: NSView {
+        var onChange: ((Bool) -> Void)?
+        private var token: NSObjectProtocol?
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            if let token { NotificationCenter.default.removeObserver(token) }
+            token = nil
+            guard let window else { report(false); return }
+            token = NotificationCenter.default.addObserver(forName: NSWindow.didChangeOcclusionStateNotification,
+                                                           object: window, queue: .main) { [weak self, weak window] _ in
+                self?.report(window?.occlusionState.contains(.visible) ?? false)
+            }
+            report(window.occlusionState.contains(.visible))
+        }
+
+        /// Deferred so state changes never happen inside a SwiftUI view update
+        private func report(_ visible: Bool) {
+            DispatchQueue.main.async { [weak self] in self?.onChange?(visible) }
+        }
+
+        deinit {
+            if let token { NotificationCenter.default.removeObserver(token) }
         }
     }
 }

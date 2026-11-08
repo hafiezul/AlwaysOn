@@ -46,13 +46,16 @@ struct SmartFeaturesSettingsPane: View {
                         }
                     }
                     
-                    // Status
-                    HStack {
-                        Image(systemName: appState.workScheduleManager.isWithinSchedule ? "clock.fill" : "clock")
-                            .foregroundColor(appState.workScheduleManager.isWithinSchedule ? .green : .secondary)
-                        Text(appState.workScheduleManager.statusDescription)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                    // Status; the schedule only publishes at start and end, so
+                    // refresh the countdown text each minute while the pane is open
+                    TimelineView(.everyMinute) { _ in
+                        HStack {
+                            Image(systemName: appState.workScheduleManager.isWithinSchedule ? "clock.fill" : "clock")
+                                .foregroundColor(appState.workScheduleManager.isWithinSchedule ? .green : .secondary)
+                            Text(appState.workScheduleManager.statusDescription)
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
                     }
                     
                     // Notifications toggle
