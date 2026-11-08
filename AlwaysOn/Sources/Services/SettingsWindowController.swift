@@ -51,8 +51,8 @@ final class SettingsWindowController {
         window.title = "Settings"
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
         window.isReleasedWhenClosed = false
-        window.setContentSize(NSSize(width: 600, height: 400))
-        window.minSize = NSSize(width: 580, height: 350)
+        window.setContentSize(NSSize(width: 780, height: 640))
+        window.minSize = NSSize(width: 680, height: 500)
         window.center()
         
         // Set window level to floating so it stays on top of menu bar

@@ -35,8 +35,8 @@ final class PulseLogWindowController {
         window.title = "Pulse Log"
         window.styleMask = [.titled, .closable, .miniaturizable, .resizable]
         window.isReleasedWhenClosed = false
-        window.setContentSize(NSSize(width: 480, height: 520))
-        window.minSize = NSSize(width: 420, height: 400)
+        window.setContentSize(NSSize(width: 580, height: 680))
+        window.minSize = NSSize(width: 520, height: 560)
         window.center()
         window.level = .floating
 

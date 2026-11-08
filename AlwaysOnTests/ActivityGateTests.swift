@@ -106,4 +106,21 @@ final class ActivityGateTests: XCTestCase {
         log.record(.noTarget)
         XCTAssertEqual(log.counts, [.noTarget: 1])
     }
+
+    func testEveryOutcomeHasACategoryAndExplanation() {
+        let all: [PulseLog.Outcome] = [.posted, .userActive, .noTarget, .inputCreationFailed,
+                                       .systemPaused, .permissionMissing, .stoppedAway, .stoppedLowBattery]
+        XCTAssertEqual(Set(all.map(\.category)), Set(PulseLog.Category.allCases))
+        XCTAssertTrue(all.allSatisfy { !$0.explanation.isEmpty })
+    }
+
+    func testCategoryCountsAddUpOutcomes() {
+        let log = PulseLog()
+        [.posted, .posted, .userActive, .noTarget, .systemPaused, .inputCreationFailed, .stoppedAway]
+            .forEach { log.record($0) }
+        XCTAssertEqual(log.count(of: .posted), 2)
+        XCTAssertEqual(log.count(of: .skipped), 2)
+        XCTAssertEqual(log.count(of: .paused), 1)
+        XCTAssertEqual(log.count(of: .problem), 2)
+    }
 }

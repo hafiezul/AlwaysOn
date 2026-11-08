@@ -26,7 +26,7 @@ struct PermissionsView: View {
             header
 
             section("Required") {
-                PermissionRow(model: rows[0])
+                PermissionRow(model: rows[0], showsRequiredBadge: false)
                 if !hasAccessibility { troubleshooting }
             }
 
