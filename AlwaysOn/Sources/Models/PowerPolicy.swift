@@ -44,8 +44,10 @@ enum HeartbeatPlanner {
     ///   - deadline: When the session ends, if it has an end
     ///   - isRunning: Whether simulation is active (the menu bar shows the countdown only then)
     ///   - isMenuVisible: Whether the menu, which shows seconds, is on screen
+    ///   - showsMenuBarCountdown: Whether the menu bar item shows time left
     /// - Returns: Seconds until the next tick, or nil when no tick is needed
-    static func nextTickDelay(now: Date, deadline: Date?, isRunning: Bool, isMenuVisible: Bool) -> TimeInterval? {
+    static func nextTickDelay(now: Date, deadline: Date?, isRunning: Bool, isMenuVisible: Bool,
+                              showsMenuBarCountdown: Bool = true) -> TimeInterval? {
         let remaining = deadline.map { $0.timeIntervalSince(now) }
         if let remaining, remaining <= 0 { return 0 }
 
@@ -54,8 +56,8 @@ enum HeartbeatPlanner {
 
         guard let remaining else { return nil }
 
-        // Paused sessions show no countdown; only the deadline itself matters
-        guard isRunning else { return remaining }
+        // With no countdown on screen, only the deadline itself matters
+        guard isRunning && showsMenuBarCountdown else { return remaining }
 
         if remaining <= secondsCountdownThreshold { return 1 }
 
@@ -71,5 +73,28 @@ enum HeartbeatPlanner {
     /// delaying the label: a tenth of the delay, between 0.1 and 5 seconds.
     static func tolerance(for delay: TimeInterval) -> TimeInterval {
         min(max(delay * 0.1, 0.1), 5)
+    }
+}
+
+/// What the menu bar item shows next to its status icon
+enum MenuBarLabelStyle: String, CaseIterable, Identifiable {
+    case iconOnly
+    case iconAndTime
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .iconOnly: return "Icon only"
+        case .iconAndTime: return "Icon and time left"
+        }
+    }
+
+    /// The countdown text for the menu bar, nil when nothing should show.
+    /// Whole minutes, rounded, above a minute; seconds in the final minute.
+    func timeText(remaining: TimeInterval, isTimerRunning: Bool) -> String? {
+        guard self == .iconAndTime, isTimerRunning, remaining > 0 else { return nil }
+        if remaining < HeartbeatPlanner.secondsCountdownThreshold { return "\(Int(remaining))s" }
+        return "\(Int((remaining / 60).rounded()))m"
     }
 }

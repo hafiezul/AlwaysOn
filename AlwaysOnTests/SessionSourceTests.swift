@@ -91,4 +91,36 @@ final class SessionSourceTests: XCTestCase {
         }
         XCTAssertNil(SessionSource.quickTimer.chosenEndDate)
     }
+
+    // MARK: - Adding time
+
+    func testAddingTimeMovesAnExistingEndLater() {
+        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let end = now.addingTimeInterval(600)
+        let change = SessionSource.quickTimer.addingTime(900, quickTimerDeadline: end, now: now)
+        XCTAssertEqual(change.source, .quickTimer)
+        XCTAssertEqual(change.deadline, end.addingTimeInterval(900))
+    }
+
+    func testAddingTimeToAnUnlimitedSessionGivesItAnEnd() {
+        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let change = SessionSource.manual.addingTime(3600, quickTimerDeadline: nil, now: now)
+        XCTAssertEqual(change.source, .manual)
+        XCTAssertEqual(change.deadline, now.addingTimeInterval(3600))
+    }
+
+    func testAddingTimeKeepsTheUntilLabelAndCountsFromNowWhenPast() {
+        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let source = SessionSource.until(date: now.addingTimeInterval(-60), label: "Standup")
+        let change = source.addingTime(1800, quickTimerDeadline: nil, now: now)
+        XCTAssertEqual(change.source, .until(date: now.addingTimeInterval(1800), label: "Standup"))
+    }
+
+    func testAddingTimeTakesOverACommandSession() {
+        let now = Date(timeIntervalSinceReferenceDate: 800_000_000)
+        let deadline = now.addingTimeInterval(3600)
+        let change = SessionSource.command(token: UUID(), deadline: deadline).addingTime(600, quickTimerDeadline: nil, now: now)
+        XCTAssertEqual(change.source, .until(date: deadline.addingTimeInterval(600), label: nil))
+        XCTAssertFalse(change.source.endCondition(quickTimerDeadline: nil).matchesFinish(token: UUID()))
+    }
 }

@@ -24,6 +24,8 @@
 
 
 /* Begin PBXBuildFile section */
+		B100000000000012 /* SessionStatusCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000012 /* SessionStatusCard.swift */; };
+		B100000000000011 /* MenuComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000011 /* MenuComponents.swift */; };
 		B100000000000010 /* ActivityHistoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000010 /* ActivityHistoryTests.swift */; };
 		B10000000000000F /* ActivitySettingsPane.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000F /* ActivitySettingsPane.swift */; };
 		B10000000000000E /* ShortcutsActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000E /* ShortcutsActions.swift */; };
@@ -93,6 +95,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		B200000000000012 /* SessionStatusCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStatusCard.swift; sourceTree = "<group>"; };
+		B200000000000011 /* MenuComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuComponents.swift; sourceTree = "<group>"; };
 		B200000000000010 /* ActivityHistoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityHistoryTests.swift; sourceTree = "<group>"; };
 		B20000000000000F /* ActivitySettingsPane.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivitySettingsPane.swift; sourceTree = "<group>"; };
 		B20000000000000E /* ShortcutsActions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutsActions.swift; sourceTree = "<group>"; };
@@ -263,6 +267,7 @@
 		5000000000000007 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				500000000000000C /* Menu */,
 				500000000000000A /* Settings */,
 				2000000000000005 /* MenuBarView.swift */,
 				200000000000000E /* PermissionsView.swift */,
@@ -270,6 +275,15 @@
 				A2000000000000A1 /* UntilSessionView.swift */,
 			);
 			path = Views;
+			sourceTree = "<group>";
+		};
+		500000000000000C /* Menu */ = {
+			isa = PBXGroup;
+			children = (
+				B200000000000012 /* SessionStatusCard.swift */,
+				B200000000000011 /* MenuComponents.swift */,
+			);
+			path = Menu;
 			sourceTree = "<group>";
 		};
 		500000000000000A /* Settings */ = {
@@ -425,6 +439,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B100000000000012 /* SessionStatusCard.swift in Sources */,
+				B100000000000011 /* MenuComponents.swift in Sources */,
 				B10000000000000F /* ActivitySettingsPane.swift in Sources */,
 				B10000000000000E /* ShortcutsActions.swift in Sources */,
 				B10000000000000D /* PowerSourceMonitor.swift in Sources */,

@@ -48,6 +48,20 @@ enum SessionSource: Codable, Equatable {
         chosenEndDate == nil ? self : .manual
     }
 
+    /// The source and deadline after adding `seconds`. A session with an end
+    /// moves that end later (from now, if it already passed); an unlimited one
+    /// gains an end `seconds` from now. A command session becomes an Until
+    /// session, because the user has taken it over.
+    func addingTime(_ seconds: TimeInterval, quickTimerDeadline: Date?, now: Date) -> (source: SessionSource, deadline: Date) {
+        let current = endCondition(quickTimerDeadline: quickTimerDeadline).deadline
+        let deadline = max(current ?? now, now).addingTimeInterval(seconds)
+        switch self {
+        case .until(_, let label): return (.until(date: deadline, label: label), deadline)
+        case .command: return (.until(date: deadline, label: nil), deadline)
+        case .manual, .quickTimer, .workSchedule: return (self, deadline)
+        }
+    }
+
     var relinquishingCommand: SessionSource {
         guard case .command(_, let deadline) = self else { return self }
         return .until(date: deadline, label: nil)

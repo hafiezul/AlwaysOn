@@ -58,28 +58,9 @@ struct SmartFeaturesSettingsPane: View {
                         }
                     }
                     
-                    // Notifications toggle
-                    Toggle("Show Notifications", isOn: notificationsEnabledBinding)
-                        .font(.subheadline)
-                    
-                    // Show permission status if denied
-                    if appState.notificationManager.authorizationStatus == .denied {
-                        HStack {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(.orange)
-                            Text("Notifications not allowed")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            Button("Open Settings") {
-                                appState.notificationManager.openNotificationSettings()
-                            }
-                            .font(.caption)
-                        }
-                    }
                 }
                 
-                Text("Automatically enable AlwaysOn during your work hours. Manual starts and stops always win, and schedule end only stops schedule-started sessions.")
+                Text("Automatically enable AlwaysOn during your work hours. Manual starts and stops always win, and schedule end only stops schedule-started sessions. Turn on notifications in General to hear when work hours start and end.")
                     .font(.caption)
                     .foregroundColor(.secondary)
             } header: {
@@ -96,13 +77,6 @@ struct SmartFeaturesSettingsPane: View {
         Binding(
             get: { appState.workScheduleManager.schedule.isEnabled },
             set: { appState.workScheduleManager.schedule.isEnabled = $0 }
-        )
-    }
-    
-    private var notificationsEnabledBinding: Binding<Bool> {
-        Binding(
-            get: { appState.notificationManager.isEnabled },
-            set: { appState.notificationManager.isEnabled = $0 }
         )
     }
     

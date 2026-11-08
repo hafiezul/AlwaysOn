@@ -100,11 +100,22 @@ enum BatteryStopThreshold: Int, CaseIterable, Identifiable {
     }
 }
 
-/// A session AlwaysOn stopped on its own for safety
-struct SafetyStopEvent: Equatable {
+/// A session AlwaysOn ended on its own, so the menu can say why
+struct AutoStopEvent: Equatable {
     enum Reason: Equatable {
         case awayLimit(AwayLimit)
         case lowBattery(percent: Int)
+        case timerEnded
+        case workHoursEnded
+        case permissionRevoked
+
+        /// Safety stops also send a notification; the others already have their own
+        var isSafetyStop: Bool {
+            switch self {
+            case .awayLimit, .lowBattery: return true
+            case .timerEnded, .workHoursEnded, .permissionRevoked: return false
+            }
+        }
     }
 
     var reason: Reason
@@ -114,6 +125,9 @@ struct SafetyStopEvent: Equatable {
         switch reason {
         case .awayLimit: return "AlwaysOn Stopped While You Were Away"
         case .lowBattery: return "AlwaysOn Stopped on Low Battery"
+        case .timerEnded: return "AlwaysOn Timer Ended"
+        case .workHoursEnded: return "Work Hours Ended"
+        case .permissionRevoked: return "AlwaysOn Lost Accessibility Permission"
         }
     }
 
@@ -123,6 +137,12 @@ struct SafetyStopEvent: Equatable {
             return "No input from you for \(limit.title), so the session ended."
         case .lowBattery(let percent):
             return "The battery reached \(percent)%, so the session ended."
+        case .timerEnded:
+            return "The session reached its end time."
+        case .workHoursEnded:
+            return "The work hours schedule ended the session."
+        case .permissionRevoked:
+            return "Accessibility permission was turned off, so the session stopped."
         }
     }
 
@@ -132,6 +152,19 @@ struct SafetyStopEvent: Equatable {
         switch reason {
         case .awayLimit(let limit): return "Stopped at \(time) after \(limit.title) away"
         case .lowBattery(let percent): return "Stopped at \(time) at \(percent)% battery"
+        case .timerEnded: return "Timer ended at \(time)"
+        case .workHoursEnded: return "Work hours ended at \(time)"
+        case .permissionRevoked: return "Stopped at \(time): permission turned off"
+        }
+    }
+
+    var symbol: String {
+        switch reason {
+        case .awayLimit: return "figure.walk"
+        case .lowBattery: return "battery.25"
+        case .timerEnded: return "timer"
+        case .workHoursEnded: return "calendar.badge.clock"
+        case .permissionRevoked: return "lock.slash"
         }
     }
 }

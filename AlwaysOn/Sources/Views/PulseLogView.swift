@@ -121,26 +121,9 @@ struct PulseLogView: View {
 private struct PulseEntryRow: View {
     let entry: PulseLog.Entry
 
-    /// One label, symbol and color per outcome
+    /// One label, symbol and color per outcome, shared with the menu's pulse strip
     private var style: (title: String, symbol: String, color: Color) {
-        switch entry.outcome {
-        case .posted:
-            return ("Posted", "checkmark.circle", .green)
-        case .userActive:
-            return ("Skipped", "hand.raised", .orange)
-        case .noTarget:
-            return ("Skipped", "app.dashed", .secondary)
-        case .inputCreationFailed:
-            return ("Failed", "xmark.octagon", .red)
-        case .systemPaused:
-            return ("Paused", "moon.zzz", .secondary)
-        case .permissionMissing:
-            return ("Stopped", "lock.slash", .red)
-        case .stoppedAway:
-            return ("Stopped", "figure.walk", .orange)
-        case .stoppedLowBattery:
-            return ("Stopped", "battery.25", .orange)
-        }
+        (entry.outcome.shortTitle, entry.outcome.symbol, entry.outcome.tint)
     }
 
     var body: some View {

@@ -207,9 +207,9 @@ final class SafetyStopsTests: XCTestCase {
     }
 
     func testStopMessagesNameTheReason() {
-        let away = SafetyStopEvent(reason: .awayLimit(.fourHours), date: start)
+        let away = AutoStopEvent(reason: .awayLimit(.fourHours), date: start)
         XCTAssertTrue(away.message.contains("4 hours"))
-        let battery = SafetyStopEvent(reason: .lowBattery(percent: 18), date: start)
+        let battery = AutoStopEvent(reason: .lowBattery(percent: 18), date: start)
         XCTAssertTrue(battery.message.contains("18%"))
     }
 }

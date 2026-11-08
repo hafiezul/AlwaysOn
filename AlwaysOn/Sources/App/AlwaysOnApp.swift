@@ -22,16 +22,8 @@ struct AlwaysOnApp: App {
     }
 
     private var menuBarTimerText: String? {
-        guard appState.isQuickTimerActive else { return nil }
-
-        let remaining = appState.quickTimerRemaining
-        guard remaining > 0 else { return nil }
-
-        if remaining < 60 {
-            return "\(Int(remaining))s"
-        }
-
-        return "\(Int((remaining / 60).rounded()))m"
+        appState.menuBarLabelStyle.timeText(remaining: appState.quickTimerRemaining,
+                                            isTimerRunning: appState.isQuickTimerActive)
     }
     
     var body: some Scene {
@@ -47,6 +39,7 @@ struct AlwaysOnApp: App {
                         .font(.system(size: 11, weight: .medium, design: .monospaced))
                 }
             }
+            .accessibilityLabel(appState.statusSummary)
         }
         .menuBarExtraStyle(.window)
     }

@@ -60,6 +60,13 @@ struct GeneralSettingsPane: View {
         )
     }
     
+    private var notificationsEnabledBinding: Binding<Bool> {
+        Binding(
+            get: { appState.notificationManager.isEnabled },
+            set: { appState.notificationManager.isEnabled = $0 }
+        )
+    }
+
     var body: some View {
         Form {
             // Startup section
@@ -72,7 +79,6 @@ struct GeneralSettingsPane: View {
                 Text("Startup")
             }
             
-            commandLineToolSection
 
             // Activity section
             Section {
@@ -210,6 +216,50 @@ struct GeneralSettingsPane: View {
                 Text("Target Apps")
             }
             
+            // Menu bar section
+            Section {
+                Picker("Show in menu bar", selection: $appState.menuBarLabelStyle) {
+                    ForEach(MenuBarLabelStyle.allCases) { style in
+                        Text(style.title).tag(style)
+                    }
+                }
+                .pickerStyle(.menu)
+
+                Text("Time left appears next to the icon while a timed session runs: minutes, then seconds in the last minute.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } header: {
+                Text("Menu Bar")
+            }
+
+            // Notifications section
+            Section {
+                Toggle("Show notifications", isOn: notificationsEnabledBinding)
+
+                if appState.notificationManager.authorizationStatus == .denied {
+                    HStack {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundColor(.orange)
+                        Text("Notifications are turned off for AlwaysOn in System Settings.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Button("Open Settings") {
+                            appState.notificationManager.openNotificationSettings()
+                        }
+                        .font(.caption)
+                    }
+                }
+
+                Text("Tells you when work hours start or end a session, when a timer ends during work hours, and when a safety stop ends a session.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } header: {
+                Text("Notifications")
+            }
+
+            commandLineToolSection
+
             // Permission status section
             Section {
                 HStack {

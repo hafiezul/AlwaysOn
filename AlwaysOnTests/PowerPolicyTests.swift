@@ -98,6 +98,27 @@ final class HeartbeatPlannerTests: XCTestCase {
         XCTAssertEqual(HeartbeatPlanner.tolerance(for: 30), 3, accuracy: 0.0001)
         XCTAssertEqual(HeartbeatPlanner.tolerance(for: 3600), 5)
     }
+
+    func testIconOnlyMenuBarWakesOnlyAtTheDeadline() {
+        let delay = HeartbeatPlanner.nextTickDelay(now: now, deadline: now.addingTimeInterval(600),
+                                                   isRunning: true, isMenuVisible: false,
+                                                   showsMenuBarCountdown: false)
+        XCTAssertEqual(delay, 600)
+    }
+
+    func testIconOnlyStillTicksEverySecondWithTheMenuOpen() {
+        XCTAssertEqual(HeartbeatPlanner.nextTickDelay(now: now, deadline: nil, isRunning: true,
+                                                      isMenuVisible: true, showsMenuBarCountdown: false), 1)
+    }
+
+    func testMenuBarLabelText() {
+        XCTAssertEqual(MenuBarLabelStyle.iconAndTime.timeText(remaining: 600, isTimerRunning: true), "10m")
+        XCTAssertEqual(MenuBarLabelStyle.iconAndTime.timeText(remaining: 89, isTimerRunning: true), "1m")
+        XCTAssertEqual(MenuBarLabelStyle.iconAndTime.timeText(remaining: 42.7, isTimerRunning: true), "42s")
+        XCTAssertNil(MenuBarLabelStyle.iconAndTime.timeText(remaining: 600, isTimerRunning: false))
+        XCTAssertNil(MenuBarLabelStyle.iconAndTime.timeText(remaining: 0, isTimerRunning: true))
+        XCTAssertNil(MenuBarLabelStyle.iconOnly.timeText(remaining: 600, isTimerRunning: true))
+    }
 }
 
 final class RunningAppMonitorTests: XCTestCase {

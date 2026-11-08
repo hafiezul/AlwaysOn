@@ -127,4 +127,23 @@ final class WorkScheduleTests: XCTestCase {
         XCTAssertNil(WorkSchedule(isEnabled: false).nextTransition(after: date(2026, 3, 9, 12, 0)))
         XCTAssertNil(WorkSchedule(isEnabled: true, activeDays: []).nextTransition(after: date(2026, 3, 9, 12, 0)))
     }
+
+    // MARK: - Menu hint
+
+    func testMenuHintDuringHoursNamesTheEnd() {
+        let hint = weekdayNineToFive.menuHint(now: date(2026, 3, 9, 10, 0))
+        XCTAssertEqual(hint, "Work hours until \(date(2026, 3, 9, 17, 0).formatted(date: .omitted, time: .shortened))")
+    }
+
+    func testMenuHintNamesTodayTomorrowOrWeekday() {
+        let nine = { (day: Int) in self.date(2026, 3, day, 9, 0).formatted(date: .omitted, time: .shortened) }
+        XCTAssertEqual(weekdayNineToFive.menuHint(now: date(2026, 3, 9, 7, 0)), "Work hours start today at \(nine(9))")
+        XCTAssertEqual(weekdayNineToFive.menuHint(now: date(2026, 3, 9, 18, 0)), "Work hours start tomorrow at \(nine(10))")
+        let monday = date(2026, 3, 16, 9, 0).formatted(.dateTime.weekday(.wide))
+        XCTAssertEqual(weekdayNineToFive.menuHint(now: date(2026, 3, 13, 18, 0)), "Work hours start \(monday) at \(nine(16))")
+    }
+
+    func testMenuHintIsNilWhenDisabled() {
+        XCTAssertNil(WorkSchedule(isEnabled: false).menuHint(now: date(2026, 3, 9, 10, 0)))
+    }
 }
