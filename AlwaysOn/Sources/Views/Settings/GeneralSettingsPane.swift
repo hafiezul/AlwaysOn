@@ -157,6 +157,33 @@ struct GeneralSettingsPane: View {
                 Text("Activity")
             }
             
+            // Safety section
+            Section {
+                Picker("Stop after I'm away for", selection: $appState.awayLimit) {
+                    ForEach(AwayLimit.allCases) { limit in
+                        Text(limit.title).tag(limit)
+                    }
+                }
+                .pickerStyle(.menu)
+
+                Text("Ends a session once you haven't touched the keyboard or mouse for this long, so a forgotten session doesn't run overnight. AlwaysOn's own input doesn't count.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                Picker("Stop on low battery", selection: $appState.batteryStopThreshold) {
+                    ForEach(BatteryStopThreshold.allCases) { threshold in
+                        Text(threshold.title).tag(threshold)
+                    }
+                }
+                .pickerStyle(.menu)
+
+                Text("Ends a session when the battery reaches this level while unplugged. Has no effect on Macs without a battery.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } header: {
+                Text("Safety")
+            }
+
             // Target app section
             Section {
                 Toggle("Only while a target app is running", isOn: $appState.requireTargetApp)

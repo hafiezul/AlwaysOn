@@ -7,6 +7,10 @@ import Carbon
 /// Keeps track of active status and coordinates with ActivitySimulator
 @MainActor
 final class AppState: NSObject, ObservableObject {
+    /// The app's single state object, for entry points SwiftUI can't inject
+    /// into, such as Shortcuts actions
+    private(set) static weak var shared: AppState?
+
     // MARK: - Published Properties
     
     /// Whether the activity simulation is currently active
@@ -75,6 +79,28 @@ final class AppState: NSObject, ObservableObject {
         }
     }
 
+    /// Stop a session after this long without input from the user
+    @Published var awayLimit: AwayLimit {
+        didSet {
+            UserDefaults.standard.set(awayLimit.rawValue, forKey: Keys.awayLimit)
+            activitySimulator.tracksRealInput = awayLimit != .off
+        }
+    }
+
+    /// Stop a session when the battery reaches this level
+    @Published var batteryStopThreshold: BatteryStopThreshold {
+        didSet {
+            UserDefaults.standard.set(batteryStopThreshold.rawValue, forKey: Keys.batteryStopThreshold)
+            powerSourceMonitor.setEnabled(batteryStopThreshold != .off)
+            if isActive, batteryStopThreshold.shouldStop(powerSourceMonitor.state) {
+                performSafetyStop(.lowBattery(percent: powerSourceMonitor.state.percent ?? 0))
+            }
+        }
+    }
+
+    /// The most recent automatic safety stop, shown in the menu until the next session
+    @Published private(set) var lastSafetyStop: SafetyStopEvent?
+
     /// Why simulation is suspended by the system (sleep, lock, user switch), nil while it may run.
     /// The session stays active; the simulator resumes as soon as the condition clears.
     @Published private(set) var systemSuspension: SystemConditions.SuspensionReason?
@@ -142,6 +168,9 @@ final class AppState: NSObject, ObservableObject {
     /// Notification manager for work schedule events
     let notificationManager = NotificationManager()
 
+    /// Daily online time, kept on this Mac for 30 days
+    let activityHistory = ActivityHistoryStore()
+
     /// How the current or paused session was started
     /// Persisted so a relaunched schedule-started session can still be stopped by schedule end
     @Published private(set) var sessionSource: SessionSource? {
@@ -162,6 +191,7 @@ final class AppState: NSObject, ObservableObject {
     private let globalHotKeyManager = GlobalHotKeyManager()
     private let systemEventMonitor = SystemEventMonitor()
     private let runningAppMonitor = RunningAppMonitor()
+    private let powerSourceMonitor = PowerSourceMonitor()
     private var sessionTimer: Timer?
 
     /// Whether the menu is on screen. Only the open menu shows seconds, so the
@@ -205,6 +235,8 @@ final class AppState: NSObject, ObservableObject {
         static let targetApps = "targetApps"
         static let globalHotKeyEnabled = "globalHotKeyEnabled"
         static let pauseWhileScreenLocked = "pauseWhileScreenLocked"
+        static let awayLimit = "awayLimitHours"
+        static let batteryStopThreshold = "batteryStopThreshold"
     }
     
     private enum Defaults {
@@ -279,7 +311,10 @@ final class AppState: NSObject, ObservableObject {
         self._targetApps = Published(initialValue: Set(defaults.stringArray(forKey: Keys.targetApps) ?? []))
         self._globalHotKeyEnabled = Published(initialValue: defaults.object(forKey: Keys.globalHotKeyEnabled) as? Bool ?? true)
         self._pauseWhileScreenLocked = Published(initialValue: defaults.object(forKey: Keys.pauseWhileScreenLocked) as? Bool ?? true)
+        self._awayLimit = Published(initialValue: AwayLimit(rawValue: defaults.integer(forKey: Keys.awayLimit)) ?? .off)
+        self._batteryStopThreshold = Published(initialValue: BatteryStopThreshold(rawValue: defaults.integer(forKey: Keys.batteryStopThreshold)) ?? .off)
         super.init()
+        Self.shared = self
         activitySimulator.gate.idleOnlyEnabled = simulateOnlyWhenIdle
         activitySimulator.gate.requireTargetApp = requireTargetApp
         activitySimulator.gate.targetBundleIDs = targetApps
@@ -291,6 +326,14 @@ final class AppState: NSObject, ObservableObject {
             Task { @MainActor in self?.accessibilityPermission.refresh() }
         }
         systemSuspension = systemEventMonitor.conditions.suspensionReason(pauseWhileLocked: pauseWhileScreenLocked)
+        activitySimulator.tracksRealInput = awayLimit != .off
+        activitySimulator.shouldContinue = { [weak self] awayFor in
+            MainActor.assumeIsolated { self?.continueAfterSafetyCheck(awayFor: awayFor) ?? true }
+        }
+        powerSourceMonitor.onChange = { [weak self] state in
+            MainActor.assumeIsolated { self?.handleBatteryChange(state) }
+        }
+        powerSourceMonitor.setEnabled(batteryStopThreshold != .off)
         globalHotKeyManager.onKeyDown = { [weak self] in
             Task { @MainActor in
                 self?.toggle()
@@ -321,6 +364,7 @@ final class AppState: NSObject, ObservableObject {
         setupNotificationCallbacks()
         setupProfileSync()
         setupSystemEventHandling()
+        setupActivityHistory()
         accessibilityPermission.refresh()
         
         // Resume active state if was active before quit (and has permission)
@@ -551,6 +595,13 @@ final class AppState: NSObject, ObservableObject {
                 self?.objectWillChange.send()
             }
             .store(in: &cancellables)
+
+        activityHistory.objectWillChange
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] (_: Void) in
+                self?.objectWillChange.send()
+            }
+            .store(in: &cancellables)
     }
     
     private func setupAutomationObservers() {
@@ -633,6 +684,75 @@ final class AppState: NSObject, ObservableObject {
         guard systemSuspension == nil else { return }
         activitySimulator.deadline = sessionDeadline
         activitySimulator.start(interval: activityInterval, method: activityMethod)
+    }
+
+    // MARK: - Activity History
+
+    private func setupActivityHistory() {
+        // Coalesce the several property changes one action makes into one update
+        Publishers.CombineLatest3($isActive, $systemSuspension, $sessionSource)
+            .debounce(for: .zero, scheduler: DispatchQueue.main)
+            .sink { [weak self] isActive, suspension, source in
+                self?.activityHistory.update(isOnline: isActive && suspension == nil, kind: SessionKind(source))
+            }
+            .store(in: &cancellables)
+    }
+
+    /// Closes the running history segment; called when the app quits
+    func prepareForTermination() {
+        activityHistory.closeOpenSegment()
+    }
+
+    /// Online time today, including the running segment
+    var onlineTimeToday: TimeInterval {
+        activityHistory.ledger.today(now: Date())
+    }
+
+    /// One line describing the session, for Shortcuts and accessibility
+    var statusSummary: String {
+        if isActive {
+            if let deadline = sessionDeadline {
+                return "AlwaysOn is active until \(deadline.formatted(date: .omitted, time: .shortened))."
+            }
+            return "AlwaysOn is active."
+        }
+        return hasActiveOrPausedSession ? "AlwaysOn is paused." : "AlwaysOn is off."
+    }
+
+    // MARK: - Safety Stops
+
+    /// Runs at each simulation tick. Returns false when the session is being stopped.
+    private func continueAfterSafetyCheck(awayFor: TimeInterval) -> Bool {
+        activityHistory.checkpoint()
+        if awayLimit.isReached(awayFor: awayFor) {
+            performSafetyStop(.awayLimit(awayLimit))
+            return false
+        }
+        if batteryStopThreshold.shouldStop(powerSourceMonitor.state) {
+            performSafetyStop(.lowBattery(percent: powerSourceMonitor.state.percent ?? 0))
+            return false
+        }
+        return true
+    }
+
+    private func handleBatteryChange(_ state: BatteryState) {
+        guard isActive, batteryStopThreshold.shouldStop(state) else { return }
+        performSafetyStop(.lowBattery(percent: state.percent ?? 0))
+    }
+
+    private func performSafetyStop(_ reason: SafetyStopEvent.Reason) {
+        // Defer so a stop requested mid-tick or mid-start finishes that work first
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.hasActiveOrPausedSession else { return }
+            self.stopSession()
+            let event = SafetyStopEvent(reason: reason, date: Date())
+            self.lastSafetyStop = event
+            switch reason {
+            case .awayLimit: self.pulseLog.record(.stoppedAway)
+            case .lowBattery: self.pulseLog.record(.stoppedLowBattery)
+            }
+            self.notificationManager.notifySafetyStop(title: event.title, body: event.message)
+        }
     }
 
     // MARK: - System Events
@@ -742,6 +862,11 @@ final class AppState: NSObject, ObservableObject {
             isActive = false
             return
         }
+        if batteryStopThreshold.shouldStop(powerSourceMonitor.state) {
+            performSafetyStop(.lowBattery(percent: powerSourceMonitor.state.percent ?? 0))
+            return
+        }
+        lastSafetyStop = nil
         
         startSimulatorUnlessSuspended()
         

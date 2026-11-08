@@ -64,6 +64,7 @@ struct MenuBarView: View {
     
     // MARK: - View Components
     
+    @ViewBuilder
     private var statusHeader: some View {
         HStack(spacing: 8) {
             Circle()
@@ -74,9 +75,25 @@ struct MenuBarView: View {
                 .font(.headline)
 
             Spacer()
+
+            let today = appState.onlineTimeToday
+            if today > 0 {
+                Text("Today \(ActivityDurationFormat.long(today))")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .monospacedDigit()
+            }
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 4)
+
+        if let stop = appState.lastSafetyStop, !appState.hasActiveOrPausedSession {
+            Label(stop.shortSummary, systemImage: "exclamationmark.circle")
+                .font(.caption)
+                .foregroundColor(.orange)
+                .padding(.horizontal, 12)
+                .padding(.bottom, 4)
+        }
     }
     
     private var toggleButton: some View {
