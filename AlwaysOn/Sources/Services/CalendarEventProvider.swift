@@ -1,3 +1,4 @@
+import AppKit
 import Combine
 import EventKit
 import Foundation
@@ -110,7 +111,24 @@ final class CalendarEventProvider: ObservableObject {
             }
     }
 
-    private static func currentAccessState() -> CalendarAccessState {
+    /// Asks for calendar access without loading events, for the setup window.
+    /// Returns the resulting state; never prompts once the user has answered.
+    @MainActor
+    func requestAccessOnly() async -> CalendarAccessState {
+        if Self.currentAccessState() == .notDetermined {
+            try? await requestAccess()
+        }
+        accessState = Self.currentAccessState()
+        return accessState
+    }
+
+    static func openCalendarSettings() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
+    static func currentAccessState() -> CalendarAccessState {
         let status = EKEventStore.authorizationStatus(for: .event)
         switch status {
         case .notDetermined:

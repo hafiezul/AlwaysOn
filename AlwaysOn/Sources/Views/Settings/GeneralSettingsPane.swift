@@ -262,37 +262,18 @@ struct GeneralSettingsPane: View {
 
             // Permission status section
             Section {
-                HStack {
-                    Label {
-                        Text("Accessibility")
-                    } icon: {
-                        Image(systemName: appState.hasAccessibilityPermission ? "checkmark.circle.fill" : "xmark.circle.fill")
-                            .foregroundColor(appState.hasAccessibilityPermission ? .green : .red)
-                    }
-                    
-                    Spacer()
-                    
-                    if appState.hasAccessibilityPermission {
-                        Text("Granted")
-                            .foregroundColor(.secondary)
-                    } else {
-                        Button("Grant") {
-                            appState.requestPermission()
-                        }
-                        .buttonStyle(.bordered)
-                    }
+                ForEach(PermissionRowModel.all(appState: appState,
+                                               calendarAccess: CalendarEventProvider.currentAccessState(),
+                                               requestCalendar: { appState.showPermissionsWindow() })) { row in
+                    PermissionRow(model: row, compact: true)
                 }
-                
-                if !appState.hasAccessibilityPermission {
-                    Text("Accessibility permission is required for AlwaysOn to simulate activity.")
+
+                HStack {
+                    Text("Only Accessibility is required. The others turn on optional features.")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    
-                    Button("Open System Settings") {
-                        appState.openAccessibilitySettings()
-                    }
-                    .buttonStyle(.link)
-                    .font(.caption)
+                    Spacer()
+                    Button("Open Setup…") { appState.showPermissionsWindow() }
                 }
             } header: {
                 Text("Permissions")

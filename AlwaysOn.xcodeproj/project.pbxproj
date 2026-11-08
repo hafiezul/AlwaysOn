@@ -24,6 +24,8 @@
 
 
 /* Begin PBXBuildFile section */
+		B100000000000014 /* WiFiNetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000014 /* WiFiNetworkMonitor.swift */; };
+		B100000000000013 /* PermissionRows.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000013 /* PermissionRows.swift */; };
 		B100000000000012 /* SessionStatusCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000012 /* SessionStatusCard.swift */; };
 		B100000000000011 /* MenuComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000011 /* MenuComponents.swift */; };
 		B100000000000010 /* ActivityHistoryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000010 /* ActivityHistoryTests.swift */; };
@@ -95,6 +97,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		B200000000000014 /* WiFiNetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiNetworkMonitor.swift; sourceTree = "<group>"; };
+		B200000000000013 /* PermissionRows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionRows.swift; sourceTree = "<group>"; };
 		B200000000000012 /* SessionStatusCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStatusCard.swift; sourceTree = "<group>"; };
 		B200000000000011 /* MenuComponents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuComponents.swift; sourceTree = "<group>"; };
 		B200000000000010 /* ActivityHistoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActivityHistoryTests.swift; sourceTree = "<group>"; };
@@ -242,6 +246,7 @@
 		5000000000000006 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				B200000000000014 /* WiFiNetworkMonitor.swift */,
 				B20000000000000E /* ShortcutsActions.swift */,
 				B20000000000000D /* PowerSourceMonitor.swift */,
 				B20000000000000B /* ActivityHistoryStore.swift */,
@@ -268,6 +273,7 @@
 			isa = PBXGroup;
 			children = (
 				500000000000000C /* Menu */,
+				500000000000000D /* Permissions */,
 				500000000000000A /* Settings */,
 				2000000000000005 /* MenuBarView.swift */,
 				200000000000000E /* PermissionsView.swift */,
@@ -284,6 +290,14 @@
 				B200000000000011 /* MenuComponents.swift */,
 			);
 			path = Menu;
+			sourceTree = "<group>";
+		};
+		500000000000000D /* Permissions */ = {
+			isa = PBXGroup;
+			children = (
+				B200000000000013 /* PermissionRows.swift */,
+			);
+			path = Permissions;
 			sourceTree = "<group>";
 		};
 		500000000000000A /* Settings */ = {
@@ -439,6 +453,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B100000000000014 /* WiFiNetworkMonitor.swift in Sources */,
+				B100000000000013 /* PermissionRows.swift in Sources */,
 				B100000000000012 /* SessionStatusCard.swift in Sources */,
 				B100000000000011 /* MenuComponents.swift in Sources */,
 				B10000000000000F /* ActivitySettingsPane.swift in Sources */,

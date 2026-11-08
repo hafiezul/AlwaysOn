@@ -68,14 +68,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     
     @MainActor
     private func handleAppLaunch() {
-        let permission = AccessibilityPermission.shared
+        guard let appState else { return }
+        let permission = appState.accessibilityPermission
         
         // Show permissions window if:
         // 1. User hasn't completed onboarding, OR
         // 2. Permission is not currently granted
         if !permission.onboardingCompleted || !permission.hasPermission {
             PermissionsWindowController.shared.show(
-                accessibilityPermission: permission,
+                appState: appState,
                 onContinue: {
                     permission.onboardingCompleted = true
                     // The prompt is done; later checks happen on demand
