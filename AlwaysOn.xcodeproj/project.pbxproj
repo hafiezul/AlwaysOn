@@ -24,6 +24,22 @@
 
 
 /* Begin PBXBuildFile section */
+		DBD994DC6D1397B3 /* HotKeyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D912935646364868 /* HotKeyTests.swift */; };
+		D69C74EBBD0F6F3C /* HotKeyRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF1B9043C1B7720 /* HotKeyRecorder.swift */; };
+		D6D9F6EB6BC49DCF /* HotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE3C0A7296B2C07D /* HotKey.swift */; };
+		D8E35E79AACBC42E /* HotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0D8E878C78661BE /* HotKey.swift */; };
+		D2097BA4A59B5AB1 /* AppState+Focus.swift in Sources */ = {isa = PBXBuildFile; fileRef = D35AB66622870F22 /* AppState+Focus.swift */; };
+		DC6B83FA35904C07 /* FocusFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = DA12915155D99276 /* FocusFilter.swift */; };
+		DC12D382C7748885 /* PulsePacingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB301566725710AC /* PulsePacingTests.swift */; };
+		D0ADFE0E497D7819 /* AppState+Power.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6B6C3714AD86C05 /* AppState+Power.swift */; };
+		DCED42E82DF3F0AA /* PowerAssertionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6FEF8AF0259D4A3 /* PowerAssertionManager.swift */; };
+		D58045507150CFFE /* EnergyMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D63EAB243EB2FFBF /* EnergyMonitor.swift */; };
+		D1C1D0CDDE69AEC8 /* PulsePacing.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0939DED1CB1E4C5 /* PulsePacing.swift */; };
+		DEAD2A52146AD3A3 /* PulsePacing.swift in Sources */ = {isa = PBXBuildFile; fileRef = D54C1B4EFDA9C1AB /* PulsePacing.swift */; };
+		DF9EFB52D4AFD583 /* AppState+Commands.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBA8BF43C9B78492 /* AppState+Commands.swift */; };
+		D2ACE446BE088E1D /* AppState+Safety.swift in Sources */ = {isa = PBXBuildFile; fileRef = DECD78E65BF592C6 /* AppState+Safety.swift */; };
+		DD59D7DE57A8F4FB /* AppState+Profiles.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1D279DDDC2E4FEF /* AppState+Profiles.swift */; };
+		D6E6B173C722F3C6 /* AppState+Wiring.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9A4DD50383FBBB7 /* AppState+Wiring.swift */; };
 		B100000000000014 /* WiFiNetworkMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000014 /* WiFiNetworkMonitor.swift */; };
 		B100000000000013 /* PermissionRows.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000013 /* PermissionRows.swift */; };
 		B100000000000012 /* SessionStatusCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = B200000000000012 /* SessionStatusCard.swift */; };
@@ -97,6 +113,22 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		D912935646364868 /* HotKeyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HotKeyTests.swift"; sourceTree = "<group>"; };
+		DCF1B9043C1B7720 /* HotKeyRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HotKeyRecorder.swift"; sourceTree = "<group>"; };
+		DE3C0A7296B2C07D /* HotKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "HotKey.swift"; path = "../AlwaysOn/Sources/Models/HotKey.swift"; sourceTree = "<group>"; };
+		D0D8E878C78661BE /* HotKey.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "HotKey.swift"; sourceTree = "<group>"; };
+		D35AB66622870F22 /* AppState+Focus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState+Focus.swift"; sourceTree = "<group>"; };
+		DA12915155D99276 /* FocusFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "FocusFilter.swift"; sourceTree = "<group>"; };
+		DB301566725710AC /* PulsePacingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PulsePacingTests.swift"; sourceTree = "<group>"; };
+		D6B6C3714AD86C05 /* AppState+Power.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState+Power.swift"; sourceTree = "<group>"; };
+		D6FEF8AF0259D4A3 /* PowerAssertionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PowerAssertionManager.swift"; sourceTree = "<group>"; };
+		D63EAB243EB2FFBF /* EnergyMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "EnergyMonitor.swift"; sourceTree = "<group>"; };
+		D0939DED1CB1E4C5 /* PulsePacing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = "PulsePacing.swift"; path = "../AlwaysOn/Sources/Models/PulsePacing.swift"; sourceTree = "<group>"; };
+		D54C1B4EFDA9C1AB /* PulsePacing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "PulsePacing.swift"; sourceTree = "<group>"; };
+		DBA8BF43C9B78492 /* AppState+Commands.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState+Commands.swift"; sourceTree = "<group>"; };
+		DECD78E65BF592C6 /* AppState+Safety.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState+Safety.swift"; sourceTree = "<group>"; };
+		D1D279DDDC2E4FEF /* AppState+Profiles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState+Profiles.swift"; sourceTree = "<group>"; };
+		D9A4DD50383FBBB7 /* AppState+Wiring.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState+Wiring.swift"; sourceTree = "<group>"; };
 		B200000000000014 /* WiFiNetworkMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiNetworkMonitor.swift; sourceTree = "<group>"; };
 		B200000000000013 /* PermissionRows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionRows.swift; sourceTree = "<group>"; };
 		B200000000000012 /* SessionStatusCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionStatusCard.swift; sourceTree = "<group>"; };
@@ -227,6 +259,14 @@
 		5000000000000005 /* Models */ = {
 			isa = PBXGroup;
 			children = (
+				D0D8E878C78661BE /* HotKey.swift */,
+				D35AB66622870F22 /* AppState+Focus.swift */,
+				D6B6C3714AD86C05 /* AppState+Power.swift */,
+				D54C1B4EFDA9C1AB /* PulsePacing.swift */,
+				DBA8BF43C9B78492 /* AppState+Commands.swift */,
+				DECD78E65BF592C6 /* AppState+Safety.swift */,
+				D1D279DDDC2E4FEF /* AppState+Profiles.swift */,
+				D9A4DD50383FBBB7 /* AppState+Wiring.swift */,
 				B200000000000009 /* SafetyStops.swift */,
 				B200000000000007 /* ActivityHistory.swift */,
 				B200000000000001 /* PowerPolicy.swift */,
@@ -246,6 +286,9 @@
 		5000000000000006 /* Services */ = {
 			isa = PBXGroup;
 			children = (
+				DA12915155D99276 /* FocusFilter.swift */,
+				D6FEF8AF0259D4A3 /* PowerAssertionManager.swift */,
+				D63EAB243EB2FFBF /* EnergyMonitor.swift */,
 				B200000000000014 /* WiFiNetworkMonitor.swift */,
 				B20000000000000E /* ShortcutsActions.swift */,
 				B20000000000000D /* PowerSourceMonitor.swift */,
@@ -303,6 +346,7 @@
 		500000000000000A /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				DCF1B9043C1B7720 /* HotKeyRecorder.swift */,
 				B20000000000000F /* ActivitySettingsPane.swift */,
 				2000000000000014 /* AboutSettingsPane.swift */,
 				2000000000000012 /* GeneralSettingsPane.swift */,
@@ -335,6 +379,10 @@
 		500000000000000B /* AlwaysOnTests */ = {
 			isa = PBXGroup;
 			children = (
+				D912935646364868 /* HotKeyTests.swift */,
+				DE3C0A7296B2C07D /* HotKey.swift */,
+				DB301566725710AC /* PulsePacingTests.swift */,
+				D0939DED1CB1E4C5 /* PulsePacing.swift */,
 				B200000000000010 /* ActivityHistoryTests.swift */,
 				B20000000000000C /* ActivityHistoryStore.swift */,
 				B20000000000000A /* SafetyStops.swift */,
@@ -453,6 +501,18 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				D69C74EBBD0F6F3C /* HotKeyRecorder.swift in Sources */,
+				D8E35E79AACBC42E /* HotKey.swift in Sources */,
+				D2097BA4A59B5AB1 /* AppState+Focus.swift in Sources */,
+				DC6B83FA35904C07 /* FocusFilter.swift in Sources */,
+				D0ADFE0E497D7819 /* AppState+Power.swift in Sources */,
+				DCED42E82DF3F0AA /* PowerAssertionManager.swift in Sources */,
+				D58045507150CFFE /* EnergyMonitor.swift in Sources */,
+				DEAD2A52146AD3A3 /* PulsePacing.swift in Sources */,
+				DF9EFB52D4AFD583 /* AppState+Commands.swift in Sources */,
+				D2ACE446BE088E1D /* AppState+Safety.swift in Sources */,
+				DD59D7DE57A8F4FB /* AppState+Profiles.swift in Sources */,
+				D6E6B173C722F3C6 /* AppState+Wiring.swift in Sources */,
 				B100000000000014 /* WiFiNetworkMonitor.swift in Sources */,
 				B100000000000013 /* PermissionRows.swift in Sources */,
 				B100000000000012 /* SessionStatusCard.swift in Sources */,
@@ -507,6 +567,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DBD994DC6D1397B3 /* HotKeyTests.swift in Sources */,
+				D6D9F6EB6BC49DCF /* HotKey.swift in Sources */,
+				DC12D382C7748885 /* PulsePacingTests.swift in Sources */,
+				D1C1D0CDDE69AEC8 /* PulsePacing.swift in Sources */,
 				B100000000000010 /* ActivityHistoryTests.swift in Sources */,
 				B10000000000000C /* ActivityHistoryStore.swift in Sources */,
 				B10000000000000A /* SafetyStops.swift in Sources */,

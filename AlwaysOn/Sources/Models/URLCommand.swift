@@ -10,13 +10,18 @@ enum URLCommand: Equatable {
     case finish(token: UUID)
     /// nil minutes falls back to the active profile's default duration
     case timer(minutes: Int?)
+    /// Pause a running session; nil minutes pauses until resumed
+    case pause(minutes: Int?)
 }
 
 struct URLCommandParser {
     static let scheme = "alwayson"
+    /// Accepted pause durations, in minutes
+    static let pauseMinutesRange = 1...1440
 
-    /// Parses alwayson://start, alwayson://stop, alwayson://toggle, and
-    /// alwayson://timer?minutes=30. Returns nil for anything else.
+    /// Parses alwayson://start, alwayson://stop, alwayson://toggle,
+    /// alwayson://timer?minutes=30, and alwayson://pause?minutes=15.
+    /// Returns nil for anything else.
     static func command(from url: URL) -> URLCommand? {
         guard url.scheme?.lowercased() == scheme else { return nil }
 
@@ -52,6 +57,14 @@ struct URLCommandParser {
                 .value
                 .flatMap { Int($0) }
             return .timer(minutes: minutes)
+        case "pause":
+            // A bad duration is rejected rather than read as an open-ended pause
+            let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?.filter { $0.name.lowercased() == "minutes" } ?? []
+            guard !items.isEmpty else { return .pause(minutes: nil) }
+            guard items.count == 1, let value = items.first?.value, let minutes = Int(value),
+                  pauseMinutesRange.contains(minutes) else { return nil }
+            return .pause(minutes: minutes)
         default:
             return nil
         }

@@ -61,34 +61,28 @@ final class ActivitySimulator {
     
     // MARK: - Public Methods
     
-    /// Start simulating activity at the specified interval
+    /// When ticks happen and whether they post. Updating it while running
+    /// takes effect from the next scheduled tick.
+    var schedule = PulseSchedule()
+
+    /// Start simulating activity
     /// - Parameters:
-    ///   - interval: Time in seconds between activity simulations (default: 45s)
+    ///   - schedule: Pacing, interval, and energy saving for this session
     ///   - method: The activity simulation method to use
-    func start(interval: TimeInterval = 45.0, method: ActivityMethod = .mouse) {
+    func start(schedule: PulseSchedule, method: ActivityMethod = .mouse) {
         guard !isRunning else { return }
         
         isRunning = true
+        self.schedule = schedule
         activityMethod = method
         // Starting or resuming happens at the Mac, so the user is present now
         inputTracker = RealInputTracker(start: Date())
         
-        // Use a repeating timer on the main run loop. Tolerance lets macOS
-        // batch this wake-up with others; a few seconds' drift is far inside
-        // any presence app's idle timeout.
-        let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
-            self?.simulateActivity()
-        }
-        timer.tolerance = min(interval * 0.1, 5)
-        // Common modes keep the timer firing while the menu is open
-        RunLoop.main.add(timer, forMode: .common)
-        self.timer = timer
-        
-        // Perform initial activity simulation
-        simulateActivity()
+        // Tick at once; each tick schedules the next
+        tick()
         
         #if DEBUG
-        print("[ActivitySimulator] Started with interval: \(interval)s, method: \(method.title)")
+        print("[ActivitySimulator] Started: \(schedule.pacing.rawValue), interval \(schedule.effectiveInterval)s, post after \(schedule.postAfter)s, method: \(method.title)")
         #endif
     }
     
@@ -114,16 +108,28 @@ final class ActivitySimulator {
     
     // MARK: - Private Methods
     
-    /// Performs activity simulation based on the selected method
-    private func simulateActivity() {
-        let now = Date()
-        if let deadline, deadline <= now { return }
-        guard permissionProvider() else {
-            pulseLog.record(.permissionMissing)
-            onPermissionLost?()
-            return
+    /// Runs one tick and schedules the next. A one-shot timer per tick lets
+    /// adaptive pacing sleep exactly until input is due instead of waking on
+    /// a fixed cadence.
+    private func tick() {
+        let delay = simulateActivity()
+        guard isRunning else { return }
+        timer?.invalidate()
+        // Tolerance lets macOS batch this wake-up with others; a few seconds'
+        // drift is far inside any presence app's idle timeout
+        let timer = Timer(timeInterval: delay, repeats: false) { [weak self] _ in
+            self?.tick()
         }
+        timer.tolerance = schedule.tolerance(for: delay)
+        // Common modes keep the timer firing while the menu is open
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
+    }
 
+    /// Performs activity simulation based on the selected method
+    /// - Returns: Seconds until the next tick
+    private func simulateActivity() -> TimeInterval {
+        let now = Date()
         // Read the idle time at most once per tick, and only when needed
         var measuredIdle: TimeInterval?
         func idleSeconds() -> TimeInterval {
@@ -132,18 +138,37 @@ final class ActivitySimulator {
             measuredIdle = value
             return value
         }
+        // Fixed pacing never needs the idle time to plan; adaptive always does
+        func nextDelay() -> TimeInterval {
+            schedule.pacing == .fixed ? schedule.effectiveInterval : schedule.nextDelay(idleSeconds: idleSeconds())
+        }
+
+        if let deadline, deadline <= now { return nextDelay() }
+        guard permissionProvider() else {
+            pulseLog.record(.permissionMissing)
+            onPermissionLost?()
+            return nextDelay()
+        }
+
         if tracksRealInput { inputTracker.observe(idleSeconds: idleSeconds(), now: now) }
         if let shouldContinue,
            !shouldContinue(tracksRealInput ? inputTracker.awayDuration(now: now) : 0) {
-            return
+            return nextDelay()
+        }
+
+        // Adaptive pacing waits until the user has been idle long enough
+        if !schedule.isDue(idleSeconds: idleSeconds()) {
+            pulseLog.record(.userActive)
+            return nextDelay()
         }
 
         switch gate.decision(idleSeconds: idleSeconds(),
                              hasRunningTarget: hasRunningTargetProvider(gate.targetBundleIDs)) {
-        case .skip(.userActive): pulseLog.record(.userActive); return
-        case .skip(.noTarget): pulseLog.record(.noTarget); return
+        case .skip(.userActive): pulseLog.record(.userActive); return nextDelay()
+        case .skip(.noTarget): pulseLog.record(.noTarget); return nextDelay()
         case .post: break
         }
+        let delay = nextDelay()
         let posted: Bool
 
         switch activityMethod {
@@ -163,8 +188,9 @@ final class ActivitySimulator {
         if posted { inputTracker.recordSyntheticPost(at: now) }
         pulseLog.record(posted ? .posted : .inputCreationFailed)
         #if DEBUG
-        print("[ActivitySimulator] Activity simulated at \(Date())")
+        print("[ActivitySimulator] Activity simulated at \(Date()); next tick in \(delay)s")
         #endif
+        return delay
     }
     
     /// Performs minimal mouse movement to simulate user activity

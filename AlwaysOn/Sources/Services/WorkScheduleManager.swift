@@ -117,18 +117,18 @@ final class WorkScheduleManager: ObservableObject {
         guard schedule.isEnabled else {
             return "Schedule disabled"
         }
-        
-        if isWithinSchedule {
-            if let timeUntilEnd = schedule.timeUntilEnd() {
-                return "Active until \(schedule.endTimeString) (\(formatTimeInterval(timeUntilEnd)) remaining)"
-            }
-            return "Within scheduled hours"
-        } else {
-            if let timeUntilStart = schedule.timeUntilNextStart() {
-                return "Next: \(schedule.startTimeString) (in \(formatTimeInterval(timeUntilStart)))"
-            }
-            return "Outside scheduled hours"
+        let now = Date()
+        guard let next = schedule.nextTransition(after: now) else {
+            return "No upcoming work hours"
         }
+        let style: Date.FormatStyle.DateStyle = Calendar.current.isDate(next, inSameDayAs: now) ? .omitted : .abbreviated
+        let time = next.formatted(date: style, time: .shortened)
+        let wait = formatTimeInterval(next.timeIntervalSince(now))
+        if isWithinSchedule {
+            let isBreak = next != schedule.workdayEnd(on: now)
+            return isBreak ? "Active until a break at \(time) (\(wait) remaining)" : "Active until \(time) (\(wait) remaining)"
+        }
+        return "Next: \(time) (in \(wait))"
     }
     
     private func formatTimeInterval(_ interval: TimeInterval) -> String {

@@ -20,12 +20,16 @@ If you find this app useful, consider supporting its development:
 ## Core Features
 
 - Start, pause, resume, or stop activity simulation from the menu bar
-- Toggle the session from anywhere with the ⌥⌘K global hotkey
+- Toggle the session from anywhere with a global hotkey (⌥⌘K, or record your own)
+- Pause for 15 minutes to 2 hours and resume on its own
 - Use mouse, keyboard, or alternating activity methods
+- Use adaptive pacing to send input only once you've been idle, for far fewer wake-ups
+- Keep the Mac (and display) awake during a session, and save energy in Low Power Mode
 - Optionally skip simulated input while you are actively using the machine
 - Optionally pause simulation while no chat or meeting app is running
 - Pause automatically while the Mac sleeps, locks, or switches users
-- Run quick timers or automate sessions with work hours
+- Run quick timers or automate sessions with work hours, with per-day hours, a daily break, and days off
+- Keep online or switch profiles while a macOS Focus is on
 - Keep online until a chosen time or until a calendar event ends
 - Keep online while a terminal command runs, with the `alwayson` CLI
 - Review recent input attempts in the Pulse Log
@@ -73,6 +77,13 @@ AlwaysOn simulates minimal input on a configurable interval, with 45 seconds as 
 
 This keeps macOS from marking the system idle, which many workplace apps use to determine presence.
 
+### Pacing
+
+**Settings > General > Activity > Pacing** chooses when input is sent:
+
+- **Fixed interval** (default) sends input every interval, whether or not you're using the Mac.
+- **Adaptive** sends input only after the Mac has been idle for 1, 2 (default), or 4 minutes, and between checks sleeps until input would next be due. While you type, nothing is sent and AlwaysOn wakes about once every couple of minutes instead of every 45 seconds. If your screen saver starts sooner than the chosen time, AlwaysOn shortens it so input lands first. Because idle time now grows past a minute, adaptive pacing holds a display-sleep assertion during a session so the display doesn't sleep and lock, which the fixed interval achieved by sending input. It lets the display sleep while the target-app rule finds none of your apps running.
+
 ### Power use
 
 AlwaysOn only wakes the CPU when something can change:
@@ -83,15 +94,23 @@ AlwaysOn only wakes the CPU when something can change:
 - The target-app option tracks app launches and quits instead of scanning running apps on every tick.
 - Accessibility permission is checked when it matters (opening the menu, starting a session, each tick) instead of every 10 seconds. While you grant it, AlwaysOn checks every second for up to two minutes.
 - Timers carry a tolerance so macOS can batch their wake-ups.
+- With **Save energy in Low Power Mode or when hot** (on by default), a fixed interval doubles, up to 2 minutes, while Low Power Mode is on or the Mac's thermal state is serious, and wake-ups get more slack. AlwaysOn follows both through system notifications.
+
+### Prevent sleep
+
+**Settings > General > Power > Prevent sleep** can keep the Mac, or the Mac and display, awake while a session is active, even when no input is sent (for example while no target app is running, or during `alwayson run`). It uses a macOS power assertion, which costs nothing while held and is released when the session pauses or stops, the Mac sleeps, or another user is switched in. While the screen is locked only the Mac stays awake. Closing the lid still sleeps the Mac.
 
 ## The Menu
 
 The menu opens with a status card: whether AlwaysOn is keeping you online, the time left (or elapsed, for sessions without an end), what started the session, when it ends, and today's online time. A ring empties as a timed session runs out.
 
-- **Keep Online / Pause / Resume** is the main button (⌘K, or ⌥⌘K from any app). The stop button next to it ends the session.
+- **Keep Online / Pause / Resume** is the main button (⌘K, or the global hotkey from any app). The stop button next to it ends the session.
+- **Pause for…** (the timer button, while a session runs) pauses for 15 minutes, 30 minutes, 1 hour, or 2 hours, then resumes on its own. The status card shows when. Resuming by hand, stopping, or starting another session cancels the scheduled resume, and a session's end time still applies while paused. If the Mac sleeps past the resume time, the session resumes on wake. A timed pause is kept in memory and doesn't survive quitting AlwaysOn.
 - **Keep online for** 30m, 1h, 2h, or 4h starts a timed session in one click. During a timed session the same row becomes **Add time** (+15m to +2h), and during an unlimited one it becomes **Stop after**.
-- Short notices explain the state: why the last session ended (timer, work hours, permission turned off, or a safety stop), when simulation is waiting for a target app, and when work hours next start or end.
+- Short notices explain the state: why the last session ended (timer, work hours, a Focus turning off, permission turned off, or a safety stop), when simulation is waiting for a target app, and when work hours next start or end. On a workday, **Skip Today** next to the work hours notice turns today's work hours off (and **Undo** brings them back).
 - A strip of the latest input attempts shows what AlwaysOn has been sending. Click it to open the Pulse Log.
+
+**Settings > General > Activity > Global hotkey** turns the system-wide shortcut on or off. Click the shortcut to record another; it must include ⌘, ⌥, or ⌃ unless it's a function key. Esc cancels recording, and **Reset** returns to ⌥⌘K. If another app already owns the shortcut, Settings says so.
 
 **Settings > General > Menu Bar** chooses whether the menu bar item shows the time left next to its icon or only the icon. With the icon only, AlwaysOn wakes for a timed session only when it ends.
 
@@ -103,6 +122,7 @@ AlwaysOn registers the `alwayson://` URL scheme, so launchers like Raycast and A
 - `alwayson://stop` stops the session
 - `alwayson://toggle` starts or pauses
 - `alwayson://timer?minutes=30` keeps online for 30 minutes. Omit `minutes` to use the profile default.
+- `alwayson://pause?minutes=15` pauses a running session and resumes it after 15 minutes (1–1440). Omit `minutes` to pause until resumed.
 
 ## Keep online until a set time
 
@@ -130,13 +150,31 @@ AlwaysOn asks for calendar access only when you choose **Load Calendar Events**.
 Click the activity strip in the menu to open the **Pulse Log**. It shows totals for Posted, Skipped, Paused, and Problems, a timeline of the last 60 attempts, and a list you can filter by category. Each entry shows its time, its outcome, and why it happened:
 
 - **Input posted**: AlwaysOn sent the mouse or Shift input.
-- **Skipped: user active**: you used the machine in the last 30 seconds and the idle-only option is on.
+- **Skipped: user active**: you used the machine recently: in the last 30 seconds with the idle-only option, or within the post-after time with adaptive pacing.
 - **Skipped: no target app**: no chosen chat or meeting app was running and that option is on.
 - **Input creation failed**: macOS did not create the input event.
 - **Paused: Mac asleep, locked, or switched user**: simulation stopped until the Mac is back in use.
 - **Stopped: Accessibility permission missing**: permission was revoked, so the session stopped.
 
 The list shows the newest 200 entries, and the totals count since launch or the last clear. **Clear Log** empties both. The log stays in memory and disappears when AlwaysOn quits. It records what AlwaysOn sent, not the status that Teams, Slack, or other apps show.
+
+## Work hours
+
+**Settings > Schedule** starts a session when work hours begin and stops a session they started when they end. Manual starts and stops always win.
+
+- **Hours by Day** gives a weekday its own hours, such as a shorter Friday. Other days use the default start and end.
+- **Break** pauses work hours every day for a set time, such as lunch. A session work hours started stops at the break and starts again when it ends.
+- **Days Off** lists dates with no work hours, such as holidays or vacation. **Skip Today** in the menu adds today. Past dates are cleared automatically.
+
+Work hours still wake AlwaysOn only at the next start, break, or end.
+
+## Focus filters
+
+Add AlwaysOn to a Focus in **System Settings > Focus > (a Focus) > Focus Filters**, then choose **Keep Me Online**, a profile, or both.
+
+- When the Focus turns on, AlwaysOn switches to the chosen profile (which stops the current session, as choosing a profile does) and, with **Keep Me Online**, starts a session if none is running.
+- When the Focus turns off, a session it started stops, and the previous profile returns unless you chose another profile since. If your own session is running, the switch back waits until it ends, and the menu says so. Pausing and resuming a Focus session yourself takes it over, so it keeps running.
+- AlwaysOn re-reads the Focus at launch, after wake, and when the menu opens, so a change it missed still applies.
 
 ## Switch profiles by Wi-Fi network
 
@@ -150,7 +188,7 @@ macOS shows Wi-Fi network names only to apps with Location access, so turning th
 
 ## Activity history
 
-**Settings > Activity** shows today's online time, the last 7 days, and a daily chart split by how each session started (manual, work hours, timer, Until, or command). The menu shows today's total next to the status.
+**Settings > Activity** shows today's online time, the last 7 days, and a daily chart split by how each session started (manual, work hours, timer, Until, command, or Focus). The menu shows today's total next to the status.
 
 Online time counts while a session is active and the Mac is awake. Time paused for sleep, a locked screen, or a switched-out user isn't counted. History stays on this Mac in `~/Library/Application Support/AlwaysOn/activity-history.json`, keeps the last 30 days, and is written only when a session starts or stops, plus a checkpoint at most every 5 minutes. **Clear History…** removes it.
 
@@ -170,6 +208,7 @@ AlwaysOn adds these actions to the Shortcuts app:
 - **Keep Online**, with optional minutes (1–1440)
 - **Keep Online Until** a date and time, with an optional label
 - **Pause or Resume**, which returns whether AlwaysOn is now active
+- **Pause For**, with optional minutes (1–1440), which resumes on its own
 - **Stop Session**
 - **Switch Profile**, which stops the current session like switching from the menu
 - **Get Status**, which returns whether AlwaysOn is active
@@ -192,7 +231,7 @@ export PATH="$HOME/.local/bin:$PATH"
 
 Installation creates a symlink in `~/.local/bin`, or in `install --directory PATH`. It refuses to replace unrelated files or symlinks. Use `alwayson uninstall [--directory PATH]` to remove only this app's managed link. The symlink follows app replacements at the same path. `alwayson --version` or `alwayson version` reads that app's marketing version and build; there are no independent CLI versions or binaries. Controls route explicitly to the owning app, even when multiple AlwaysOn apps exist. `~/.local/bin` needs to be on PATH only for interactive shell lookup.
 
-Other requests are `alwayson start`, `stop`, `toggle`, `timer MINUTES` with integer minutes 1...1440, and `until HH:MM` or `until ISO8601`. A local HH:MM must be in the future today; it never rolls into tomorrow. Requests report transport success, without app acknowledgement.
+Other requests are `alwayson start`, `stop`, `toggle`, `timer MINUTES` with integer minutes 1...1440, `pause [MINUTES]` with optional integer minutes 1...1440, and `until HH:MM` or `until ISO8601`. A local HH:MM must be in the future today; it never rolls into tomorrow. Requests report transport success, without app acknowledgement.
 
 For development, use `swift build --package-path CLI`, then `python3 CLI/Tests/acceptance.py CLI/.build/debug/alwayson`. The package has no external dependencies. The tests copy the built executable into app fixtures and replace the OS URL launcher through `ALWAYSON_URL_OPENER`. Production macOS requests use Launch Services with running-app substitution disabled. Unbundled development builds support help/version but refuse installation and control; install the full app for those operations. The macOS app does not run on Linux.
 
@@ -222,7 +261,7 @@ Ctrl-C reaches the command directly. The helper waits for the command to exit, t
 - URL delivery has no application acknowledgement. Successful delivery does not confirm permission, that the session started, or the order in which requests arrived.
 - If the helper exits without sending `finish` (for example, after SIGKILL), the session stops at its 24-hour safety end time.
 - Command sessions do not resume after AlwaysOn relaunches.
-- AlwaysOn does not prevent system sleep.
+- AlwaysOn prevents idle sleep during a command only when **Settings > General > Power > Prevent sleep** is on (or input keeps the Mac awake). It never prevents sleep from closing the lid.
 
 ## Permissions and Updates
 

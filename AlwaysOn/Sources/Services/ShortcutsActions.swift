@@ -111,6 +111,27 @@ struct ToggleSessionIntent: AppIntent {
     }
 }
 
+struct PauseForIntent: AppIntent {
+    static let title: LocalizedStringResource = "Pause For"
+    static let description = IntentDescription("Pauses a running AlwaysOn session and resumes it after the minutes you choose. Leave minutes empty to pause until you resume.")
+
+    @Parameter(title: "Minutes", inclusiveRange: (1, 1440))
+    var minutes: Int?
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("Pause for \(\.$minutes) minutes")
+    }
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let state = try runningAppState()
+        guard state.isActive else { return .result(dialog: "AlwaysOn isn't running.") }
+        state.applyURLCommand(.pause(minutes: minutes))
+        guard let resumeAt = state.autoResumeAt else { return .result(dialog: "AlwaysOn is paused.") }
+        return .result(dialog: "Paused until \(resumeAt.formatted(date: .omitted, time: .shortened)).")
+    }
+}
+
 struct GetStatusIntent: AppIntent {
     static let title: LocalizedStringResource = "Get Status"
     static let description = IntentDescription("Returns whether AlwaysOn is keeping you online right now.")

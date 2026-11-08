@@ -12,8 +12,11 @@ final class GlobalHotKeyManager {
     private var hotKeyRef: EventHotKeyRef?
     private var eventHandler: EventHandlerRef?
 
-    /// Registers a system-wide key-down shortcut, replacing any previous one
-    func register(keyCode: UInt32, modifiers: UInt32) {
+    /// Registers a system-wide key-down shortcut, replacing any previous one.
+    /// Returns false when macOS refuses it, usually because another app
+    /// already owns the same shortcut.
+    @discardableResult
+    func register(keyCode: UInt32, modifiers: UInt32) -> Bool {
         unregister()
 
         var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard),
@@ -28,10 +31,15 @@ final class GlobalHotKeyManager {
 
         let selfPointer = Unmanaged.passUnretained(self).toOpaque()
         let installStatus = InstallEventHandler(GetApplicationEventTarget(), callback, 1, &eventType, selfPointer, &eventHandler)
-        guard installStatus == noErr else { return }
+        guard installStatus == noErr else { return false }
 
-        var hotKeyID = EventHotKeyID(signature: OSType(0x414C5753), id: 1) // 'ALWS'
-        RegisterEventHotKey(keyCode, modifiers, hotKeyID, GetApplicationEventTarget(), 0, &hotKeyRef)
+        let hotKeyID = EventHotKeyID(signature: OSType(0x414C5753), id: 1) // 'ALWS'
+        let status = RegisterEventHotKey(keyCode, modifiers, hotKeyID, GetApplicationEventTarget(), 0, &hotKeyRef)
+        guard status == noErr else {
+            unregister()
+            return false
+        }
+        return true
     }
 
     func unregister() {

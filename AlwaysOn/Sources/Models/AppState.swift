@@ -17,9 +17,15 @@ final class AppState: NSObject, ObservableObject {
     @Published var isActive: Bool {
         didSet {
             UserDefaults.standard.set(isActive, forKey: Keys.isActive)
+            // Resuming by any route makes a scheduled resume pointless
+            if isActive { cancelAutoResume() }
             handleActiveStateChange()
         }
     }
+
+    /// When a session paused with Pause for… resumes on its own; nil while
+    /// running, stopped, or paused until resumed by hand. Kept in memory only.
+    @Published private(set) var autoResumeAt: Date?
     
     /// Current activity interval in seconds
     @Published var activityInterval: TimeInterval {
@@ -100,7 +106,7 @@ final class AppState: NSObject, ObservableObject {
 
     /// Why the last session ended on its own (timer, work hours, permission,
     /// safety stop), shown in the menu until the next session starts
-    @Published private(set) var lastAutoStop: AutoStopEvent?
+    @Published var lastAutoStop: AutoStopEvent?
 
     /// Whether joining a Wi-Fi network listed on a profile switches to that profile
     @Published var switchProfilesByNetwork: Bool {
@@ -118,10 +124,14 @@ final class AppState: NSObject, ObservableObject {
     }
 
     /// A network profile waiting for the current session to end
-    @Published private(set) var pendingNetworkProfileId: UUID?
+    @Published var pendingNetworkProfileId: UUID?
+
+    /// The profile a Focus that ended will switch back to once the current
+    /// session ends, for the menu; nil when no switch is waiting
+    @Published var focusRestoreProfileName: String?
 
     /// The last automatic switch by network, shown in the menu until a session starts
-    @Published private(set) var lastNetworkSwitch: NetworkSwitchEvent?
+    @Published var lastNetworkSwitch: NetworkSwitchEvent?
 
     /// What the menu bar item shows next to its icon
     @Published var menuBarLabelStyle: MenuBarLabelStyle {
@@ -133,7 +143,7 @@ final class AppState: NSObject, ObservableObject {
 
     /// Why simulation is suspended by the system (sleep, lock, user switch), nil while it may run.
     /// The session stays active; the simulator resumes as soon as the condition clears.
-    @Published private(set) var systemSuspension: SystemConditions.SuspensionReason?
+    @Published var systemSuspension: SystemConditions.SuspensionReason?
 
     /// Bundle IDs counted as target apps when requireTargetApp is on
     @Published var targetApps: Set<String> {
@@ -143,12 +153,77 @@ final class AppState: NSObject, ObservableObject {
         }
     }
 
-    /// Whether the system-wide ⌥⌘K hotkey toggles the session
+    /// Whether the system-wide hotkey toggles the session
     @Published var globalHotKeyEnabled: Bool {
         didSet {
             UserDefaults.standard.set(globalHotKeyEnabled, forKey: Keys.globalHotKeyEnabled)
             refreshGlobalHotKey()
         }
+    }
+
+    /// The system-wide shortcut, ⌥⌘K unless the user records another
+    @Published var globalHotKey: HotKey {
+        didSet {
+            if let data = try? JSONEncoder().encode(globalHotKey) {
+                UserDefaults.standard.set(data, forKey: Keys.globalHotKey)
+            }
+            refreshGlobalHotKey()
+        }
+    }
+
+    /// While Settings records a new shortcut, the current one is released so
+    /// pressing it is recorded instead of toggling the session
+    @Published var isRecordingHotKey = false {
+        didSet { refreshGlobalHotKey() }
+    }
+
+    /// Whether macOS refused the shortcut, usually because another app owns it.
+    /// Set only by refreshGlobalHotKey().
+    @Published var isHotKeyUnavailable = false
+
+    // MARK: - Pacing and Power
+
+    /// Fixed-interval or adaptive pacing
+    @Published var pulsePacing: PulsePacing {
+        didSet {
+            UserDefaults.standard.set(pulsePacing.rawValue, forKey: Keys.pulsePacing)
+            if isActive { restartActivitySimulatorWithCurrentSettings() }
+        }
+    }
+
+    /// Idle time after which adaptive pacing posts input
+    @Published var adaptivePostAfter: AdaptivePostAfter {
+        didSet {
+            UserDefaults.standard.set(adaptivePostAfter.rawValue, forKey: Keys.adaptivePostAfter)
+            activitySimulator.schedule = currentPulseSchedule
+        }
+    }
+
+    /// Whether to stretch pacing while in Low Power Mode or running hot
+    @Published var savesEnergyWhenConstrained: Bool {
+        didSet {
+            UserDefaults.standard.set(savesEnergyWhenConstrained, forKey: Keys.savesEnergyWhenConstrained)
+            activitySimulator.schedule = currentPulseSchedule
+        }
+    }
+
+    /// What stays awake during a session
+    @Published var sleepPrevention: SleepPrevention {
+        didSet {
+            UserDefaults.standard.set(sleepPrevention.rawValue, forKey: Keys.sleepPrevention)
+        }
+    }
+
+    /// Low Power Mode and thermal pressure, for pacing and display
+    @Published var energyState: EnergyState
+
+    /// Pacing for the simulator from the current settings and energy state
+    var currentPulseSchedule: PulseSchedule {
+        PulseSchedule(pacing: pulsePacing,
+                      interval: activityInterval,
+                      postAfter: PulseSchedule.postAfter(chosen: adaptivePostAfter,
+                                                         screenSaverDelay: ScreenSaverSettings.idleDelay()),
+                      savesEnergy: savesEnergyWhenConstrained && energyState.isConstrained)
     }
     
     // MARK: - Quick Timer Properties
@@ -233,11 +308,11 @@ final class AppState: NSObject, ObservableObject {
 
     /// The network whose profile rule already ran, so a manual profile choice
     /// sticks until the Mac joins a different network
-    private var handledNetwork: String?
+    var handledNetwork: String?
 
     /// How the current or paused session was started
     /// Persisted so a relaunched schedule-started session can still be stopped by schedule end
-    @Published private(set) var sessionSource: SessionSource? {
+    @Published var sessionSource: SessionSource? {
         didSet {
             if let source = sessionSource,
                let data = try? JSONEncoder().encode(source) {
@@ -248,15 +323,19 @@ final class AppState: NSObject, ObservableObject {
         }
     }
     
-    // MARK: - Private Properties
+    // MARK: - Services and Session Bookkeeping
+    // Internal rather than private so the AppState+*.swift extensions can reach them.
     
-    private let activitySimulator = ActivitySimulator()
+    let activitySimulator = ActivitySimulator()
     var pulseLog: PulseLog { activitySimulator.pulseLog }
-    private let globalHotKeyManager = GlobalHotKeyManager()
-    private let systemEventMonitor = SystemEventMonitor()
-    private let runningAppMonitor = RunningAppMonitor()
-    private let powerSourceMonitor = PowerSourceMonitor()
+    let globalHotKeyManager = GlobalHotKeyManager()
+    let systemEventMonitor = SystemEventMonitor()
+    let runningAppMonitor = RunningAppMonitor()
+    let powerSourceMonitor = PowerSourceMonitor()
+    let energyMonitor = EnergyMonitor()
+    let powerAssertions = PowerAssertionManager()
     private var sessionTimer: Timer?
+    private var autoResumeTimer: Timer?
 
     /// Whether the menu is on screen. Only the open menu shows seconds, so the
     /// heartbeat runs every second only while this is true.
@@ -266,12 +345,13 @@ final class AppState: NSObject, ObservableObject {
             if isMenuVisible {
                 accessibilityPermission.refresh()
                 tickSessionState()
+                refreshFocusFilter()
             }
             rescheduleHeartbeat()
         }
     }
     private var sessionStartTime: Date?
-    private var cancellables = Set<AnyCancellable>()
+    var cancellables = Set<AnyCancellable>()
     
     /// Accumulated session duration when paused (for pause/resume functionality)
     private var pausedSessionDuration: TimeInterval = 0
@@ -280,14 +360,14 @@ final class AppState: NSObject, ObservableObject {
     private var pausedQuickTimerEndTime: Date?
     
     /// Prevent profile application from rewriting the active profile recursively
-    private var isApplyingProfile = false
+    var isApplyingProfile = false
 
     /// Keep profile switches inactive even if the new schedule is currently active
-    private var suppressScheduleAutoStart = false
+    var suppressScheduleAutoStart = false
     
     // MARK: - Constants
     
-    private enum Keys {
+    enum Keys {
         static let isActive = "isActive"
         static let activityInterval = "activityInterval"
         static let activityMethod = "activityMethod"
@@ -298,15 +378,20 @@ final class AppState: NSObject, ObservableObject {
         static let requireTargetApp = "requireTargetApp"
         static let targetApps = "targetApps"
         static let globalHotKeyEnabled = "globalHotKeyEnabled"
+        static let globalHotKey = "globalHotKey"
         static let pauseWhileScreenLocked = "pauseWhileScreenLocked"
         static let awayLimit = "awayLimitHours"
         static let batteryStopThreshold = "batteryStopThreshold"
         static let timerStartedAt = "quickTimerStartedAt"
         static let menuBarLabelStyle = "menuBarLabelStyle"
         static let switchProfilesByNetwork = "switchProfilesByNetwork"
+        static let pulsePacing = "pulsePacing"
+        static let adaptivePostAfter = "adaptivePostAfterSeconds"
+        static let savesEnergyWhenConstrained = "savesEnergyWhenConstrained"
+        static let sleepPrevention = "sleepPrevention"
     }
     
-    private enum Defaults {
+    enum Defaults {
         static let activityInterval: TimeInterval = 45.0
         static let activityMethod: ActivityMethod = .mouse
         static let defaultTimerDuration: QuickTimerDuration = .noLimit
@@ -333,6 +418,8 @@ final class AppState: NSObject, ObservableObject {
             return label.map { "Until · \($0)" } ?? "Until time"
         case .command:
             return "via Command"
+        case .focus:
+            return "via Focus"
         case .workSchedule(let name):
             return name.isEmpty ? "via Work Schedule" : "via Work Schedule · \(name)"
         }
@@ -349,7 +436,7 @@ final class AppState: NSObject, ObservableObject {
         isActive || sessionSource != nil || pausedSessionDuration > 0 || activeSessionDuration > 0
     }
 
-    private var isScheduleControlledSession: Bool {
+    var isScheduleControlledSession: Bool {
         guard case .workSchedule = sessionSource else { return false }
         return true
     }
@@ -377,11 +464,18 @@ final class AppState: NSObject, ObservableObject {
         self._requireTargetApp = Published(initialValue: defaults.bool(forKey: Keys.requireTargetApp))
         self._targetApps = Published(initialValue: Set(defaults.stringArray(forKey: Keys.targetApps) ?? []))
         self._globalHotKeyEnabled = Published(initialValue: defaults.object(forKey: Keys.globalHotKeyEnabled) as? Bool ?? true)
+        self._globalHotKey = Published(initialValue: defaults.data(forKey: Keys.globalHotKey)
+            .flatMap { try? JSONDecoder().decode(HotKey.self, from: $0) } ?? .default)
         self._pauseWhileScreenLocked = Published(initialValue: defaults.object(forKey: Keys.pauseWhileScreenLocked) as? Bool ?? true)
         self._awayLimit = Published(initialValue: AwayLimit(rawValue: defaults.integer(forKey: Keys.awayLimit)) ?? .off)
         self._batteryStopThreshold = Published(initialValue: BatteryStopThreshold(rawValue: defaults.integer(forKey: Keys.batteryStopThreshold)) ?? .off)
         self._switchProfilesByNetwork = Published(initialValue: defaults.bool(forKey: Keys.switchProfilesByNetwork))
         self._menuBarLabelStyle = Published(initialValue: MenuBarLabelStyle(rawValue: defaults.string(forKey: Keys.menuBarLabelStyle) ?? "") ?? .iconAndTime)
+        self._pulsePacing = Published(initialValue: PulsePacing(rawValue: defaults.string(forKey: Keys.pulsePacing) ?? "") ?? .fixed)
+        self._adaptivePostAfter = Published(initialValue: AdaptivePostAfter(rawValue: defaults.integer(forKey: Keys.adaptivePostAfter)) ?? .twoMinutes)
+        self._savesEnergyWhenConstrained = Published(initialValue: defaults.object(forKey: Keys.savesEnergyWhenConstrained) as? Bool ?? true)
+        self._sleepPrevention = Published(initialValue: SleepPrevention(rawValue: defaults.string(forKey: Keys.sleepPrevention) ?? "") ?? .off)
+        self._energyState = Published(initialValue: EnergyMonitor.readState())
         super.init()
         Self.shared = self
         activitySimulator.gate.idleOnlyEnabled = simulateOnlyWhenIdle
@@ -443,7 +537,11 @@ final class AppState: NSObject, ObservableObject {
         setupSystemEventHandling()
         setupActivityHistory()
         setupNetworkProfiles()
+        setupPacingAndPower()
+        setupFocusRestore()
         accessibilityPermission.refresh()
+        // Pick up a Focus that is already on, or one that ended while AlwaysOn was closed
+        refreshFocusFilter(onlyIfFocusOwnsSomething: false)
         
         // Resume active state if was active before quit (and has permission)
         if isActive && hasAccessibilityPermission {
@@ -500,8 +598,49 @@ final class AppState: NSObject, ObservableObject {
         isActive.toggle()
     }
     
+    /// Pauses a running session, and resumes it on its own after `seconds`
+    /// when given. A session's end time still applies while paused.
+    func pause(for seconds: TimeInterval?) {
+        guard isActive else { return }
+        toggle()
+        // toggle() stops instead of pausing a session whose end time has passed
+        guard !isActive, hasActiveOrPausedSession, let seconds, seconds > 0 else { return }
+        let resumeAt = Date().addingTimeInterval(seconds)
+        autoResumeAt = resumeAt
+        let timer = Timer(fire: resumeAt, interval: 0, repeats: false) { [weak self] _ in
+            Task { @MainActor in self?.resumeIfDue() }
+        }
+        timer.tolerance = 1
+        RunLoop.main.add(timer, forMode: .common)
+        autoResumeTimer = timer
+    }
+
+    /// Resumes a paused session whose Pause for… time has passed. Also runs
+    /// after wake, since timers don't fire while the Mac sleeps.
+    func resumeIfDue() {
+        guard let resumeAt = autoResumeAt, resumeAt <= Date() else { return }
+        cancelAutoResume()
+        guard !isActive, hasActiveOrPausedSession else { return }
+        let owner = sessionSource
+        toggle()
+        // Resuming by hand hands the session to the user; resuming on its own
+        // doesn't, so work hours or a Focus can still end it
+        guard isActive else { return }
+        switch owner {
+        case .workSchedule?, .focus?, .quickTimer?: sessionSource = owner
+        default: break
+        }
+    }
+
+    private func cancelAutoResume() {
+        autoResumeTimer?.invalidate()
+        autoResumeTimer = nil
+        autoResumeAt = nil
+    }
+
     /// Stop session completely (full reset)
     func stopSession() {
+        cancelAutoResume()
         sessionSource = nil
         
         // Clear all session state
@@ -513,43 +652,6 @@ final class AppState: NSObject, ObservableObject {
         sessionStartTime = nil
         activeSessionDuration = 0
         isActive = false
-    }
-
-    func applyProfile(_ profile: Profile) {
-        stopSession()
-        isApplyingProfile = true
-        suppressScheduleAutoStart = true
-        defer {
-            isApplyingProfile = false
-            suppressScheduleAutoStart = false
-        }
-
-        activityInterval = profile.activityInterval > 0 ? profile.activityInterval : Defaults.activityInterval
-        activityMethod = profile.activityMethod
-        defaultTimerDuration = profile.defaultTimerDuration
-        workScheduleManager.schedule = profile.workSchedule
-        quickTimerEndTime = nil
-        quickTimerRemaining = 0
-    }
-
-    func switchProfile(_ id: UUID) {
-        guard id != profileManager.activeProfileId else { return }
-        // Any switch, by hand or by network, settles the current network's rule
-        pendingNetworkProfileId = nil
-        handledNetwork = wifiMonitor.currentNetwork
-
-        syncActiveProfileSettings()
-        let wasActive = isActive || activeSessionDuration > 0
-
-        // Priority: Manual user action > Profile switch > Work Schedule
-        stopSession()
-
-        guard let newProfile = profileManager.switchProfile(to: id) else { return }
-        applyProfile(newProfile)
-
-        if wasActive {
-            notificationManager.notifyProfileSwitchedDuringSession(newProfileName: newProfile.name)
-        }
     }
 
     /// Start with a quick timer duration
@@ -583,7 +685,7 @@ final class AppState: NSObject, ObservableObject {
         return true
     }
 
-    private func replaceSession(source: SessionSource) {
+    func replaceSession(source: SessionSource) {
         stopSession()
         sessionSource = source
         quickTimerEndTime = source.endCondition(quickTimerDeadline: nil).deadline
@@ -612,202 +714,18 @@ final class AppState: NSObject, ObservableObject {
         quickTimerEndTime = change.deadline
         activitySimulator.deadline = change.deadline
     }
-    
-    /// Request permission with system prompt
-    func requestPermission() {
-        accessibilityPermission.request()
-    }
-    
-    /// Open System Preferences to grant accessibility permission
-    func openAccessibilitySettings() {
-        accessibilityPermission.openSettings()
-    }
-    
-    /// Show the permissions window
-    func showPermissionsWindow() {
-        PermissionsWindowController.shared.show(
-            appState: self,
-            onContinue: { [weak self] in
-                guard let self else { return }
-                self.accessibilityPermission.onboardingCompleted = true
-                // The prompt is done; later checks happen on demand
-                self.accessibilityPermission.stopPolling()
-            },
-            onQuit: {
-                NSApplication.shared.terminate(nil)
-            }
-        )
-    }
 
-    /// Complete the permission setup (called after onboarding)
-    func completePermissionSetup() {
-        accessibilityPermission.onboardingCompleted = true
-        // Onboarding is done; later checks happen on demand
-        accessibilityPermission.stopPolling()
-    }
-    
-    // MARK: - Private Methods
-    
-    private func setupPermissionObserver() {
-        // React to permission state changes
-        accessibilityPermission.$hasPermission
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] (hasPermission: Bool) in
-                guard let self else { return }
-                
-                // If permission was revoked while active, stop simulation
-                if !hasPermission && self.isActive {
-                    self.isActive = false
-                    self.lastAutoStop = AutoStopEvent(reason: .permissionRevoked, date: Date())
-                }
-            }
-            .store(in: &cancellables)
-    }
-    
-    /// Forward nested ObservableObject changes to trigger SwiftUI view updates
-    private func setupNestedObjectChangeForwarding() {
-        // When nested ObservableObjects change, SwiftUI doesn't automatically detect it
-        // because it only observes one level deep. We need to manually forward changes.
-        
-        accessibilityPermission.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] (_: Void) in
-                self?.objectWillChange.send()
-            }
-            .store(in: &cancellables)
-
-        profileManager.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] (_: Void) in
-                self?.objectWillChange.send()
-            }
-            .store(in: &cancellables)
-        
-        notificationManager.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] (_: Void) in
-                self?.objectWillChange.send()
-            }
-            .store(in: &cancellables)
-
-        wifiMonitor.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] (_: Void) in
-                self?.objectWillChange.send()
-            }
-            .store(in: &cancellables)
-
-        activityHistory.objectWillChange
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] (_: Void) in
-                self?.objectWillChange.send()
-            }
-            .store(in: &cancellables)
-    }
-    
-    private func setupAutomationObservers() {
-        // Work Schedule: Auto-enable/disable based on schedule
-        workScheduleManager.onScheduleStateChanged = { [weak self] (isWithinSchedule: Bool) in
-            guard let self else { return }
-            Task { @MainActor in
-                self.handleWorkScheduleChange(isWithinSchedule: isWithinSchedule)
-            }
-        }
-    }
-    
-    private func setupNotificationCallbacks() {
-        // Handle quick timer resume action from notification
-        notificationManager.onQuickTimerResumeTapped = { [weak self] in
-            guard let self else { return }
-            // Resume activity if not already active
-            self.accessibilityPermission.refresh()
-            if !self.isActive && self.hasAccessibilityPermission {
-                self.stopSession()
-                self.sessionSource = .manual
-                self.isActive = true
-            }
-        }
-    }
-
-    private func setupProfileSync() {
-        workScheduleManager.$schedule
-            .dropFirst()
-            .receive(on: DispatchQueue.main)
-            .sink { [weak self] (_: WorkSchedule) in
-                self?.syncActiveProfileSettings()
-            }
-            .store(in: &cancellables)
-    }
-
-    private func syncActiveProfileSettings() {
-        guard !isApplyingProfile else { return }
-        profileManager.updateProfileSettings(
-            profileManager.activeProfileId,
-            activityInterval: activityInterval,
-            activityMethod: activityMethod,
-            defaultTimerDuration: defaultTimerDuration,
-            workSchedule: workScheduleManager.schedule
-        )
-    }
-    
-    // MARK: - Automation Handlers
-    
-    private func handleWorkScheduleChange(isWithinSchedule: Bool) {
-        guard workScheduleManager.schedule.isEnabled else { return }
-        
-        if isWithinSchedule {
-            guard !suppressScheduleAutoStart else { return }
-            
-            // Auto-enable only when there is no active or paused session to preserve manual control.
-            accessibilityPermission.refresh()
-            if !hasActiveOrPausedSession && hasAccessibilityPermission {
-                stopSession()
-                sessionSource = .workSchedule(profileName: profileManager.activeProfile?.name ?? "")
-                isActive = true
-                notificationManager.notifyWorkScheduleStarted()
-            }
-        } else {
-            guard isScheduleControlledSession && hasActiveOrPausedSession else { return }
-            
-            stopSession()
-            lastAutoStop = AutoStopEvent(reason: .workHoursEnded, date: Date())
-            notificationManager.notifyWorkScheduleEnded()
-        }
-    }
-    
-    private func restartActivitySimulatorWithCurrentSettings() {
+    func restartActivitySimulatorWithCurrentSettings() {
         guard !expireSessionIfNeeded() else { return }
         activitySimulator.stop()
         startSimulatorUnlessSuspended()
     }
 
     /// Starts the simulator for the current session unless the system has suspended it
-    private func startSimulatorUnlessSuspended() {
+    func startSimulatorUnlessSuspended() {
         guard systemSuspension == nil else { return }
         activitySimulator.deadline = sessionDeadline
-        activitySimulator.start(interval: activityInterval, method: activityMethod)
-    }
-
-    // MARK: - Activity History
-
-    private func setupActivityHistory() {
-        // Coalesce the several property changes one action makes into one update
-        Publishers.CombineLatest3($isActive, $systemSuspension, $sessionSource)
-            .debounce(for: .zero, scheduler: DispatchQueue.main)
-            .sink { [weak self] isActive, suspension, source in
-                self?.activityHistory.update(isOnline: isActive && suspension == nil, kind: SessionKind(source))
-            }
-            .store(in: &cancellables)
-    }
-
-    /// Closes the running history segment; called when the app quits
-    func prepareForTermination() {
-        activityHistory.closeOpenSegment()
-    }
-
-    /// Online time today, including the running segment
-    var onlineTimeToday: TimeInterval {
-        activityHistory.ledger.today(now: Date())
+        activitySimulator.start(schedule: currentPulseSchedule, method: activityMethod)
     }
 
     /// One line describing the session, for Shortcuts and accessibility
@@ -818,187 +736,13 @@ final class AppState: NSObject, ObservableObject {
             }
             return "AlwaysOn is active."
         }
+        if let autoResumeAt, hasActiveOrPausedSession {
+            return "AlwaysOn is paused until \(autoResumeAt.formatted(date: .omitted, time: .shortened))."
+        }
         return hasActiveOrPausedSession ? "AlwaysOn is paused." : "AlwaysOn is off."
     }
 
-    // MARK: - Network Profiles
-
-    private func setupNetworkProfiles() {
-        wifiMonitor.setMonitoring(switchProfilesByNetwork)
-        // A switch that waited for a session applies once the session ends
-        Publishers.CombineLatest($isActive, $sessionSource)
-            .debounce(for: .zero, scheduler: DispatchQueue.main)
-            .sink { [weak self] _, _ in
-                guard let self, self.pendingNetworkProfileId != nil, !self.hasActiveOrPausedSession else { return }
-                self.applyNetworkProfile()
-            }
-            .store(in: &cancellables)
-    }
-
-    /// Makes the current Wi-Fi network switch to the given profile, and applies it now
-    func useCurrentNetwork(for profileID: UUID) {
-        guard let network = wifiMonitor.currentNetwork else { return }
-        profileManager.assignNetwork(network, to: profileID)
-        handledNetwork = nil
-        applyNetworkProfile()
-    }
-
-    /// Switches to the profile listed for the current network, once per network.
-    /// A running session is never interrupted: the switch waits for it to end.
-    private func applyNetworkProfile() {
-        guard switchProfilesByNetwork, let network = wifiMonitor.currentNetwork, network != handledNetwork else { return }
-        guard let target = NetworkProfileRule.profileID(forNetwork: network, in: profileManager.profiles),
-              target != profileManager.activeProfileId else {
-            pendingNetworkProfileId = nil
-            handledNetwork = network
-            return
-        }
-        if hasActiveOrPausedSession {
-            pendingNetworkProfileId = target
-            return
-        }
-        switchProfile(target)
-        let name = profileManager.activeProfile?.name ?? ""
-        lastNetworkSwitch = NetworkSwitchEvent(profileName: name, network: network, date: Date())
-        notificationManager.notifyProfileSwitchedByNetwork(profileName: name, network: network)
-        // Let the new profile's work hours start now if they are under way
-        DispatchQueue.main.async { [weak self] in
-            guard let self, self.workScheduleManager.isWithinSchedule else { return }
-            self.handleWorkScheduleChange(isWithinSchedule: true)
-        }
-    }
-
-    // MARK: - Safety Stops
-
-    /// Runs at each simulation tick. Returns false when the session is being stopped.
-    private func continueAfterSafetyCheck(awayFor: TimeInterval) -> Bool {
-        activityHistory.checkpoint()
-        if awayLimit.isReached(awayFor: awayFor) {
-            performSafetyStop(.awayLimit(awayLimit))
-            return false
-        }
-        if batteryStopThreshold.shouldStop(powerSourceMonitor.state) {
-            performSafetyStop(.lowBattery(percent: powerSourceMonitor.state.percent ?? 0))
-            return false
-        }
-        return true
-    }
-
-    private func handleBatteryChange(_ state: BatteryState) {
-        guard isActive, batteryStopThreshold.shouldStop(state) else { return }
-        performSafetyStop(.lowBattery(percent: state.percent ?? 0))
-    }
-
-    private func performSafetyStop(_ reason: AutoStopEvent.Reason) {
-        // Defer so a stop requested mid-tick or mid-start finishes that work first
-        DispatchQueue.main.async { [weak self] in
-            guard let self, self.hasActiveOrPausedSession else { return }
-            self.stopSession()
-            let event = AutoStopEvent(reason: reason, date: Date())
-            self.lastAutoStop = event
-            switch reason {
-            case .awayLimit: self.pulseLog.record(.stoppedAway)
-            case .lowBattery: self.pulseLog.record(.stoppedLowBattery)
-            case .timerEnded, .workHoursEnded, .permissionRevoked: break
-            }
-            self.notificationManager.notifySafetyStop(title: event.title, body: event.message)
-        }
-    }
-
-    // MARK: - System Events
-
-    private func setupSystemEventHandling() {
-        systemEventMonitor.onConditionsChanged = { [weak self] conditions in
-            MainActor.assumeIsolated { self?.applySystemConditions(conditions) }
-        }
-        systemEventMonitor.onClockMayHaveJumped = { [weak self] in
-            MainActor.assumeIsolated { self?.handleClockMayHaveJumped() }
-        }
-        NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
-            .sink { [weak self] _ in self?.accessibilityPermission.refresh() }
-            .store(in: &cancellables)
-    }
-
-    /// Suspends the simulator while the Mac sleeps, locks, or switches users,
-    /// and resumes it, with an immediate tick, once the condition clears
-    private func applySystemConditions(_ conditions: SystemConditions) {
-        let reason = conditions.suspensionReason(pauseWhileLocked: pauseWhileScreenLocked)
-        guard reason != systemSuspension else { return }
-        systemSuspension = reason
-        guard isActive else { return }
-        if reason != nil {
-            activitySimulator.stop()
-            pulseLog.record(.systemPaused)
-        } else {
-            restartActivitySimulatorWithCurrentSettings()
-        }
-    }
-
-    /// Timers don't run during sleep and don't follow wall-clock jumps, so
-    /// re-check deadlines, the schedule, and permission straight away
-    private func handleClockMayHaveJumped() {
-        accessibilityPermission.refresh()
-        expireSessionIfNeeded()
-        workScheduleManager.checkNow()
-        tickSessionState()
-        rescheduleHeartbeat()
-    }
-
-    private func refreshGlobalHotKey() {
-        if globalHotKeyEnabled {
-            globalHotKeyManager.register(keyCode: UInt32(kVK_ANSI_K),
-                                         modifiers: UInt32(optionKey | cmdKey))
-        } else {
-            globalHotKeyManager.unregister()
-        }
-    }
-    
-    // MARK: - URL Commands
-    
-    func applyURLCommand(_ command: URLCommand) {
-        accessibilityPermission.refresh()
-        switch command {
-        case .run(let token):
-            guard hasAccessibilityPermission else { accessibilityPermission.request(); return }
-            replaceSession(source: .runningCommand(token: token, now: Date()))
-        case .finish(let token):
-            if sessionEndCondition.matchesFinish(token: token) { stopSession() }
-        case .start:
-            sessionSource = sessionSource?.relinquishingCommand
-            if !isActive {
-                if hasAccessibilityPermission {
-                    if expireSessionIfNeeded() { return }
-                    switch sessionSource {
-                    case .until: break
-                    default: sessionSource = .manual
-                    }
-                    isActive = true
-                } else {
-                    accessibilityPermission.request()
-                }
-            }
-        case .stop:
-            stopSession()
-        case .toggle:
-            toggle()
-        case .until(let date):
-            guard date.timeIntervalSince1970.isFinite, date > Date() else { return }
-            guard hasAccessibilityPermission else { accessibilityPermission.request(); return }
-            startUntil(date: date)
-        case .timer(let minutes):
-            let duration: QuickTimerDuration
-            if let minutes {
-                let clamped = min(max(minutes, QuickTimerDuration.customMinutesRange.lowerBound),
-                                  QuickTimerDuration.customMinutesRange.upperBound)
-                duration = .custom(minutes: clamped)
-            } else {
-                duration = defaultTimerDuration
-            }
-            startWithQuickTimer(duration)
-        }
-    }
-    
-    private func handleActiveStateChange() {
+    func handleActiveStateChange() {
         if isActive {
             startActivitySimulation()
         } else {
@@ -1006,7 +750,7 @@ final class AppState: NSObject, ObservableObject {
         }
     }
     
-    private func startActivitySimulation() {
+    func startActivitySimulation() {
         guard !expireSessionIfNeeded() else { return }
         guard hasAccessibilityPermission else {
             isActive = false
@@ -1033,7 +777,7 @@ final class AppState: NSObject, ObservableObject {
         rescheduleHeartbeat()
     }
     
-    private func stopActivitySimulation() {
+    func stopActivitySimulation() {
         activitySimulator.stop()
         
         // Freeze the displayed duration for pause/resume, then stop counting.
@@ -1054,7 +798,7 @@ final class AppState: NSObject, ObservableObject {
     /// label changes otherwise, and never for an unlimited session with the
     /// menu closed. Any previous heartbeat is invalidated first, so repeated
     /// paths (launch restore, deadline edits) can't stack timers.
-    private func rescheduleHeartbeat() {
+    func rescheduleHeartbeat() {
         sessionTimer?.invalidate()
         sessionTimer = nil
         guard isActive || sessionDeadline != nil,
@@ -1075,13 +819,13 @@ final class AppState: NSObject, ObservableObject {
     }
 
     /// Brings the displayed session duration up to date with the clock
-    private func refreshElapsedTime() {
+    func refreshElapsedTime() {
         if let startTime = sessionStartTime {
             activeSessionDuration = Date().timeIntervalSince(startTime)
         }
     }
     
-    private func tickSessionState() {
+    func tickSessionState() {
         refreshElapsedTime()
         
         if expireSessionIfNeeded() { return }
@@ -1091,7 +835,7 @@ final class AppState: NSObject, ObservableObject {
     }
 
     @discardableResult
-    private func expireSessionIfNeeded() -> Bool {
+    func expireSessionIfNeeded() -> Bool {
         guard sessionEndCondition.hasExpired(at: Date()) else { return false }
         stopSession()
         lastAutoStop = AutoStopEvent(reason: .timerEnded, date: Date())

@@ -82,6 +82,9 @@ struct MenuBarView: View {
             } else if let change = appState.lastNetworkSwitch, !appState.hasActiveOrPausedSession {
                 NoticeRow(text: change.summary, systemImage: "wifi")
             }
+            if let name = appState.focusRestoreProfileName, appState.hasActiveOrPausedSession {
+                NoticeRow(text: "Switches back to \(name) when this session ends", systemImage: "moon.circle")
+            }
             if appState.isActive, appState.systemSuspension != nil {
                 NoticeRow(text: "Paused while the Mac is locked or asleep", systemImage: "moon.zzz")
             } else if appState.isActive, appState.requireTargetApp,
@@ -89,7 +92,23 @@ struct MenuBarView: View {
                 NoticeRow(text: "Waiting for a target app to open", systemImage: "app.dashed")
             }
             if let hint = appState.workScheduleManager.schedule.menuHint(now: Date()) {
-                NoticeRow(text: hint, systemImage: "calendar.badge.clock")
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    NoticeRow(text: hint, systemImage: "calendar.badge.clock")
+                    switch appState.todayScheduleAction {
+                    case .skip?:
+                        Button("Skip Today") { appState.setWorkHoursSkipped(true) }
+                            .buttonStyle(.link)
+                            .font(.caption)
+                            .help("No work hours today. Ends a session that work hours started.")
+                    case .undoSkip?:
+                        Button("Undo") { appState.setWorkHoursSkipped(false) }
+                            .buttonStyle(.link)
+                            .font(.caption)
+                            .help("Bring back today's work hours")
+                    case nil:
+                        EmptyView()
+                    }
+                }
             }
         }
     }
@@ -140,6 +159,10 @@ struct MenuBarView: View {
         HStack(spacing: 8) {
             primaryButton
 
+            if appState.isActive {
+                pauseForMenu
+            }
+
             if appState.hasActiveOrPausedSession {
                 Button(role: .destructive) {
                     appState.stopSession()
@@ -164,8 +187,37 @@ struct MenuBarView: View {
         }
         .buttonStyle(ActionButtonStyle(kind: appState.isActive ? .plain : .prominent))
         .keyboardShortcut("k", modifiers: .command)
-        .help("\(primaryTitle) (⌘K, or ⌥⌘K from any app)")
+        .help(appState.globalHotKeyEnabled && !appState.isHotKeyUnavailable
+              ? "\(primaryTitle) (⌘K, or \(appState.globalHotKey.displayString) from any app)"
+              : "\(primaryTitle) (⌘K)")
     }
+
+    /// Pause with a scheduled resume, for a break or lunch
+    private var pauseForMenu: some View {
+        Menu {
+            Text("Pause, then resume on its own")
+            ForEach(Self.pauseOptions) { option in
+                Button("Pause for \(option.spoken)") {
+                    appState.pause(for: TimeInterval(option.minutes * 60))
+                }
+            }
+        } label: {
+            Image(systemName: "timer")
+                .frame(width: 18)
+        }
+        .menuIndicator(.hidden)
+        .buttonStyle(ActionButtonStyle())
+        .fixedSize()
+        .help("Pause for…")
+        .accessibilityLabel("Pause for a set time")
+    }
+
+    private static let pauseOptions = [
+        ChipOption(title: "15m", spoken: "15 minutes", minutes: 15),
+        ChipOption(title: "30m", spoken: "30 minutes", minutes: 30),
+        ChipOption(title: "1h", spoken: "1 hour", minutes: 60),
+        ChipOption(title: "2h", spoken: "2 hours", minutes: 120)
+    ]
 
     // MARK: - Quick durations
 

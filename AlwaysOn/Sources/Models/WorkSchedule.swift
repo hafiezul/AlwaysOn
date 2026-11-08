@@ -16,6 +16,15 @@ struct WorkSchedule: Codable, Equatable {
     
     /// End time as minutes from midnight (e.g., 5:00 PM = 1020)
     var endTimeMinutes: Int
+
+    /// Hours for particular weekdays that differ from the start and end above
+    var customHours: [DayHours] = []
+
+    /// A daily break, such as lunch, when work hours pause
+    var breakTime: MinuteRange?
+
+    /// Local dates ("yyyy-MM-dd") with no work hours: holidays, days off, Skip Today
+    var skippedDays: Set<String> = []
     
     // MARK: - Computed Properties
     
@@ -45,18 +54,82 @@ struct WorkSchedule: Codable, Equatable {
     }
     
     /// Whether the given time falls within the scheduled work hours
-    func isWithinSchedule(on date: Date) -> Bool {
+    func isWithinSchedule(on date: Date, calendar: Calendar = .current) -> Bool {
         guard isEnabled else { return false }
-        
-        let calendar = Calendar.current
-        
-        // Check if this date is an active day
-        let weekday = calendar.component(.weekday, from: date)
-        guard activeDays.contains(weekday) else { return false }
-        
-        // Check if it is within the schedule window
         let currentMinutes = calendar.component(.hour, from: date) * 60 + calendar.component(.minute, from: date)
-        return currentMinutes >= startTimeMinutes && currentMinutes < endTimeMinutes
+        return windows(on: date, calendar: calendar).contains { $0.contains(currentMinutes) }
+    }
+
+    // MARK: - Days, Hours, and Breaks
+
+    /// Start and end minutes for a weekday: its custom hours, or the default
+    func hours(forWeekday weekday: Int) -> MinuteRange {
+        if let custom = customHours.first(where: { $0.weekday == weekday }) { return custom.range }
+        return MinuteRange(startMinutes: startTimeMinutes, endMinutes: endTimeMinutes)
+    }
+
+    /// Whether a weekday has hours of its own
+    func hasCustomHours(forWeekday weekday: Int) -> Bool {
+        customHours.contains { $0.weekday == weekday }
+    }
+
+    /// Gives a weekday its own hours; nil goes back to the default hours
+    mutating func setHours(_ range: MinuteRange?, forWeekday weekday: Int) {
+        customHours.removeAll { $0.weekday == weekday }
+        guard let range else { return }
+        customHours.append(DayHours(weekday: weekday, range: range.validated))
+        customHours.sort { $0.weekday < $1.weekday }
+    }
+
+    /// The work periods on the day containing `date`, as minutes from
+    /// midnight, earliest first. Empty on inactive or skipped days. A break
+    /// splits the day's hours in two.
+    func windows(on date: Date, calendar: Calendar = .current) -> [MinuteRange] {
+        let weekday = calendar.component(.weekday, from: date)
+        guard activeDays.contains(weekday), !isSkipped(date, calendar: calendar) else { return [] }
+        let dayHours = hours(forWeekday: weekday)
+        guard let breakTime, breakTime.startMinutes < dayHours.endMinutes, breakTime.endMinutes > dayHours.startMinutes else {
+            return [dayHours]
+        }
+        return [MinuteRange(startMinutes: dayHours.startMinutes, endMinutes: breakTime.startMinutes),
+                MinuteRange(startMinutes: breakTime.endMinutes, endMinutes: dayHours.endMinutes)]
+            .filter { $0.startMinutes < $0.endMinutes }
+    }
+
+    /// When work hours finish on the day containing `date` (after any break),
+    /// nil when that day has none
+    func workdayEnd(on date: Date, calendar: Calendar = .current) -> Date? {
+        guard let last = windows(on: date, calendar: calendar).last else { return nil }
+        return calendar.date(bySettingHour: last.endMinutes / 60, minute: last.endMinutes % 60, second: 0, of: date)
+    }
+
+    // MARK: - Skipped Days
+
+    /// The local calendar day of `date` as "yyyy-MM-dd"
+    static func dayKey(for date: Date, calendar: Calendar = .current) -> String {
+        let parts = calendar.dateComponents([.year, .month, .day], from: date)
+        return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)
+    }
+
+    func isSkipped(_ date: Date, calendar: Calendar = .current) -> Bool {
+        skippedDays.contains(Self.dayKey(for: date, calendar: calendar))
+    }
+
+    mutating func setSkipped(_ skipped: Bool, on date: Date, calendar: Calendar = .current) {
+        let key = Self.dayKey(for: date, calendar: calendar)
+        if skipped { skippedDays.insert(key) } else { skippedDays.remove(key) }
+    }
+
+    /// Drops skipped days before the day containing `date`, so the list
+    /// doesn't grow forever. Keys sort chronologically as strings.
+    mutating func pruneSkippedDays(before date: Date, calendar: Calendar = .current) {
+        let today = Self.dayKey(for: date, calendar: calendar)
+        skippedDays = skippedDays.filter { $0 >= today }
+    }
+
+    /// Whether the day containing `date` would have work hours if it weren't skipped
+    func isWorkday(_ date: Date, calendar: Calendar = .current) -> Bool {
+        activeDays.contains(calendar.component(.weekday, from: date))
     }
     
     /// Human-readable description of active days
@@ -151,24 +224,32 @@ struct WorkSchedule: Codable, Equatable {
     func nextTransition(after date: Date, calendar: Calendar = .current) -> Date? {
         guard isEnabled, !activeDays.isEmpty else { return nil }
         let today = calendar.startOfDay(for: date)
-        for dayOffset in 0...7 {
-            guard let day = calendar.date(byAdding: .day, value: dayOffset, to: today),
-                  activeDays.contains(calendar.component(.weekday, from: day)) else { continue }
-            for minutes in [startTimeMinutes, endTimeMinutes] {
-                if let moment = calendar.date(bySettingHour: minutes / 60, minute: minutes % 60, second: 0, of: day),
-                   moment > date {
-                    return moment
+        // Look far enough ahead to clear a long run of skipped days
+        for dayOffset in 0...Self.transitionSearchDays {
+            guard let day = calendar.date(byAdding: .day, value: dayOffset, to: today) else { continue }
+            for window in windows(on: day, calendar: calendar) {
+                for minutes in [window.startMinutes, window.endMinutes] {
+                    if let moment = calendar.date(bySettingHour: minutes / 60, minute: minutes % 60, second: 0, of: day),
+                       moment > date {
+                        return moment
+                    }
                 }
             }
         }
         return nil
     }
 
+    /// How many days ahead nextTransition looks
+    static let transitionSearchDays = 400
+
     /// One line for the menu: when work hours end, or when they next start
     func menuHint(now: Date, calendar: Calendar = .current) -> String? {
         guard let next = nextTransition(after: now, calendar: calendar) else { return nil }
         let time = next.formatted(date: .omitted, time: .shortened)
-        if isWithinSchedule(on: now) { return "Work hours until \(time)" }
+        if isWithinSchedule(on: now, calendar: calendar) {
+            let hasBreakAhead = windows(on: now, calendar: calendar).count > 1 && next != workdayEnd(on: now, calendar: calendar)
+            return hasBreakAhead ? "Work hours until \(time), then a break" : "Work hours until \(time)"
+        }
         let day: String
         if calendar.isDate(next, inSameDayAs: now) {
             day = "today"
@@ -178,50 +259,75 @@ struct WorkSchedule: Codable, Equatable {
         } else {
             day = next.formatted(.dateTime.weekday(.wide))
         }
-        return "Work hours start \(day) at \(time)"
+        let skippedToday = isSkipped(now, calendar: calendar) && isWorkday(now, calendar: calendar)
+        return (skippedToday ? "Skipping today · " : "") + "Work hours start \(day) at \(time)"
     }
 
-    /// Calculate time until next schedule start (nil if currently within schedule or schedule disabled)
-    func timeUntilNextStart() -> TimeInterval? {
-        guard isEnabled, !isCurrentlyWithinSchedule else { return nil }
-        
-        let calendar = Calendar.current
-        let now = Date()
-        let currentWeekday = calendar.component(.weekday, from: now)
-        let currentMinutes = calendar.component(.hour, from: now) * 60 + calendar.component(.minute, from: now)
-        
-        // Try to find the next active day
-        for dayOffset in 0..<8 {
-            let targetWeekday = ((currentWeekday - 1 + dayOffset) % 7) + 1
-            
-            guard activeDays.contains(targetWeekday) else { continue }
-            
-            // If it's today and we haven't passed the start time, return time until start
-            if dayOffset == 0 && currentMinutes < startTimeMinutes {
-                return TimeInterval((startTimeMinutes - currentMinutes) * 60)
-            }
-            
-            // For future days, calculate full time
-            if dayOffset > 0 {
-                let daysUntil = TimeInterval(dayOffset * 24 * 60 * 60)
-                let minutesUntilStart = TimeInterval(startTimeMinutes * 60)
-                let minutesSinceMidnight = TimeInterval(currentMinutes * 60)
-                return daysUntil + minutesUntilStart - minutesSinceMidnight
-            }
-        }
-        
-        return nil
+    /// Time until work hours next start, nil while within them or when they never start
+    func timeUntilNextStart(now: Date = Date()) -> TimeInterval? {
+        guard isEnabled, !isWithinSchedule(on: now), let next = nextTransition(after: now) else { return nil }
+        return next.timeIntervalSince(now)
     }
-    
-    /// Calculate time until schedule end (nil if not currently within schedule)
-    func timeUntilEnd() -> TimeInterval? {
-        guard isCurrentlyWithinSchedule else { return nil }
-        
-        let calendar = Calendar.current
-        let now = Date()
-        let currentMinutes = calendar.component(.hour, from: now) * 60 + calendar.component(.minute, from: now)
-        
-        return TimeInterval((endTimeMinutes - currentMinutes) * 60)
+
+    /// Time until the current work period ends (a break or the end of the day)
+    func timeUntilEnd(now: Date = Date()) -> TimeInterval? {
+        guard isWithinSchedule(on: now), let next = nextTransition(after: now) else { return nil }
+        return next.timeIntervalSince(now)
+    }
+}
+
+// MARK: - Hours Types
+
+/// A span of the day in minutes from midnight, start inclusive, end exclusive
+struct MinuteRange: Codable, Equatable {
+    var startMinutes: Int
+    var endMinutes: Int
+
+    func contains(_ minutes: Int) -> Bool {
+        minutes >= startMinutes && minutes < endMinutes
+    }
+
+    /// Clamped into the day with the end at least a minute after the start
+    var validated: MinuteRange {
+        let start = max(0, min(startMinutes, 1438))
+        return MinuteRange(startMinutes: start, endMinutes: max(start + 1, min(endMinutes, 1439)))
+    }
+
+    /// "12:00 PM – 1:00 PM"
+    var formatted: String {
+        "\(Self.format(startMinutes)) – \(Self.format(endMinutes))"
+    }
+
+    static func format(_ minutes: Int) -> String {
+        let date = Calendar.current.date(bySettingHour: minutes / 60, minute: minutes % 60, second: 0, of: Date()) ?? Date()
+        return date.formatted(date: .omitted, time: .shortened)
+    }
+}
+
+/// Hours for one weekday that differ from the schedule's default
+struct DayHours: Codable, Equatable, Identifiable {
+    /// 1 = Sunday ... 7 = Saturday
+    var weekday: Int
+    var range: MinuteRange
+
+    var id: Int { weekday }
+}
+
+extension WorkSchedule {
+    private enum CodingKeys: String, CodingKey {
+        case isEnabled, activeDays, startTimeMinutes, endTimeMinutes, customHours, breakTime, skippedDays
+    }
+
+    /// Schedules saved before custom hours, breaks, and skipped days have none
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        isEnabled = try container.decode(Bool.self, forKey: .isEnabled)
+        activeDays = try container.decode(Set<Int>.self, forKey: .activeDays)
+        startTimeMinutes = try container.decode(Int.self, forKey: .startTimeMinutes)
+        endTimeMinutes = try container.decode(Int.self, forKey: .endTimeMinutes)
+        customHours = try container.decodeIfPresent([DayHours].self, forKey: .customHours) ?? []
+        breakTime = try container.decodeIfPresent(MinuteRange.self, forKey: .breakTime)
+        skippedDays = try container.decodeIfPresent(Set<String>.self, forKey: .skippedDays) ?? []
     }
 }
 

@@ -108,12 +108,13 @@ struct AutoStopEvent: Equatable {
         case timerEnded
         case workHoursEnded
         case permissionRevoked
+        case focusEnded
 
         /// Safety stops also send a notification; the others already have their own
         var isSafetyStop: Bool {
             switch self {
             case .awayLimit, .lowBattery: return true
-            case .timerEnded, .workHoursEnded, .permissionRevoked: return false
+            case .timerEnded, .workHoursEnded, .permissionRevoked, .focusEnded: return false
             }
         }
     }
@@ -128,6 +129,7 @@ struct AutoStopEvent: Equatable {
         case .timerEnded: return "AlwaysOn Timer Ended"
         case .workHoursEnded: return "Work Hours Ended"
         case .permissionRevoked: return "AlwaysOn Lost Accessibility Permission"
+        case .focusEnded: return "Focus Ended"
         }
     }
 
@@ -143,6 +145,8 @@ struct AutoStopEvent: Equatable {
             return "The work hours schedule ended the session."
         case .permissionRevoked:
             return "Accessibility permission was turned off, so the session stopped."
+        case .focusEnded:
+            return "The Focus that started the session turned off."
         }
     }
 
@@ -155,6 +159,7 @@ struct AutoStopEvent: Equatable {
         case .timerEnded: return "Timer ended at \(time)"
         case .workHoursEnded: return "Work hours ended at \(time)"
         case .permissionRevoked: return "Stopped at \(time): permission turned off"
+        case .focusEnded: return "Focus ended at \(time)"
         }
     }
 
@@ -165,6 +170,7 @@ struct AutoStopEvent: Equatable {
         case .timerEnded: return "timer"
         case .workHoursEnded: return "calendar.badge.clock"
         case .permissionRevoked: return "lock.slash"
+        case .focusEnded: return "moon.circle"
         }
     }
 }
