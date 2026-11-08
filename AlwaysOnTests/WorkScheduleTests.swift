@@ -86,4 +86,45 @@ final class WorkScheduleTests: XCTestCase {
         schedule.activeDays = []
         XCTAssertEqual(schedule.activeDaysDescription, "No days selected")
     }
+
+    // MARK: - Next transition
+
+    private var weekdayNineToFive: WorkSchedule {
+        WorkSchedule(isEnabled: true, activeDays: [2, 3, 4, 5, 6], startTimeMinutes: 9 * 60, endTimeMinutes: 17 * 60)
+    }
+
+    func testNextTransitionBeforeStartIsTodaysStart() {
+        // 2026-03-09 is a Monday
+        XCTAssertEqual(weekdayNineToFive.nextTransition(after: date(2026, 3, 9, 7, 30)), date(2026, 3, 9, 9, 0))
+    }
+
+    func testNextTransitionDuringHoursIsTodaysEnd() {
+        XCTAssertEqual(weekdayNineToFive.nextTransition(after: date(2026, 3, 9, 9, 0)), date(2026, 3, 9, 17, 0))
+        XCTAssertEqual(weekdayNineToFive.nextTransition(after: date(2026, 3, 9, 16, 59)), date(2026, 3, 9, 17, 0))
+    }
+
+    func testNextTransitionAfterHoursSkipsToNextActiveDay() {
+        XCTAssertEqual(weekdayNineToFive.nextTransition(after: date(2026, 3, 9, 17, 0)), date(2026, 3, 10, 9, 0))
+        // Friday evening skips the weekend
+        XCTAssertEqual(weekdayNineToFive.nextTransition(after: date(2026, 3, 13, 18, 0)), date(2026, 3, 16, 9, 0))
+    }
+
+    func testNextTransitionAgreesWithWithinScheduleAcrossAWeek() {
+        let schedule = weekdayNineToFive
+        var moment = date(2026, 3, 8, 0, 0)
+        let end = date(2026, 3, 15, 0, 0)
+        while moment < end {
+            guard let transition = schedule.nextTransition(after: moment) else { return XCTFail("no transition") }
+            XCTAssertGreaterThan(transition, moment)
+            // State holds until the transition and flips exactly at it
+            XCTAssertEqual(schedule.isWithinSchedule(on: transition.addingTimeInterval(-1)), schedule.isWithinSchedule(on: moment))
+            XCTAssertNotEqual(schedule.isWithinSchedule(on: transition), schedule.isWithinSchedule(on: moment))
+            moment = transition
+        }
+    }
+
+    func testNextTransitionIsNilWhenScheduleNeverChanges() {
+        XCTAssertNil(WorkSchedule(isEnabled: false).nextTransition(after: date(2026, 3, 9, 12, 0)))
+        XCTAssertNil(WorkSchedule(isEnabled: true, activeDays: []).nextTransition(after: date(2026, 3, 9, 12, 0)))
+    }
 }

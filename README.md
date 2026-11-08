@@ -24,6 +24,7 @@ If you find this app useful, consider supporting its development:
 - Use mouse, keyboard, or alternating activity methods
 - Optionally skip simulated input while you are actively using the machine
 - Optionally pause simulation while no chat or meeting app is running
+- Pause automatically while the Mac sleeps, locks, or switches users
 - Run quick timers or automate sessions with work hours
 - Keep online until a chosen time or until a calendar event ends
 - Keep online while a terminal command runs, with the `alwayson` CLI
@@ -68,6 +69,17 @@ AlwaysOn simulates minimal input on a configurable interval, with 45 seconds as 
 
 This keeps macOS from marking the system idle, which many workplace apps use to determine presence.
 
+### Power use
+
+AlwaysOn only wakes the CPU when something can change:
+
+- Simulation pauses while the Mac sleeps or another user is switched in, and resumes with an immediate input when you return. By default it also pauses while the screen is locked, since most chat apps show you as Away on a locked Mac and input posted to the lock screen keeps waking the display. Turn off **Settings > General > Pause while screen is locked** to keep simulating while locked.
+- The session clock ticks every second only while the menu is open or in the last minute of a timer. Otherwise it wakes when the menu bar countdown changes, and an unlimited session with the menu closed needs no clock at all.
+- Work hours wake AlwaysOn at the schedule's start and end instead of checking every minute. Deadlines and the schedule are re-checked right after wake and after clock or time zone changes.
+- The target-app option tracks app launches and quits instead of scanning running apps on every tick.
+- Accessibility permission is checked when it matters (opening the menu, starting a session, each tick) instead of every 10 seconds. While you grant it, AlwaysOn checks every second for up to two minutes.
+- Timers carry a tolerance so macOS can batch their wake-ups.
+
 ## Launcher Commands
 
 AlwaysOn registers the `alwayson://` URL scheme, so launchers like Raycast and Alfred can drive it:
@@ -104,6 +116,8 @@ Choose **Pulse Log...** in the menu to see each input attempt as it happens. Eac
 - **Skipped: user active**: you used the machine in the last 30 seconds and the idle-only option is on.
 - **Skipped: no target app**: no chosen chat or meeting app was running and that option is on.
 - **Input creation failed**: macOS did not create the input event.
+- **Paused: Mac asleep, locked, or switched user**: simulation stopped until the Mac is back in use.
+- **Stopped: Accessibility permission missing**: permission was revoked, so the session stopped.
 
 The log shows the newest 200 entries and counts each outcome since launch or the last clear. **Clear Log** empties both. The log stays in memory and disappears when AlwaysOn quits. It records what AlwaysOn sent, not the status that Teams, Slack, or other apps show.
 

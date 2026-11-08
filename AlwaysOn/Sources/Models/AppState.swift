@@ -61,8 +61,23 @@ final class AppState: NSObject, ObservableObject {
         didSet {
             UserDefaults.standard.set(requireTargetApp, forKey: Keys.requireTargetApp)
             activitySimulator.gate.requireTargetApp = requireTargetApp
+            runningAppMonitor.setEnabled(requireTargetApp)
         }
     }
+
+    /// Whether simulation pauses while the screen is locked. Locking already
+    /// shows most presence apps as Away, and input posted to the lock screen
+    /// keeps waking the display, so this defaults to on.
+    @Published var pauseWhileScreenLocked: Bool {
+        didSet {
+            UserDefaults.standard.set(pauseWhileScreenLocked, forKey: Keys.pauseWhileScreenLocked)
+            applySystemConditions(systemEventMonitor.conditions)
+        }
+    }
+
+    /// Why simulation is suspended by the system (sleep, lock, user switch), nil while it may run.
+    /// The session stays active; the simulator resumes as soon as the condition clears.
+    @Published private(set) var systemSuspension: SystemConditions.SuspensionReason?
 
     /// Bundle IDs counted as target apps when requireTargetApp is on
     @Published var targetApps: Set<String> {
@@ -90,6 +105,9 @@ final class AppState: NSObject, ObservableObject {
             } else {
                 UserDefaults.standard.removeObject(forKey: Keys.quickTimerEndTime)
             }
+            // Show the new countdown at once; the next tick may be up to a minute away
+            quickTimerRemaining = max(0, quickTimerEndTime?.timeIntervalSinceNow ?? 0)
+            rescheduleHeartbeat()
         }
     }
     
@@ -103,7 +121,9 @@ final class AppState: NSObject, ObservableObject {
     
     // MARK: - Permission Management
     
-    /// Accessibility permission state (Combine-based polling since macOS offers no change callback)
+    /// Accessibility permission state. macOS offers no change callback, so it is
+    /// re-checked when it matters: menu open, app activation, session starts,
+    /// each simulation tick, and fast polling only while the user is granting it.
     let accessibilityPermission = AccessibilityPermission.shared
     
     /// Convenience accessor for permission state
@@ -140,7 +160,22 @@ final class AppState: NSObject, ObservableObject {
     private let activitySimulator = ActivitySimulator()
     var pulseLog: PulseLog { activitySimulator.pulseLog }
     private let globalHotKeyManager = GlobalHotKeyManager()
+    private let systemEventMonitor = SystemEventMonitor()
+    private let runningAppMonitor = RunningAppMonitor()
     private var sessionTimer: Timer?
+
+    /// Whether the menu is on screen. Only the open menu shows seconds, so the
+    /// heartbeat runs every second only while this is true.
+    var isMenuVisible = false {
+        didSet {
+            guard isMenuVisible != oldValue else { return }
+            if isMenuVisible {
+                accessibilityPermission.refresh()
+                tickSessionState()
+            }
+            rescheduleHeartbeat()
+        }
+    }
     private var sessionStartTime: Date?
     private var cancellables = Set<AnyCancellable>()
     
@@ -169,6 +204,7 @@ final class AppState: NSObject, ObservableObject {
         static let requireTargetApp = "requireTargetApp"
         static let targetApps = "targetApps"
         static let globalHotKeyEnabled = "globalHotKeyEnabled"
+        static let pauseWhileScreenLocked = "pauseWhileScreenLocked"
     }
     
     private enum Defaults {
@@ -242,10 +278,19 @@ final class AppState: NSObject, ObservableObject {
         self._requireTargetApp = Published(initialValue: defaults.bool(forKey: Keys.requireTargetApp))
         self._targetApps = Published(initialValue: Set(defaults.stringArray(forKey: Keys.targetApps) ?? []))
         self._globalHotKeyEnabled = Published(initialValue: defaults.object(forKey: Keys.globalHotKeyEnabled) as? Bool ?? true)
+        self._pauseWhileScreenLocked = Published(initialValue: defaults.object(forKey: Keys.pauseWhileScreenLocked) as? Bool ?? true)
         super.init()
         activitySimulator.gate.idleOnlyEnabled = simulateOnlyWhenIdle
         activitySimulator.gate.requireTargetApp = requireTargetApp
         activitySimulator.gate.targetBundleIDs = targetApps
+        runningAppMonitor.setEnabled(requireTargetApp)
+        activitySimulator.hasRunningTargetProvider = { [runningAppMonitor] bundleIDs in
+            runningAppMonitor.isAnyRunning(bundleIDs)
+        }
+        activitySimulator.onPermissionLost = { [weak self] in
+            Task { @MainActor in self?.accessibilityPermission.refresh() }
+        }
+        systemSuspension = systemEventMonitor.conditions.suspensionReason(pauseWhileLocked: pauseWhileScreenLocked)
         globalHotKeyManager.onKeyDown = { [weak self] in
             Task { @MainActor in
                 self?.toggle()
@@ -275,9 +320,8 @@ final class AppState: NSObject, ObservableObject {
         setupNestedObjectChangeForwarding()
         setupNotificationCallbacks()
         setupProfileSync()
-        
-        // Steady-state polling; onboarding temporarily raises the rate when its window opens
-        accessibilityPermission.startPolling(.standard)
+        setupSystemEventHandling()
+        accessibilityPermission.refresh()
         
         // Resume active state if was active before quit (and has permission)
         if isActive && hasAccessibilityPermission {
@@ -286,7 +330,7 @@ final class AppState: NSObject, ObservableObject {
             // Reset active state if permissions are missing
             isActive = false
         } else if sessionSource?.chosenEndDate != nil {
-            scheduleSessionHeartbeat()
+            rescheduleHeartbeat()
         }
     }
     
@@ -294,6 +338,7 @@ final class AppState: NSObject, ObservableObject {
     
     /// Toggle the active state (pause/resume)
     func toggle() {
+        if !isActive { accessibilityPermission.refresh() }
         if !isActive && !hasAccessibilityPermission {
             // Request permission and wait for it
             accessibilityPermission.request()
@@ -303,7 +348,9 @@ final class AppState: NSObject, ObservableObject {
         if expireSessionIfNeeded() { return }
         sessionSource = sessionSource?.relinquishingCommand
         if isActive {
-            // PAUSING - Save current session state
+            // PAUSING - Save current session state. The display value only
+            // updates while the menu is open, so read the clock directly.
+            refreshElapsedTime()
             pausedSessionDuration = activeSessionDuration
             pausedQuickTimerEndTime = quickTimerEndTime
         } else {
@@ -340,6 +387,8 @@ final class AppState: NSObject, ObservableObject {
         pausedQuickTimerEndTime = nil
         quickTimerEndTime = nil
         quickTimerRemaining = 0
+        // Clear the start time first so stopping can't recompute a duration
+        sessionStartTime = nil
         activeSessionDuration = 0
         isActive = false
     }
@@ -380,6 +429,7 @@ final class AppState: NSObject, ObservableObject {
 
     /// Start with a quick timer duration
     func startWithQuickTimer(_ duration: QuickTimerDuration) {
+        accessibilityPermission.refresh()
         if !hasAccessibilityPermission {
             accessibilityPermission.request()
             return
@@ -401,6 +451,7 @@ final class AppState: NSObject, ObservableObject {
     
     @discardableResult
     func startUntil(date: Date, label: String? = nil) -> Bool {
+        accessibilityPermission.refresh()
         guard let source = SessionSource.validatedUntil(date: date, label: label, now: Date(),
                                                        hasPermission: hasAccessibilityPermission) else { return false }
         replaceSession(source: source)
@@ -421,11 +472,8 @@ final class AppState: NSObject, ObservableObject {
         pausedQuickTimerEndTime = nil
         quickTimerEndTime = nil
         activitySimulator.deadline = nil
-        if !isActive {
-            sessionTimer?.invalidate()
-            sessionTimer = nil
-        }
         quickTimerRemaining = 0
+        rescheduleHeartbeat()
     }
     
     /// Request permission with system prompt
@@ -445,9 +493,8 @@ final class AppState: NSObject, ObservableObject {
             onContinue: { [weak self] in
                 guard let self else { return }
                 self.accessibilityPermission.onboardingCompleted = true
-                // Back to steady-state polling now that the prompt is done
+                // The prompt is done; later checks happen on demand
                 self.accessibilityPermission.stopPolling()
-                self.accessibilityPermission.startPolling(.standard)
             },
             onQuit: {
                 NSApplication.shared.terminate(nil)
@@ -458,9 +505,8 @@ final class AppState: NSObject, ObservableObject {
     /// Complete the permission setup (called after onboarding)
     func completePermissionSetup() {
         accessibilityPermission.onboardingCompleted = true
-        // Back to steady-state polling now that onboarding is done
+        // Onboarding is done; later checks happen on demand
         accessibilityPermission.stopPolling()
-        accessibilityPermission.startPolling(.standard)
     }
     
     // MARK: - Private Methods
@@ -522,6 +568,7 @@ final class AppState: NSObject, ObservableObject {
         notificationManager.onQuickTimerResumeTapped = { [weak self] in
             guard let self else { return }
             // Resume activity if not already active
+            self.accessibilityPermission.refresh()
             if !self.isActive && self.hasAccessibilityPermission {
                 self.stopSession()
                 self.sessionSource = .manual
@@ -560,6 +607,7 @@ final class AppState: NSObject, ObservableObject {
             guard !suppressScheduleAutoStart else { return }
             
             // Auto-enable only when there is no active or paused session to preserve manual control.
+            accessibilityPermission.refresh()
             if !hasActiveOrPausedSession && hasAccessibilityPermission {
                 stopSession()
                 sessionSource = .workSchedule(profileName: profileManager.activeProfile?.name ?? "")
@@ -577,8 +625,53 @@ final class AppState: NSObject, ObservableObject {
     private func restartActivitySimulatorWithCurrentSettings() {
         guard !expireSessionIfNeeded() else { return }
         activitySimulator.stop()
+        startSimulatorUnlessSuspended()
+    }
+
+    /// Starts the simulator for the current session unless the system has suspended it
+    private func startSimulatorUnlessSuspended() {
+        guard systemSuspension == nil else { return }
         activitySimulator.deadline = sessionDeadline
         activitySimulator.start(interval: activityInterval, method: activityMethod)
+    }
+
+    // MARK: - System Events
+
+    private func setupSystemEventHandling() {
+        systemEventMonitor.onConditionsChanged = { [weak self] conditions in
+            MainActor.assumeIsolated { self?.applySystemConditions(conditions) }
+        }
+        systemEventMonitor.onClockMayHaveJumped = { [weak self] in
+            MainActor.assumeIsolated { self?.handleClockMayHaveJumped() }
+        }
+        NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)
+            .sink { [weak self] _ in self?.accessibilityPermission.refresh() }
+            .store(in: &cancellables)
+    }
+
+    /// Suspends the simulator while the Mac sleeps, locks, or switches users,
+    /// and resumes it, with an immediate tick, once the condition clears
+    private func applySystemConditions(_ conditions: SystemConditions) {
+        let reason = conditions.suspensionReason(pauseWhileLocked: pauseWhileScreenLocked)
+        guard reason != systemSuspension else { return }
+        systemSuspension = reason
+        guard isActive else { return }
+        if reason != nil {
+            activitySimulator.stop()
+            pulseLog.record(.systemPaused)
+        } else {
+            restartActivitySimulatorWithCurrentSettings()
+        }
+    }
+
+    /// Timers don't run during sleep and don't follow wall-clock jumps, so
+    /// re-check deadlines, the schedule, and permission straight away
+    private func handleClockMayHaveJumped() {
+        accessibilityPermission.refresh()
+        expireSessionIfNeeded()
+        workScheduleManager.checkNow()
+        tickSessionState()
+        rescheduleHeartbeat()
     }
 
     private func refreshGlobalHotKey() {
@@ -593,6 +686,7 @@ final class AppState: NSObject, ObservableObject {
     // MARK: - URL Commands
     
     func applyURLCommand(_ command: URLCommand) {
+        accessibilityPermission.refresh()
         switch command {
         case .run(let token):
             guard hasAccessibilityPermission else { accessibilityPermission.request(); return }
@@ -649,8 +743,7 @@ final class AppState: NSObject, ObservableObject {
             return
         }
         
-        activitySimulator.deadline = sessionDeadline
-        activitySimulator.start(interval: activityInterval, method: activityMethod)
+        startSimulatorUnlessSuspended()
         
         // Set session start time accounting for paused duration
         if pausedSessionDuration > 0 {
@@ -661,44 +754,58 @@ final class AppState: NSObject, ObservableObject {
             sessionStartTime = Date()
         }
         
-        scheduleSessionHeartbeat()
+        rescheduleHeartbeat()
     }
     
     private func stopActivitySimulation() {
         activitySimulator.stop()
         
-        // Stop the heartbeat but preserve duration for pause/resume
-        sessionTimer?.invalidate()
-        sessionTimer = nil
-        if sessionDeadline != nil { scheduleSessionHeartbeat() }
-        
-        // Save current session duration for pause (don't reset to 0)
-        // The pausedSessionDuration is set in toggle() before stopping
-        
-        // Stop updating the display while paused
+        // Freeze the displayed duration for pause/resume, then stop counting.
+        // The pausedSessionDuration is set in toggle() before stopping.
+        refreshElapsedTime()
         sessionStartTime = nil
+
+        // A paused session with a deadline still needs to expire on time
+        rescheduleHeartbeat()
         
         // Keep activeSessionDuration as-is for display while paused
         // Don't reset quickTimerRemaining - it will be calculated on resume
     }
     
-    /// One per-second heartbeat drives both the session duration display and
-    /// quick timer expiry, invalidating any previous heartbeat first so repeated
-    /// startup paths (launch restore) can't stack timers
-    private func scheduleSessionHeartbeat() {
+    /// One heartbeat drives both the on-screen times and deadline expiry.
+    /// HeartbeatPlanner picks the next moment anything visible or due changes:
+    /// every second while the menu is open or in the final minute, at minute
+    /// label changes otherwise, and never for an unlimited session with the
+    /// menu closed. Any previous heartbeat is invalidated first, so repeated
+    /// paths (launch restore, deadline edits) can't stack timers.
+    private func rescheduleHeartbeat() {
         sessionTimer?.invalidate()
-        sessionTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+        sessionTimer = nil
+        guard isActive || sessionDeadline != nil,
+              let delay = HeartbeatPlanner.nextTickDelay(now: Date(), deadline: sessionDeadline,
+                                                        isRunning: isActive, isMenuVisible: isMenuVisible)
+        else { return }
+        let timer = Timer(timeInterval: delay, repeats: false) { [weak self] _ in
             Task { @MainActor in
-                self?.tickSessionState()
+                guard let self else { return }
+                self.tickSessionState()
+                self.rescheduleHeartbeat()
             }
         }
-        if let sessionTimer { RunLoop.main.add(sessionTimer, forMode: .common) }
+        timer.tolerance = HeartbeatPlanner.tolerance(for: delay)
+        RunLoop.main.add(timer, forMode: .common)
+        sessionTimer = timer
     }
-    
-    private func tickSessionState() {
+
+    /// Brings the displayed session duration up to date with the clock
+    private func refreshElapsedTime() {
         if let startTime = sessionStartTime {
             activeSessionDuration = Date().timeIntervalSince(startTime)
         }
+    }
+    
+    private func tickSessionState() {
+        refreshElapsedTime()
         
         if expireSessionIfNeeded() { return }
         if let endTime = sessionDeadline {

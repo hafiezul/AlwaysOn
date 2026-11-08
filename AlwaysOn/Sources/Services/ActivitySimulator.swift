@@ -1,6 +1,7 @@
 import Foundation
 import CoreGraphics
 import AppKit
+import ApplicationServices
 
 /// Simulates user activity to prevent system idle and keep apps like Teams showing "Available"
 /// Supports mouse movement, keyboard activity, or alternating between both
@@ -32,12 +33,21 @@ final class ActivitySimulator {
                                                 eventType: CGEventType(rawValue: ~0)!)
     }
 
-    /// Whether any of the given bundle IDs is currently running. Injectable for tests.
+    /// Whether any of the given bundle IDs is currently running. AppState
+    /// replaces this with a RunningAppMonitor lookup; injectable for tests.
     var hasRunningTargetProvider: (Set<String>) -> Bool = { bundleIDs in
         NSWorkspace.shared.runningApplications.contains { app in
             app.bundleIdentifier.map(bundleIDs.contains) ?? false
         }
     }
+
+    /// Whether macOS still trusts the app to post input. Checked each tick in
+    /// place of a separate polling timer, because a tick is the only moment
+    /// a revoked permission matters while a session runs.
+    var permissionProvider: () -> Bool = { AXIsProcessTrusted() }
+
+    /// Called on the main queue when a tick finds the permission revoked
+    var onPermissionLost: (() -> Void)?
     
     // MARK: - Public Methods
     
@@ -51,15 +61,16 @@ final class ActivitySimulator {
         isRunning = true
         activityMethod = method
         
-        // Use a repeating timer on the main run loop
-        timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+        // Use a repeating timer on the main run loop. Tolerance lets macOS
+        // batch this wake-up with others; a few seconds' drift is far inside
+        // any presence app's idle timeout.
+        let timer = Timer(timeInterval: interval, repeats: true) { [weak self] _ in
             self?.simulateActivity()
         }
-        
-        // Ensure timer fires even when menu is open
-        if let timer = timer {
-            RunLoop.main.add(timer, forMode: .common)
-        }
+        timer.tolerance = min(interval * 0.1, 5)
+        // Common modes keep the timer firing while the menu is open
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
         
         // Perform initial activity simulation
         simulateActivity()
@@ -94,6 +105,11 @@ final class ActivitySimulator {
     /// Performs activity simulation based on the selected method
     private func simulateActivity() {
         if let deadline, deadline <= Date() { return }
+        guard permissionProvider() else {
+            pulseLog.record(.permissionMissing)
+            onPermissionLost?()
+            return
+        }
         switch gate.decision(idleSeconds: idleSecondsProvider(),
                              hasRunningTarget: hasRunningTargetProvider(gate.targetBundleIDs)) {
         case .skip(.userActive): pulseLog.record(.userActive); return

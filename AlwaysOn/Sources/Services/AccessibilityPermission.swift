@@ -15,18 +15,20 @@ final class AccessibilityPermission: ObservableObject {
     
     /// How often the permission state is checked while polling
     enum PollRate {
-        /// Fast checks while the user grants the permission from System Settings
+        /// Fast checks while the user grants the permission from System Settings.
+        /// There is no steady-state rate: after onboarding the app re-checks on
+        /// demand (menu open, app activation, session start, each tick).
         case onboarding
-        /// Slower steady-state checks to notice revocations after onboarding
-        case standard
         
         var interval: TimeInterval {
             switch self {
             case .onboarding: return 1.0
-            case .standard: return 10.0
             }
         }
     }
+
+    /// How long polling started by request() runs before giving up
+    static let requestPollingTimeout: TimeInterval = 120
     
     // MARK: - Published State
     
@@ -37,6 +39,7 @@ final class AccessibilityPermission: ObservableObject {
     
     private var timerCancellable: AnyCancellable?
     private var activeRate: PollRate?
+    private var pollingDeadline: Date?
     
     // MARK: - Constants
     
@@ -87,6 +90,8 @@ final class AccessibilityPermission: ObservableObject {
     func request() {
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
         _ = AXIsProcessTrustedWithOptions(options)
+        // Notice the grant soon after the user flips the switch in System Settings
+        startPolling(.onboarding, timeout: Self.requestPollingTimeout)
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
             guard let self else { return }
@@ -108,21 +113,33 @@ final class AccessibilityPermission: ObservableObject {
         applyPermissionState()
     }
     
-    /// Poll for permission changes at the given rate
-    func startPolling(_ rate: PollRate) {
-        if timerCancellable != nil, activeRate == rate { return }
-        if activeRate != rate {
-            stopPolling()
+    /// Poll for permission changes at the given rate. Polling stops by itself
+    /// once permission is granted, or after `timeout` seconds when one is given.
+    func startPolling(_ rate: PollRate, timeout: TimeInterval? = nil) {
+        let deadline = timeout.map { Date().addingTimeInterval($0) }
+        if timerCancellable != nil, activeRate == rate {
+            // An open-ended poll (onboarding window) outranks a timed one
+            if pollingDeadline != nil { pollingDeadline = deadline }
+            return
         }
+        stopPolling()
         activeRate = rate
+        pollingDeadline = deadline
         
-        timerCancellable = Timer.publish(every: rate.interval, on: .main, in: .common)
+        timerCancellable = Timer.publish(every: rate.interval, tolerance: rate.interval * 0.2, on: .main, in: .common)
             .autoconnect()
             .sink { [weak self] _ in
-                self?.applyPermissionState()
+                self?.pollOnce()
             }
         
+        pollOnce()
+    }
+
+    private func pollOnce() {
         applyPermissionState()
+        if hasPermission || pollingDeadline.map({ Date() >= $0 }) == true {
+            stopPolling()
+        }
     }
     
     /// Stop polling for permission changes
@@ -130,5 +147,6 @@ final class AccessibilityPermission: ObservableObject {
         timerCancellable?.cancel()
         timerCancellable = nil
         activeRate = nil
+        pollingDeadline = nil
     }
 }

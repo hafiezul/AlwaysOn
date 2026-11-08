@@ -85,9 +85,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 accessibilityPermission: permission,
                 onContinue: {
                     permission.onboardingCompleted = true
-                    // Back to steady-state polling now that the prompt is done
+                    // The prompt is done; later checks happen on demand
                     permission.stopPolling()
-                    permission.startPolling(.standard)
                 },
                 onQuit: {
                     NSApplication.shared.terminate(nil)
