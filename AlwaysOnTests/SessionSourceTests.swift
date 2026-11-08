@@ -123,4 +123,18 @@ final class SessionSourceTests: XCTestCase {
         XCTAssertEqual(change.source, .until(date: deadline.addingTimeInterval(600), label: nil))
         XCTAssertFalse(change.source.endCondition(quickTimerDeadline: nil).matchesFinish(token: UUID()))
     }
+
+    func testFocusSessionsBehaveLikeManualButNeverRestore() throws {
+        let now = Date(timeIntervalSinceReferenceDate: 1_000_000)
+        XCTAssertEqual(SessionSource.focus.endCondition(quickTimerDeadline: nil), .unlimited)
+        XCTAssertNil(SessionSource.focus.chosenEndDate)
+        XCTAssertFalse(SessionSource.focus.canRestore(isActive: true, quickTimerDeadline: nil, now: now))
+        XCTAssertEqual(SessionSource.focus.cancellingCountdown, .focus)
+        let added = SessionSource.focus.addingTime(600, quickTimerDeadline: nil, now: now)
+        XCTAssertEqual(added.source, .focus, "the Focus still owns a session given an end")
+        XCTAssertEqual(added.deadline, now.addingTimeInterval(600))
+
+        let decoded = try JSONDecoder().decode(SessionSource.self, from: JSONEncoder().encode(SessionSource.focus))
+        XCTAssertEqual(decoded, .focus)
+    }
 }

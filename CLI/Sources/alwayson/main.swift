@@ -162,6 +162,7 @@ func parseDate(_ value: String) -> Date? {
 let usage = """
 Usage: alwayson start|stop|toggle
        alwayson timer MINUTES           (1...1440)
+       alwayson pause [MINUTES]         (1...1440; omit to pause until resumed)
        alwayson until HH:MM|ISO8601      (future; HH:MM is today locally)
        alwayson run -- COMMAND [args...]
        alwayson install [--directory PATH]
@@ -207,6 +208,15 @@ func main(_ args: [String]) throws -> Int32 {
         guard rest.count == 1, rest[0].range(of: #"^[0-9]+$"#, options: .regularExpression) != nil,
               let minutes = Int(rest[0]), (1...1440).contains(minutes) else { throw CLIError.message("timer requires integer minutes 1...1440") }
         guard send(action, query: [URLQueryItem(name: "minutes", value: String(minutes))]) else { return 1 }
+    case "pause":
+        guard rest.count <= 1 else { throw CLIError.message(usage) }
+        var query: [URLQueryItem] = []
+        if let value = rest.first {
+            guard value.range(of: #"^[0-9]+$"#, options: .regularExpression) != nil,
+                  let minutes = Int(value), (1...1440).contains(minutes) else { throw CLIError.message("pause requires integer minutes 1...1440, or none") }
+            query = [URLQueryItem(name: "minutes", value: String(minutes))]
+        }
+        guard send(action, query: query) else { return 1 }
     case "until":
         guard rest.count == 1, let date = parseDate(rest[0]), date.timeIntervalSince1970.isFinite, date > Date() else { throw CLIError.message("until requires a future local time today or ISO8601 datetime") }
         guard send(action, query: [URLQueryItem(name: "date", value: ISO8601DateFormatter().string(from: date))]) else { return 1 }

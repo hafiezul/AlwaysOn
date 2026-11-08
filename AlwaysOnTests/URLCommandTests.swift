@@ -18,6 +18,16 @@ final class URLCommandTests: XCTestCase {
         XCTAssertEqual(parse("alwayson://timer?minutes=abc"), .timer(minutes: nil))
     }
 
+    func testPauseParsesOptionalMinutes() {
+        XCTAssertEqual(parse("alwayson://pause"), .pause(minutes: nil))
+        XCTAssertEqual(parse("alwayson://pause?minutes=15"), .pause(minutes: 15))
+        XCTAssertEqual(parse("alwayson://pause?MINUTES=1440"), .pause(minutes: 1440))
+        for bad in ["0", "1441", "abc", "", "-5"] {
+            XCTAssertNil(parse("alwayson://pause?minutes=\(bad)"), bad)
+        }
+        XCTAssertNil(parse("alwayson://pause?minutes=5&minutes=10"))
+    }
+
     func testRejectsForeignSchemesAndUnknownCommands() {
         XCTAssertNil(parse("https://example.com/start"))
         XCTAssertNil(parse("alwayson://dance"))

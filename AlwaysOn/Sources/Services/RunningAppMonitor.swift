@@ -13,6 +13,10 @@ final class RunningAppMonitor {
 
     private(set) var isEnabled = false
 
+    /// Called on the main queue when an app starts or stops running, after
+    /// the counts change. Not called while disabled.
+    var onChange: (() -> Void)?
+
     /// - Parameters:
     ///   - notificationCenter: Source of launch and quit notifications
     ///   - runningBundleIDs: Snapshot used to seed counts when monitoring starts
@@ -62,7 +66,10 @@ final class RunningAppMonitor {
 
     private func adjust(_ note: Notification, by delta: Int) {
         guard let bundleID = bundleIDOf(note) else { return }
-        let next = counts[bundleID, default: 0] + delta
+        let previous = counts[bundleID, default: 0]
+        let next = previous + delta
         counts[bundleID] = next > 0 ? next : nil
+        // Only the first launch or last quit changes whether the app runs
+        if (previous > 0) != (next > 0) { onChange?() }
     }
 }

@@ -143,7 +143,7 @@ extension PulseLog.Outcome {
     var explanation: String {
         switch self {
         case .posted: return "Sent simulated input to keep you active."
-        case .userActive: return "You used the Mac in the last 30 seconds, so no input was needed."
+        case .userActive: return "You used the Mac recently, so no input was needed yet."
         case .noTarget: return "None of your target apps were running."
         case .inputCreationFailed: return "macOS didn't create the input event."
         case .systemPaused: return "Waiting until the Mac is awake, unlocked, and back on your session."

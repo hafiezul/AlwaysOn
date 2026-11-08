@@ -132,6 +132,7 @@ extension SessionKind {
         case .until: return .orange
         case .manual: return .purple
         case .command: return .teal
+        case .focus: return .indigo
         }
     }
 }

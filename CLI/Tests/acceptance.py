@@ -125,7 +125,9 @@ class CommandHelperAcceptance(unittest.TestCase):
         for args, expected in [(('start',), 'alwayson://start'),
                                (('stop',), 'alwayson://stop'),
                                (('toggle',), 'alwayson://toggle'),
-                               (('timer', '30'), 'alwayson://timer?minutes=30')]:
+                               (('timer', '30'), 'alwayson://timer?minutes=30'),
+                               (('pause',), 'alwayson://pause'),
+                               (('pause', '15'), 'alwayson://pause?minutes=15')]:
             result = self.invoke(*args)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn('request', result.stdout)
@@ -140,6 +142,7 @@ class CommandHelperAcceptance(unittest.TestCase):
         for args in [(), ('unknown',), ('start', 'extra'), ('run', '--'),
                      ('timer', '0'), ('timer', '1441'), ('timer', '1.5'),
                      ('timer', '+1'), ('until', '00:00'), ('until', '25:00'),
+                     ('pause', '0'), ('pause', '1441'), ('pause', '1.5'), ('pause', '5', '6'),
                      ('until', '2000-01-01T00:00:00Z'), ('until', 'nope')]:
             self.assertNotEqual(self.invoke(*args).returncode, 0, args)
         self.assertEqual(self.events(), [])

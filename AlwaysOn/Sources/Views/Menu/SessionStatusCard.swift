@@ -43,7 +43,7 @@ struct StatusCardModel {
         sessionElapsed = appState.activeSessionDuration
         isSuspended = appState.systemSuspension != nil
         detail = Self.detail(label: appState.sessionSourceLabel, deadline: appState.sessionDeadline,
-                             isOff: phase == .off)
+                             isOff: phase == .off, resumesAt: appState.autoResumeAt)
     }
 
     init(phase: Phase, seconds: TimeInterval, isTimed: Bool, remainingFraction: Double?,
@@ -57,10 +57,13 @@ struct StatusCardModel {
         self.isSuspended = isSuspended
     }
 
-    /// "Until · Standup · ends 5:30 PM", capitalized
-    static func detail(label: String?, deadline: Date?, isOff: Bool, now: Date = Date()) -> String? {
+    /// "Until · Standup · ends 5:30 PM", capitalized. A timed pause leads:
+    /// "Resumes 1:30 PM · ends 5:30 PM".
+    static func detail(label: String?, deadline: Date?, isOff: Bool, resumesAt: Date? = nil,
+                       now: Date = Date()) -> String? {
         guard !isOff else { return nil }
         var parts: [String] = []
+        if let resumesAt { parts.append("resumes \(resumesAt.formatted(date: .omitted, time: .shortened))") }
         if let label { parts.append(label) }
         if let deadline {
             let style: Date.FormatStyle.DateStyle = Calendar.current.isDate(deadline, inSameDayAs: now) ? .omitted : .abbreviated

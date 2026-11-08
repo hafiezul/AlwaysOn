@@ -2,7 +2,7 @@ import Foundation
 
 /// How a session was started, as recorded in activity history
 enum SessionKind: String, Codable, CaseIterable, Identifiable {
-    case manual, schedule, timer, until, command
+    case manual, schedule, timer, until, command, focus
 
     var id: String { rawValue }
 
@@ -13,6 +13,7 @@ enum SessionKind: String, Codable, CaseIterable, Identifiable {
         case .quickTimer: self = .timer
         case .until: self = .until
         case .command: self = .command
+        case .focus: self = .focus
         }
     }
 
@@ -23,6 +24,7 @@ enum SessionKind: String, Codable, CaseIterable, Identifiable {
         case .timer: return "Timer"
         case .until: return "Until"
         case .command: return "Command"
+        case .focus: return "Focus"
         }
     }
 }

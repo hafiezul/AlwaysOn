@@ -7,6 +7,8 @@ enum SessionSource: Codable, Equatable {
     case quickTimer
     case until(date: Date, label: String?)
     case command(token: UUID, deadline: Date)
+    /// Started by a Focus filter; ends when the Focus turns off
+    case focus
 
     static func validatedUntil(date: Date, label: String? = nil, now: Date, hasPermission: Bool) -> SessionSource? {
         guard hasPermission, date.timeIntervalSinceReferenceDate.isFinite, date > now else { return nil }
@@ -21,13 +23,15 @@ enum SessionSource: Codable, Equatable {
         switch self {
         case .until(let date, _): return .deadline(date)
         case .command(let token, let deadline): return .command(token: token, deadline: deadline)
-        case .manual, .quickTimer, .workSchedule:
+        case .manual, .quickTimer, .workSchedule, .focus:
             return quickTimerDeadline.map { .deadline($0) } ?? .unlimited
         }
     }
 
     func canRestore(isActive: Bool = true, quickTimerDeadline: Date?, now: Date) -> Bool {
         if case .command = self { return false }
+        // The Focus may have ended while AlwaysOn wasn't running to hear it
+        if case .focus = self { return false }
         guard isActive || chosenEndDate != nil else { return false }
         // A missing timer deadline is legitimate for a no-limit quick timer.
         return !endCondition(quickTimerDeadline: quickTimerDeadline).hasExpired(at: now)
@@ -37,7 +41,7 @@ enum SessionSource: Codable, Equatable {
     var chosenEndDate: Date? {
         switch self {
         case .until(let date, _), .command(_, let date): return date
-        case .manual, .quickTimer, .workSchedule: return nil
+        case .manual, .quickTimer, .workSchedule, .focus: return nil
         }
     }
 
@@ -58,7 +62,7 @@ enum SessionSource: Codable, Equatable {
         switch self {
         case .until(_, let label): return (.until(date: deadline, label: label), deadline)
         case .command: return (.until(date: deadline, label: nil), deadline)
-        case .manual, .quickTimer, .workSchedule: return (self, deadline)
+        case .manual, .quickTimer, .workSchedule, .focus: return (self, deadline)
         }
     }
 

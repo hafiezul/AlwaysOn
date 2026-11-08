@@ -86,6 +86,7 @@ final class ActivityLedgerTests: XCTestCase {
         XCTAssertEqual(SessionKind(.quickTimer), .timer)
         XCTAssertEqual(SessionKind(.until(date: Date(), label: nil)), .until)
         XCTAssertEqual(SessionKind(.command(token: UUID(), deadline: Date())), .command)
+        XCTAssertEqual(SessionKind(.focus), .focus)
     }
 
     func testDurationFormat() {

@@ -60,6 +60,14 @@ struct GeneralSettingsPane: View {
         )
     }
     
+    private var energyCaption: String {
+        let effect = "a fixed interval doubles, up to 2 minutes, and wake-ups get more slack."
+        guard let reason = appState.energyState.summary else {
+            return "When Low Power Mode is on or the Mac runs hot, " + effect
+        }
+        return appState.savesEnergyWhenConstrained ? "\(reason), so " + effect : "\(reason)."
+    }
+
     private var notificationsEnabledBinding: Binding<Bool> {
         Binding(
             get: { appState.notificationManager.isEnabled },
@@ -82,29 +90,50 @@ struct GeneralSettingsPane: View {
 
             // Activity section
             Section {
-                Picker("Activity Interval", selection: intervalPickerSelection) {
-                    ForEach(intervalOptions, id: \.value) { option in
-                        Text(option.label).tag(option.value as TimeInterval?)
+                Picker("Pacing", selection: $appState.pulsePacing) {
+                    ForEach(PulsePacing.allCases) { pacing in
+                        Text(pacing.title).tag(pacing)
                     }
-                    Text("Custom…").tag(nil as TimeInterval?)
                 }
-                .pickerStyle(.menu)
+                .pickerStyle(.segmented)
 
-                if intervalPickerSelection.wrappedValue == nil {
-                    HStack {
-                        Text("Seconds")
-                        Spacer()
-                        TextField(value: customIntervalSeconds, format: .number.grouping(.never)) {
-                            Text("10-3600")
+                if appState.pulsePacing == .fixed {
+                    Picker("Activity Interval", selection: intervalPickerSelection) {
+                        ForEach(intervalOptions, id: \.value) { option in
+                            Text(option.label).tag(option.value as TimeInterval?)
                         }
-                        .frame(width: 80)
-                        .multilineTextAlignment(.trailing)
+                        Text("Custom…").tag(nil as TimeInterval?)
                     }
+                    .pickerStyle(.menu)
+
+                    if intervalPickerSelection.wrappedValue == nil {
+                        HStack {
+                            Text("Seconds")
+                            Spacer()
+                            TextField(value: customIntervalSeconds, format: .number.grouping(.never)) {
+                                Text("10-3600")
+                            }
+                            .frame(width: 80)
+                            .multilineTextAlignment(.trailing)
+                        }
+                    }
+                } else {
+                    Picker("Send input after idle for", selection: $appState.adaptivePostAfter) {
+                        ForEach(AdaptivePostAfter.allCases) { option in
+                            Text(option.title).tag(option)
+                        }
+                    }
+                    .pickerStyle(.menu)
                 }
 
-                Text("How often AlwaysOn simulates activity to keep your status active.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(appState.pulsePacing == .fixed
+                         ? "Simulates activity on a fixed interval, whether or not you're using the Mac."
+                         : "Sends no input while you're working and wakes only when input is due, so it uses far less energy. Keeps the display awake during a session, as the fixed interval does.")
+                    Text(appState.pacingStatus)
+                }
+                .font(.caption)
+                .foregroundColor(.secondary)
                 
                 Picker("Activity Method", selection: $appState.activityMethod) {
                     ForEach(ActivityMethod.allCases) { method in
@@ -143,8 +172,11 @@ struct GeneralSettingsPane: View {
                     .foregroundColor(.secondary)
 
                 Toggle("Only simulate when idle", isOn: $appState.simulateOnlyWhenIdle)
+                    .disabled(appState.pulsePacing == .adaptive)
 
-                Text("Skips simulated input whenever you produced input in the last 30 seconds, since your own activity already keeps the system awake.")
+                Text(appState.pulsePacing == .adaptive
+                     ? "Adaptive pacing already waits until you're idle."
+                     : "Skips simulated input whenever you produced input in the last 30 seconds, since your own activity already keeps the system awake.")
                     .font(.caption)
                     .foregroundColor(.secondary)
 
@@ -154,15 +186,51 @@ struct GeneralSettingsPane: View {
                     .font(.caption)
                     .foregroundColor(.secondary)
 
-                Toggle("Global hotkey (⌥⌘K)", isOn: $appState.globalHotKeyEnabled)
+                Toggle("Global hotkey", isOn: $appState.globalHotKeyEnabled)
 
-                Text("Toggles your session from any app, even with the menu closed.")
+                if appState.globalHotKeyEnabled {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("Shortcut")
+                        Spacer()
+                        HotKeyRecorder()
+                    }
+                    if appState.isHotKeyUnavailable {
+                        Label("Another app is using \(appState.globalHotKey.displayString). Record a different shortcut.",
+                              systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
+                }
+
+                Text("Toggles your session from any app, even with the menu closed. Click the shortcut to record a new one.")
                     .font(.caption)
                     .foregroundColor(.secondary)
             } header: {
                 Text("Activity")
             }
             
+            // Power section
+            Section {
+                Picker("Prevent sleep", selection: $appState.sleepPrevention) {
+                    ForEach(SleepPrevention.allCases) { option in
+                        Text(option.title).tag(option)
+                    }
+                }
+                .pickerStyle(.menu)
+
+                Text("Keeps the Mac awake during a session even when no input is sent, for example while no target app is running or a long command runs. While the screen is locked, only the Mac stays awake. Closing the lid still sleeps the Mac.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+
+                Toggle("Save energy in Low Power Mode or when hot", isOn: $appState.savesEnergyWhenConstrained)
+
+                Text(energyCaption)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } header: {
+                Text("Power")
+            }
+
             // Safety section
             Section {
                 Picker("Stop after I'm away for", selection: $appState.awayLimit) {

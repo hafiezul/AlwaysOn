@@ -149,9 +149,9 @@ struct UntilSessionView: View {
     private var workHoursEnd: Date? {
         let schedule = appState.workScheduleManager.schedule
         let now = Date()
+        // The day's last work period ends after any break
         guard schedule.isWithinSchedule(on: now),
-              let end = Calendar.current.date(bySettingHour: schedule.endTimeMinutes / 60,
-                                              minute: schedule.endTimeMinutes % 60, second: 0, of: now),
+              let end = schedule.workdayEnd(on: now),
               end > now else { return nil }
         return end
     }

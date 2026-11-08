@@ -149,6 +149,20 @@ final class RunningAppMonitorTests: XCTestCase {
         XCTAssertFalse(monitor.isAnyRunning(["com.example.teams"]))
     }
 
+    func testReportsOnlyWhenAnAppStartsOrStopsRunning() {
+        let monitor = makeMonitor()
+        monitor.setEnabled(true)
+        var changes = 0
+        monitor.onChange = { changes += 1 }
+        post(NSWorkspace.didLaunchApplicationNotification, "com.example.zoom")
+        post(NSWorkspace.didLaunchApplicationNotification, "com.example.zoom")
+        XCTAssertEqual(changes, 1, "a second instance doesn't change whether Zoom runs")
+        post(NSWorkspace.didTerminateApplicationNotification, "com.example.zoom")
+        XCTAssertEqual(changes, 1)
+        post(NSWorkspace.didTerminateApplicationNotification, "com.example.zoom")
+        XCTAssertEqual(changes, 2)
+    }
+
     func testCountsMultipleInstances() {
         let monitor = makeMonitor()
         monitor.setEnabled(true)
