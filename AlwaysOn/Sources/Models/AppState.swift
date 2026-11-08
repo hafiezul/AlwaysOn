@@ -98,8 +98,17 @@ final class AppState: NSObject, ObservableObject {
         }
     }
 
-    /// The most recent automatic safety stop, shown in the menu until the next session
-    @Published private(set) var lastSafetyStop: SafetyStopEvent?
+    /// Why the last session ended on its own (timer, work hours, permission,
+    /// safety stop), shown in the menu until the next session starts
+    @Published private(set) var lastAutoStop: AutoStopEvent?
+
+    /// What the menu bar item shows next to its icon
+    @Published var menuBarLabelStyle: MenuBarLabelStyle {
+        didSet {
+            UserDefaults.standard.set(menuBarLabelStyle.rawValue, forKey: Keys.menuBarLabelStyle)
+            rescheduleHeartbeat()
+        }
+    }
 
     /// Why simulation is suspended by the system (sleep, lock, user switch), nil while it may run.
     /// The session stays active; the simulator resumes as soon as the condition clears.
@@ -126,6 +135,13 @@ final class AppState: NSObject, ObservableObject {
     /// The end time for the quick timer (nil if no timer set)
     @Published var quickTimerEndTime: Date? {
         didSet {
+            // Remember when this countdown began so the menu can show progress.
+            // Moving an existing deadline (pause, resume, adding time) keeps the start.
+            if quickTimerEndTime == nil {
+                timerStartedAt = nil
+            } else if oldValue == nil {
+                timerStartedAt = Date()
+            }
             if let endTime = quickTimerEndTime {
                 UserDefaults.standard.set(endTime, forKey: Keys.quickTimerEndTime)
             } else {
@@ -139,6 +155,26 @@ final class AppState: NSObject, ObservableObject {
     
     /// Remaining time on the quick timer
     @Published var quickTimerRemaining: TimeInterval = 0
+
+    /// When the current countdown began, for the menu's progress ring
+    private(set) var timerStartedAt: Date? {
+        didSet {
+            if let timerStartedAt {
+                UserDefaults.standard.set(timerStartedAt, forKey: Keys.timerStartedAt)
+            } else {
+                UserDefaults.standard.removeObject(forKey: Keys.timerStartedAt)
+            }
+        }
+    }
+
+    /// How far through its countdown the session is, 0...1, nil without a deadline
+    var sessionProgress: Double? {
+        guard let deadline = sessionDeadline else { return nil }
+        let start = timerStartedAt ?? deadline.addingTimeInterval(-max(quickTimerRemaining, 1))
+        let total = deadline.timeIntervalSince(start)
+        guard total > 0 else { return 1 }
+        return min(max(1 - quickTimerRemaining / total, 0), 1)
+    }
     
     /// Whether a quick timer is currently active
     var isQuickTimerActive: Bool {
@@ -237,6 +273,8 @@ final class AppState: NSObject, ObservableObject {
         static let pauseWhileScreenLocked = "pauseWhileScreenLocked"
         static let awayLimit = "awayLimitHours"
         static let batteryStopThreshold = "batteryStopThreshold"
+        static let timerStartedAt = "quickTimerStartedAt"
+        static let menuBarLabelStyle = "menuBarLabelStyle"
     }
     
     private enum Defaults {
@@ -313,6 +351,7 @@ final class AppState: NSObject, ObservableObject {
         self._pauseWhileScreenLocked = Published(initialValue: defaults.object(forKey: Keys.pauseWhileScreenLocked) as? Bool ?? true)
         self._awayLimit = Published(initialValue: AwayLimit(rawValue: defaults.integer(forKey: Keys.awayLimit)) ?? .off)
         self._batteryStopThreshold = Published(initialValue: BatteryStopThreshold(rawValue: defaults.integer(forKey: Keys.batteryStopThreshold)) ?? .off)
+        self._menuBarLabelStyle = Published(initialValue: MenuBarLabelStyle(rawValue: defaults.string(forKey: Keys.menuBarLabelStyle) ?? "") ?? .iconAndTime)
         super.init()
         Self.shared = self
         activitySimulator.gate.idleOnlyEnabled = simulateOnlyWhenIdle
@@ -351,6 +390,7 @@ final class AppState: NSObject, ObservableObject {
         } ?? (isActive && sourceData == nil)
         if shouldRestore && !expiredTimer {
             self._quickTimerEndTime = Published(initialValue: savedEndTime)
+            self.timerStartedAt = savedEndTime == nil ? nil : defaults.object(forKey: Keys.timerStartedAt) as? Date
             self._sessionSource = Published(initialValue: restoredSource)
             self._quickTimerRemaining = Published(initialValue: max(0, sessionDeadline?.timeIntervalSince(now) ?? 0))
         } else {
@@ -520,6 +560,18 @@ final class AppState: NSObject, ObservableObject {
         rescheduleHeartbeat()
     }
     
+    /// Adds time to the session: a session with an end ends later, an
+    /// unlimited one gains an end. Works while paused too.
+    func addTime(_ seconds: TimeInterval) {
+        guard hasActiveOrPausedSession, seconds > 0 else { return }
+        let change = (sessionSource ?? .manual).addingTime(seconds, quickTimerDeadline: quickTimerEndTime, now: Date())
+        sessionSource = change.source
+        // A paused session resumes to its saved deadline, so move that too
+        if !isActive { pausedQuickTimerEndTime = change.deadline }
+        quickTimerEndTime = change.deadline
+        activitySimulator.deadline = change.deadline
+    }
+    
     /// Request permission with system prompt
     func requestPermission() {
         accessibilityPermission.request()
@@ -565,6 +617,7 @@ final class AppState: NSObject, ObservableObject {
                 // If permission was revoked while active, stop simulation
                 if !hasPermission && self.isActive {
                     self.isActive = false
+                    self.lastAutoStop = AutoStopEvent(reason: .permissionRevoked, date: Date())
                 }
             }
             .store(in: &cancellables)
@@ -669,6 +722,7 @@ final class AppState: NSObject, ObservableObject {
             guard isScheduleControlledSession && hasActiveOrPausedSession else { return }
             
             stopSession()
+            lastAutoStop = AutoStopEvent(reason: .workHoursEnded, date: Date())
             notificationManager.notifyWorkScheduleEnded()
         }
     }
@@ -740,16 +794,17 @@ final class AppState: NSObject, ObservableObject {
         performSafetyStop(.lowBattery(percent: state.percent ?? 0))
     }
 
-    private func performSafetyStop(_ reason: SafetyStopEvent.Reason) {
+    private func performSafetyStop(_ reason: AutoStopEvent.Reason) {
         // Defer so a stop requested mid-tick or mid-start finishes that work first
         DispatchQueue.main.async { [weak self] in
             guard let self, self.hasActiveOrPausedSession else { return }
             self.stopSession()
-            let event = SafetyStopEvent(reason: reason, date: Date())
-            self.lastSafetyStop = event
+            let event = AutoStopEvent(reason: reason, date: Date())
+            self.lastAutoStop = event
             switch reason {
             case .awayLimit: self.pulseLog.record(.stoppedAway)
             case .lowBattery: self.pulseLog.record(.stoppedLowBattery)
+            case .timerEnded, .workHoursEnded, .permissionRevoked: break
             }
             self.notificationManager.notifySafetyStop(title: event.title, body: event.message)
         }
@@ -866,7 +921,7 @@ final class AppState: NSObject, ObservableObject {
             performSafetyStop(.lowBattery(percent: powerSourceMonitor.state.percent ?? 0))
             return
         }
-        lastSafetyStop = nil
+        lastAutoStop = nil
         
         startSimulatorUnlessSuspended()
         
@@ -908,7 +963,8 @@ final class AppState: NSObject, ObservableObject {
         sessionTimer = nil
         guard isActive || sessionDeadline != nil,
               let delay = HeartbeatPlanner.nextTickDelay(now: Date(), deadline: sessionDeadline,
-                                                        isRunning: isActive, isMenuVisible: isMenuVisible)
+                                                        isRunning: isActive, isMenuVisible: isMenuVisible,
+                                                        showsMenuBarCountdown: menuBarLabelStyle == .iconAndTime)
         else { return }
         let timer = Timer(timeInterval: delay, repeats: false) { [weak self] _ in
             Task { @MainActor in
@@ -942,6 +998,7 @@ final class AppState: NSObject, ObservableObject {
     private func expireSessionIfNeeded() -> Bool {
         guard sessionEndCondition.hasExpired(at: Date()) else { return false }
         stopSession()
+        lastAutoStop = AutoStopEvent(reason: .timerEnded, date: Date())
         if workScheduleManager.schedule.isEnabled && workScheduleManager.isWithinSchedule {
             notificationManager.notifyQuickTimerExpired()
         }

@@ -83,6 +83,17 @@ AlwaysOn only wakes the CPU when something can change:
 - Accessibility permission is checked when it matters (opening the menu, starting a session, each tick) instead of every 10 seconds. While you grant it, AlwaysOn checks every second for up to two minutes.
 - Timers carry a tolerance so macOS can batch their wake-ups.
 
+## The Menu
+
+The menu opens with a status card: whether AlwaysOn is keeping you online, the time left (or elapsed, for sessions without an end), what started the session, when it ends, and today's online time. A ring empties as a timed session runs out.
+
+- **Keep Online / Pause / Resume** is the main button (⌘K, or ⌥⌘K from any app). The stop button next to it ends the session.
+- **Keep online for** 30m, 1h, 2h, or 4h starts a timed session in one click. During a timed session the same row becomes **Add time** (+15m to +2h), and during an unlimited one it becomes **Stop after**.
+- Short notices explain the state: why the last session ended (timer, work hours, permission turned off, or a safety stop), when simulation is waiting for a target app, and when work hours next start or end.
+- A strip of the latest input attempts shows what AlwaysOn has been sending. Click it to open the Pulse Log.
+
+**Settings > General > Menu Bar** chooses whether the menu bar item shows the time left next to its icon or only the icon. With the icon only, AlwaysOn wakes for a timed session only when it ends.
+
 ## Launcher Commands
 
 AlwaysOn registers the `alwayson://` URL scheme, so launchers like Raycast and Alfred can drive it:
@@ -94,7 +105,7 @@ AlwaysOn registers the `alwayson://` URL scheme, so launchers like Raycast and A
 
 ## Keep online until a set time
 
-Choose **Until...** in the menu to start a session now that stops at a time you pick. The window has two tabs:
+Choose **Keep Online Until…** in the menu to start a session now that stops at a time you pick. The window has two tabs:
 
 - **Time**: pick a date and time, or use **+30 min**, **+1 hr**, **+2 hr**, or **+4 hr**. Add an optional label.
 - **Calendar**: choose **Load Calendar Events**, then pick a timed event that is in progress or starts in the next 24 hours. The session uses the event's title as its label and stops when the event ends.

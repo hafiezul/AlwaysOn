@@ -83,6 +83,11 @@ struct ActivitySettingsPane: View {
         .accessibilityElement(children: .combine)
     }
 
+    /// Kinds that appear in the chart, in a fixed order so colors never shuffle
+    private func presentKinds(_ days: [DailyActivity]) -> [SessionKind] {
+        SessionKind.allCases.filter { kind in days.contains { ($0.byKind[kind] ?? 0) > 0 } }
+    }
+
     private func chart(_ days: [DailyActivity]) -> some View {
         Chart {
             ForEach(days) { day in
@@ -112,6 +117,21 @@ struct ActivitySettingsPane: View {
                 }
             }
         }
+        .chartForegroundStyleScale(domain: presentKinds(days).map(\.title),
+                                   range: presentKinds(days).map(\.chartColor))
         .chartLegend(position: .bottom, alignment: .leading)
+    }
+}
+
+extension SessionKind {
+    /// One stable color per kind across the chart and legend
+    var chartColor: Color {
+        switch self {
+        case .schedule: return .blue
+        case .timer: return .green
+        case .until: return .orange
+        case .manual: return .purple
+        case .command: return .teal
+        }
     }
 }

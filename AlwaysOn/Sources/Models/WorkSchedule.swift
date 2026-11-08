@@ -164,6 +164,23 @@ struct WorkSchedule: Codable, Equatable {
         return nil
     }
 
+    /// One line for the menu: when work hours end, or when they next start
+    func menuHint(now: Date, calendar: Calendar = .current) -> String? {
+        guard let next = nextTransition(after: now, calendar: calendar) else { return nil }
+        let time = next.formatted(date: .omitted, time: .shortened)
+        if isWithinSchedule(on: now) { return "Work hours until \(time)" }
+        let day: String
+        if calendar.isDate(next, inSameDayAs: now) {
+            day = "today"
+        } else if let tomorrow = calendar.date(byAdding: .day, value: 1, to: now),
+                  calendar.isDate(next, inSameDayAs: tomorrow) {
+            day = "tomorrow"
+        } else {
+            day = next.formatted(.dateTime.weekday(.wide))
+        }
+        return "Work hours start \(day) at \(time)"
+    }
+
     /// Calculate time until next schedule start (nil if currently within schedule or schedule disabled)
     func timeUntilNextStart() -> TimeInterval? {
         guard isEnabled, !isCurrentlyWithinSchedule else { return nil }
