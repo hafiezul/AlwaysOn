@@ -71,16 +71,7 @@ jobs:
           DMG_PATH="artifacts/AlwaysOn-${TAG_VERSION}.dmg"
 
           mkdir -p artifacts
-          mkdir -p dmg-contents
-          cp -R "$APP_PATH" dmg-contents/
-          ln -s /Applications dmg-contents/Applications
-
-          hdiutil create -volname "AlwaysOn" \
-            -srcfolder dmg-contents \
-            -ov -format UDZO \
-            "$DMG_PATH"
-
-          rm -rf dmg-contents
+          ./Scripts/build-dmg.sh "$APP_PATH" "$DMG_PATH"
 
           DMG_SHA256=$(shasum -a 256 "$DMG_PATH" | awk '{print $1}')
           echo "DMG_SHA256=$DMG_SHA256" >> "$GITHUB_ENV"

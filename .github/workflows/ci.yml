@@ -28,6 +28,16 @@ jobs:
       - name: Test bundled native CLI
         run: python3 CLI/Tests/acceptance.py build/Build/Products/Release/AlwaysOn.app/Contents/Helpers/alwayson
 
+      - name: Build installer DMG
+        run: ./Scripts/build-dmg.sh build/Build/Products/Release/AlwaysOn.app artifacts/AlwaysOn-ci.dmg
+
+      - name: Upload installer DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: AlwaysOn-installer-dmg
+          path: artifacts/AlwaysOn-ci.dmg
+          retention-days: 7
+
       - name: Run unit tests
         run: |
           xcodebuild \

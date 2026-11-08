@@ -10,7 +10,7 @@ The GitHub Actions release workflow:
 2. Disables Xcode-managed signing during the build.
 3. Ad-hoc signs the finished app bundle.
 4. Verifies the ad-hoc signature.
-5. Packages a single drag-install DMG.
+5. Packages a single drag-install DMG with `Scripts/build-dmg.sh`. The installer window's art and geometry live in `Scripts/dmg/`: edit `layout.json` or `make-background.py`, then rerun `python3 Scripts/dmg/make-background.py --preview <file.png>` and commit the regenerated PNGs.
 6. Publishes the DMG SHA-256 in the GitHub release notes.
 
 ## Signing Command
