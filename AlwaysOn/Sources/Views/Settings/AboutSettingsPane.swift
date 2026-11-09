@@ -51,7 +51,7 @@ struct AboutSettingsPane: View {
                 Button {
                     openURL(AppUpdateRepository.repositoryURL)
                 } label: {
-                    Label("GitHub", systemImage: "link")
+                    Label("Star on GitHub", systemImage: "star")
                 }
                 .buttonStyle(.link)
                 

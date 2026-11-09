@@ -328,6 +328,8 @@ struct GeneralSettingsPane: View {
 
             commandLineToolSection
 
+            UsageStatisticsSection(telemetry: appState.telemetry)
+
             // Permission status section
             Section {
                 ForEach(PermissionRowModel.all(appState: appState,
@@ -455,6 +457,59 @@ struct GeneralSettingsPane: View {
                 }
             }
         )
+    }
+}
+
+// MARK: - Usage Statistics
+
+/// The opt-in switch, shared by the setup window and Settings
+struct UsageStatisticsToggle: View {
+    @ObservedObject var telemetry: TelemetryClient
+    let source: TelemetryClient.Source
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Toggle("Share anonymous usage statistics", isOn: Binding(
+                get: { telemetry.isEnabled },
+                set: { telemetry.setEnabled($0, source: source) }
+            ))
+            Text(UsageStatisticsSection.explanation)
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+/// Settings > General > Usage Statistics: the switch and the exact payload
+struct UsageStatisticsSection: View {
+    @ObservedObject var telemetry: TelemetryClient
+    @State private var showsPayload = false
+    @State private var payload = ""
+
+    static let explanation = "Off unless you turn it on. Sends PostHog one rounded summary a day: which settings and features you use, how many sessions started, and your AlwaysOn and macOS versions. Never your name, calendar events, Wi-Fi names, app names, schedule times, or anything you type. Turning it off deletes the random ID and the counts kept on this Mac."
+
+    var body: some View {
+        Section {
+            UsageStatisticsToggle(telemetry: telemetry, source: .settings)
+
+            DisclosureGroup(isExpanded: $showsPayload) {
+                ScrollView {
+                    Text(payload)
+                        .font(.system(size: 11, design: .monospaced))
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(height: 220)
+            } label: {
+                Text(telemetry.isEnabled ? "Show the next daily summary" : "Show what would be sent")
+            }
+            .onChange(of: showsPayload) { isShown in
+                if isShown { payload = telemetry.previewSummaryJSON() }
+            }
+        } header: {
+            Text("Usage Statistics")
+        }
     }
 }
 

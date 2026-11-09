@@ -49,6 +49,9 @@ final class ActivitySimulator {
     /// Called on the main queue when a tick finds the permission revoked
     var onPermissionLost: (() -> Void)?
 
+    /// Called on the main queue when macOS refuses to create an input event
+    var onInputFailed: (() -> Void)?
+
     /// Whether to work out how long the user has been away. Off by default so
     /// a tick reads the idle time only when a feature needs it.
     var tracksRealInput = false
@@ -187,6 +190,7 @@ final class ActivitySimulator {
         
         if posted { inputTracker.recordSyntheticPost(at: now) }
         pulseLog.record(posted ? .posted : .inputCreationFailed)
+        if !posted { onInputFailed?() }
         #if DEBUG
         print("[ActivitySimulator] Activity simulated at \(Date()); next tick in \(delay)s")
         #endif

@@ -37,11 +37,9 @@ struct PermissionsView: View {
                 }
             }
 
-            Label("Nothing leaves your Mac. AlwaysOn has no account or analytics; it only checks GitHub for updates.",
-                  systemImage: "lock.shield")
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+            section("Privacy") {
+                UsageStatisticsToggle(telemetry: appState.telemetry, source: .setup)
+            }
 
             footer
         }
@@ -52,7 +50,11 @@ struct PermissionsView: View {
             // The user may be back from System Settings with a new answer
             refreshStatuses()
         }
-        .onAppear(perform: refreshStatuses)
+        .onAppear {
+            refreshStatuses()
+            // The statistics switch here counts as the first time AlwaysOn asks
+            if isFirstRun { appState.menuAsks.noteSetupOffered(now: Date()) }
+        }
         .animation(.easeInOut(duration: 0.2), value: hasAccessibility)
     }
 
