@@ -171,8 +171,18 @@ jobs:
             -f tag_name="$TAG_VERSION" \
             -f target_commitish="$GITHUB_SHA" \
             --jq .body > changes.md || echo "" > changes.md
-          if [[ ! -s changes.md ]]; then
-            echo "Maintenance release." > changes.md
+          # Work pushed straight to main has no PRs to list; use commit subjects
+          if ! grep -q '^\* ' changes.md; then
+            PREVIOUS_TAG=$(git tag --list 'v*' --sort=-v:refname | grep -vx "$TAG_VERSION" | head -1 || true)
+            RANGE="${PREVIOUS_TAG:+$PREVIOUS_TAG..}$GITHUB_SHA"
+            {
+              echo "## What's Changed"
+              echo
+              git log --no-merges --format='* %s' "$RANGE" | grep -vE '^\* (Merge|chore\(release\))' | head -50 || true
+              echo
+              cat changes.md
+            } > changes-with-commits.md
+            mv changes-with-commits.md changes.md
           fi
 
           {
