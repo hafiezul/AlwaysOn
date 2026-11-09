@@ -103,7 +103,7 @@ struct PermissionsView: View {
         DisclosureGroup(isExpanded: $showsTroubleshooting) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("1. Open Privacy & Security > Accessibility.")
-                Text("2. If AlwaysOn is listed but doesn't work, select it and click the minus button. This happens after a reinstall or update.")
+                Text("2. If AlwaysOn is listed but doesn't work, select it and click the minus button. This can happen once after upgrading from an older release, or after building AlwaysOn yourself.")
                 Text("3. Click Allow… above, or add /Applications/AlwaysOn.app with the plus button and switch it on.")
                 Button("Open Accessibility Settings") { appState.openAccessibilitySettings() }
                     .buttonStyle(.link)

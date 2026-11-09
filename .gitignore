@@ -13,6 +13,7 @@ xcuserdata/
 .build/
 .swiftpm/
 Package.resolved
+!AlwaysOn.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 
 # CocoaPods
 Pods/
@@ -41,6 +42,6 @@ PROGRESS.md
 # IDE
 .idea/
 
-# Sparkle (one-time setup files)
-Sparkle/
-Sparkle.tar.xz
+# Release signing material (see CODESIGNING.md); never commit it
+release-signing/
+*.p12
