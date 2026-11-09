@@ -13,12 +13,19 @@ jobs:
   build-and-test:
     name: Build and test
     runs-on: macos-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: build/SourcePackages
+          key: spm-${{ runner.os }}-${{ hashFiles('AlwaysOn.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
 
       - name: Build and ad-hoc sign
         env:
@@ -39,11 +46,14 @@ jobs:
           retention-days: 7
 
       - name: Run unit tests
+        # Reuses the packages the build step fetched instead of downloading them again
         run: |
           xcodebuild \
             -project AlwaysOn.xcodeproj \
             -scheme AlwaysOn \
             -destination 'platform=macOS' \
+            -clonedSourcePackagesDirPath build/SourcePackages \
+            -disableAutomaticPackageResolution \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGN_IDENTITY="" \
             test
