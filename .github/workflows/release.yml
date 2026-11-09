@@ -32,12 +32,21 @@ jobs:
   release:
     name: Build, sign, package, and publish
     runs-on: macos-latest
+    timeout-minutes: 45
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+
+      # Tag and main runs can only read caches saved by main or their own ref,
+      # never by pull requests
+      - name: Cache Swift packages
+        uses: actions/cache@v4
+        with:
+          path: build/SourcePackages
+          key: spm-${{ runner.os }}-${{ hashFiles('AlwaysOn.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
 
       - name: Resolve and validate version
         env:
@@ -134,7 +143,8 @@ jobs:
         run: |
           TOOLS="$RUNNER_TEMP/sparkle"
           mkdir -p "$TOOLS"
-          curl -fsSL -o "$TOOLS/Sparkle.tar.xz" \
+          curl -fsSL --retry 5 --retry-all-errors --retry-delay 10 --connect-timeout 30 \
+            -o "$TOOLS/Sparkle.tar.xz" \
             "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz"
           echo "${SPARKLE_SHA256}  $TOOLS/Sparkle.tar.xz" | shasum -a 256 -c -
           tar -xJf "$TOOLS/Sparkle.tar.xz" -C "$TOOLS" ./bin/sign_update
@@ -167,10 +177,10 @@ jobs:
           DOWNLOAD_URL="$REPO_URL/releases/download/$TAG_VERSION/$DMG_NAME"
 
           # What changed since the previous release, from merged PRs and commits
-          gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
+          ./Scripts/retry.sh bash -c 'gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
             -f tag_name="$TAG_VERSION" \
             -f target_commitish="$GITHUB_SHA" \
-            --jq .body > changes.md || echo "" > changes.md
+            --jq .body > changes.md' || echo "" > changes.md
           # Work pushed straight to main has no PRs to list; use commit subjects
           if ! grep -q '^\* ' changes.md; then
             PREVIOUS_TAG=$(git tag --list 'v*' --sort=-v:refname | grep -vx "$TAG_VERSION" | head -1 || true)
@@ -213,8 +223,8 @@ jobs:
 
           # Sparkle shows the changes as HTML in its update window
           jq -n --rawfile text changes.md --arg context "$GITHUB_REPOSITORY" \
-            '{text: $text, mode: "gfm", context: $context}' \
-            | gh api markdown --input - > changes.html
+            '{text: $text, mode: "gfm", context: $context}' > changes-request.json
+          ./Scripts/retry.sh bash -c 'gh api markdown --input changes-request.json > changes.html'
 
           python3 Scripts/make-appcast.py \
             --version "$VERSION" \
@@ -243,18 +253,24 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if gh release view "$TAG_VERSION" >/dev/null 2>&1; then
-            # Re-run for an existing release: refresh the assets only
-            gh release upload "$TAG_VERSION" --clobber "$DMG_PATH" artifacts/appcast.xml
-          else
-            gh release create "$TAG_VERSION" \
-              --target "$GITHUB_SHA" \
-              --title "AlwaysOn $TAG_VERSION" \
-              --notes-file release-notes.md \
-              --latest \
-              "$DMG_PATH" \
-              artifacts/appcast.xml
-          fi
+          # Safe to retry: once the release exists, a later attempt only
+          # re-uploads the assets
+          publish() {
+            if gh release view "$TAG_VERSION" >/dev/null 2>&1; then
+              # Re-run for an existing release: refresh the assets only
+              gh release upload "$TAG_VERSION" --clobber "$DMG_PATH" artifacts/appcast.xml
+            else
+              gh release create "$TAG_VERSION" \
+                --target "$GITHUB_SHA" \
+                --title "AlwaysOn $TAG_VERSION" \
+                --notes-file release-notes.md \
+                --latest \
+                "$DMG_PATH" \
+                artifacts/appcast.xml
+            fi
+          }
+          export -f publish
+          ./Scripts/retry.sh bash -c publish
 
       - name: Remove signing keychain
         if: always()

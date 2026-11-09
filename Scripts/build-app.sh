@@ -22,12 +22,25 @@ SIGN_IDENTITY="${SIGN_IDENTITY:--}"
 SIGN_KEYCHAIN="${SIGN_KEYCHAIN:-}"
 SPARKLE_PUBLIC_ED_KEY="${SPARKLE_PUBLIC_ED_KEY:-}"
 APP_PATH="$BUILD_DIR/Build/Products/Release/AlwaysOn.app"
+PACKAGES_DIR="${PACKAGES_DIR:-"$BUILD_DIR/SourcePackages"}"
+
+# Fetch Swift packages on their own first, so a transient download failure
+# (GitHub sometimes answers 5xx for Sparkle's release zip) is retried instead
+# of failing the build. The build itself then works offline.
+"$REPO_ROOT/Scripts/retry.sh" xcodebuild \
+  -project AlwaysOn.xcodeproj \
+  -scheme AlwaysOn \
+  -clonedSourcePackagesDirPath "$PACKAGES_DIR" \
+  -onlyUsePackageVersionsFromResolvedFile \
+  -resolvePackageDependencies
 
 xcodebuild \
   -project AlwaysOn.xcodeproj \
   -scheme AlwaysOn \
   -configuration Release \
   -derivedDataPath "$BUILD_DIR" \
+  -clonedSourcePackagesDirPath "$PACKAGES_DIR" \
+  -disableAutomaticPackageResolution \
   -arch arm64 -arch x86_64 \
   ONLY_ACTIVE_ARCH=NO \
   MARKETING_VERSION="$VERSION" \

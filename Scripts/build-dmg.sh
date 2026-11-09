@@ -27,7 +27,8 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 
 python3 -m venv "$WORK/venv"
-"$WORK/venv/bin/python" -m pip install --quiet "dmgbuild==$DMGBUILD_VERSION"
+"$REPO_ROOT/Scripts/retry.sh" "$WORK/venv/bin/python" -m pip install --quiet \
+  --retries 5 --timeout 60 "dmgbuild==$DMGBUILD_VERSION"
 
 rm -f "$DMG_PATH"
 "$WORK/venv/bin/dmgbuild" \
