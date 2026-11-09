@@ -53,6 +53,12 @@ struct MenuBarView: View {
             }
             .keyboardShortcut(",", modifiers: .command)
 
+            if let ask = appState.currentMenuAsk {
+                askCard(ask)
+                    .padding(.horizontal, 8)
+                    .padding(.top, 6)
+            }
+
             Divider().padding(.vertical, 4)
 
             MenuRow(title: "Quit AlwaysOn", systemImage: "power", hint: "⌘Q") {
@@ -140,6 +146,77 @@ struct MenuBarView: View {
         .background(
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .fill(Color.yellow.opacity(0.12))
+        )
+    }
+
+    // MARK: - Asks
+
+    /// A request that waits quietly in the menu: never a window, never during a session
+    @ViewBuilder
+    private func askCard(_ ask: MenuAsks.Ask) -> some View {
+        switch ask {
+        case .usageStatistics(let isLastAsk):
+            askCardBody(
+                systemImage: "chart.bar",
+                title: "Help improve AlwaysOn?",
+                message: "Share an anonymous, rounded daily summary of the features you use. Never your calendar, Wi-Fi, apps, or anything you type.",
+                acceptTitle: "Share",
+                declineTitle: isLastAsk ? "No Thanks" : "Not Now",
+                accept: { appState.acceptStatisticsFromMenu() },
+                decline: { appState.postponeStatisticsFromMenu() },
+                details: { SettingsWindowController.shared.show(appState: appState, selectedItem: .general) }
+            )
+        case .githubStar:
+            askCardBody(
+                systemImage: "star",
+                title: "Enjoying AlwaysOn?",
+                message: "A star on GitHub helps other people find it. AlwaysOn won't ask again.",
+                acceptTitle: "Star on GitHub",
+                declineTitle: "No Thanks",
+                accept: { appState.answerStarRequest(openRepository: true) },
+                decline: { appState.answerStarRequest(openRepository: false) },
+                details: nil
+            )
+        }
+    }
+
+    private func askCardBody(systemImage: String, title: String, message: String,
+                             acceptTitle: String, declineTitle: String,
+                             accept: @escaping () -> Void, decline: @escaping () -> Void,
+                             details: (() -> Void)?) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Image(systemName: systemImage)
+                    .foregroundColor(.accentColor)
+                    .frame(width: MenuMetrics.iconWidth)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.callout.weight(.medium))
+                    Text(message)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            HStack(spacing: 8) {
+                Button(acceptTitle, action: accept)
+                    .buttonStyle(ActionButtonStyle(kind: .prominent, compact: true))
+                Button(declineTitle, action: decline)
+                    .buttonStyle(ActionButtonStyle(compact: true))
+                if let details {
+                    Spacer(minLength: 0)
+                    Button("Details…", action: details)
+                        .buttonStyle(.link)
+                        .font(.caption)
+                }
+            }
+            .padding(.leading, 22)
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color.primary.opacity(0.05))
         )
     }
 

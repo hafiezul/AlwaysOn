@@ -41,6 +41,7 @@ If you find this app useful, consider supporting its development:
 - Keep online while a terminal command runs, with the `alwayson` CLI.
 - Review recent input attempts in the Pulse Log.
 - See daily online time for the last week in Settings > Activity.
+- Optionally share anonymous, rounded usage statistics. They're off until you turn them on.
 - Stop on its own after you've been away too long or the battery runs low.
 - Control sessions from Shortcuts, Spotlight, Siri, and `alwayson://` links.
 - Launch at login and show optional notifications.
@@ -347,7 +348,24 @@ A build outside the app bundle supports `help` and `version` but refuses to inst
 - AlwaysOn checks [GitHub Releases](../../releases/latest) for updates once a day and offers to install them. In **Settings > Updates** you can check now, turn off the daily check, or have updates download and install on their own.
 - AlwaysOn installs an update only if its EdDSA signature matches the key built into the app.
 - AlwaysOn signs releases with its own self-signed certificate, not an Apple Developer ID. macOS asks you to confirm the first launch. Because the certificate stays the same, Accessibility access survives updates. See [CODESIGNING.md](CODESIGNING.md).
-- AlwaysOn doesn't collect data.
+- AlwaysOn collects no data unless you turn on usage statistics. See [Usage statistics](#usage-statistics).
+
+## Usage statistics
+
+Usage statistics are off unless you turn them on, in the setup window or in **Settings > General > Usage Statistics**. If you haven't turned them on, the menu may ask at most twice, 30 days apart, and never while a session runs. The setup window's switch counts as the first time. Turning statistics off, or answering the second time, ends the asking. When they're on, AlwaysOn sends these events to [PostHog](https://posthog.com):
+
+- `telemetry_enabled` when you turn statistics on, and where you did it: setup, Settings, or the menu.
+- `app_updated` on the first launch of a new version, with the version you updated from.
+- `first_session_started` for your first session after turning statistics on, with how it started (manual, timer, work hours, and so on).
+- `daily_summary` once a day: the settings you use (pacing, input method, safety stops, power options, and which features are on), counts of sessions started, sessions that ended on their own, and failed inputs since the last summary, and your online time in the last 24 hours. Counts and times are rounded into ranges such as "2-5" or "1-2h".
+
+Every event also carries your AlwaysOn version, your macOS version (major and minor only), and whether the Mac uses Apple silicon or Intel. Events are tied to a random ID that AlwaysOn makes when you turn statistics on. The ID isn't derived from your Mac or your account.
+
+AlwaysOn never sends your name, profile names, Wi-Fi network names, calendar events, which apps you run or target, schedule times, your hotkey, or anything you type. Events ask PostHog not to look up a location or build a person profile, and PostHog discards the sender's IP address instead of storing it with events. To see the exact next summary, expand **Show the next daily summary** under the switch in Settings.
+
+Turning statistics off stops sending and deletes the random ID and the counts kept on your Mac. If you turn them on again, AlwaysOn starts with a new, unlinked ID. Builds you make yourself in the Debug configuration print events to the console instead of sending them.
+
+After two weeks and ten sessions, the menu asks once whether you'd like to star AlwaysOn on GitHub. It never asks again, whichever you choose.
 
 ## Troubleshooting
 

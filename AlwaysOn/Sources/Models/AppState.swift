@@ -17,6 +17,11 @@ final class AppState: NSObject, ObservableObject {
     @Published var isActive: Bool {
         didSet {
             UserDefaults.standard.set(isActive, forKey: Keys.isActive)
+            // A start with no paused time is a new session; resuming isn't
+            if isActive && !oldValue && pausedSessionDuration == 0 {
+                telemetry.recordSessionStart(kind: SessionKind(sessionSource))
+                menuAsks.noteSessionStarted()
+            }
             // Resuming by any route makes a scheduled resume pointless
             if isActive { cancelAutoResume() }
             handleActiveStateChange()
@@ -106,7 +111,19 @@ final class AppState: NSObject, ObservableObject {
 
     /// Why the last session ended on its own (timer, work hours, permission,
     /// safety stop), shown in the menu until the next session starts
-    @Published var lastAutoStop: AutoStopEvent?
+    @Published var lastAutoStop: AutoStopEvent? {
+        didSet {
+            if let lastAutoStop, lastAutoStop != oldValue { telemetry.recordAutoStop(lastAutoStop.reason) }
+        }
+    }
+
+    /// The usage statistics and GitHub star requests the menu may show
+    @Published var menuAsks: MenuAsks {
+        didSet {
+            guard menuAsks != oldValue, let data = try? JSONEncoder().encode(menuAsks) else { return }
+            UserDefaults.standard.set(data, forKey: Keys.menuAsks)
+        }
+    }
 
     /// Whether joining a Wi-Fi network listed on a profile switches to that profile
     @Published var switchProfilesByNetwork: Bool {
@@ -300,6 +317,9 @@ final class AppState: NSObject, ObservableObject {
     /// Notification manager for work schedule events
     let notificationManager = NotificationManager()
 
+    /// Opt-in anonymous usage statistics
+    let telemetry = TelemetryClient.shared
+
     /// Daily online time, kept on this Mac for 30 days
     let activityHistory = ActivityHistoryStore()
 
@@ -389,6 +409,7 @@ final class AppState: NSObject, ObservableObject {
         static let adaptivePostAfter = "adaptivePostAfterSeconds"
         static let savesEnergyWhenConstrained = "savesEnergyWhenConstrained"
         static let sleepPrevention = "sleepPrevention"
+        static let menuAsks = "menuAsks"
     }
     
     enum Defaults {
@@ -476,8 +497,11 @@ final class AppState: NSObject, ObservableObject {
         self._savesEnergyWhenConstrained = Published(initialValue: defaults.object(forKey: Keys.savesEnergyWhenConstrained) as? Bool ?? true)
         self._sleepPrevention = Published(initialValue: SleepPrevention(rawValue: defaults.string(forKey: Keys.sleepPrevention) ?? "") ?? .off)
         self._energyState = Published(initialValue: EnergyMonitor.readState())
+        self._menuAsks = Published(initialValue: defaults.data(forKey: Keys.menuAsks)
+            .flatMap { try? JSONDecoder().decode(MenuAsks.self, from: $0) } ?? MenuAsks())
         super.init()
         Self.shared = self
+        menuAsks.noteLaunch(now: Date())
         activitySimulator.gate.idleOnlyEnabled = simulateOnlyWhenIdle
         activitySimulator.gate.requireTargetApp = requireTargetApp
         activitySimulator.gate.targetBundleIDs = targetApps
@@ -487,6 +511,9 @@ final class AppState: NSObject, ObservableObject {
         }
         activitySimulator.onPermissionLost = { [weak self] in
             Task { @MainActor in self?.accessibilityPermission.refresh() }
+        }
+        activitySimulator.onInputFailed = { [weak self] in
+            Task { @MainActor in self?.telemetry.recordInputFailure() }
         }
         systemSuspension = systemEventMonitor.conditions.suspensionReason(pauseWhileLocked: pauseWhileScreenLocked)
         activitySimulator.tracksRealInput = awayLimit != .off
@@ -539,6 +566,7 @@ final class AppState: NSObject, ObservableObject {
         setupNetworkProfiles()
         setupPacingAndPower()
         setupFocusRestore()
+        setupTelemetry()
         accessibilityPermission.refresh()
         // Pick up a Focus that is already on, or one that ended while AlwaysOn was closed
         refreshFocusFilter(onlyIfFocusOwnsSomething: false)
