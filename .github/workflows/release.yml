@@ -10,13 +10,27 @@ on:
         description: "Release version without the leading v (e.g. 1.8.0)"
         required: true
         type: string
+      dry_run:
+        description: "Build, sign, and package only; upload the DMG and appcast as a workflow artifact instead of publishing"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
 
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  SPARKLE_VERSION: 2.10.1
+  SPARKLE_SHA256: 1a856d2a9edb8e628de88121d7be04cf0e2167f8641650b78fca00b14244cf27
+  MINIMUM_MACOS: "13.0"
+
 jobs:
   release:
-    name: Build, package, and publish
+    name: Build, sign, package, and publish
     runs-on: macos-latest
 
     steps:
@@ -26,9 +40,12 @@ jobs:
           fetch-depth: 0
 
       - name: Resolve and validate version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          DRY_RUN: ${{ inputs.dry_run || false }}
         run: |
           if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
-            VERSION_INPUT="${{ inputs.version }}"
+            VERSION_INPUT="$INPUT_VERSION"
           else
             VERSION_INPUT="${GITHUB_REF#refs/tags/}"
           fi
@@ -37,81 +54,201 @@ jobs:
           TAG_VERSION="v${VERSION}"
 
           if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Invalid version '$VERSION_INPUT': release versions must look like 1.8.0" >&2
+            echo "::error::Invalid version '$VERSION_INPUT': release versions must look like 1.8.0"
             exit 1
           fi
 
-          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+          # The Actions-tab run creates the tag when it publishes, so a failed
+          # build leaves no tag behind and can simply be run again
+          if [[ "$GITHUB_EVENT_NAME" == "workflow_dispatch" && "$DRY_RUN" != "true" ]]; then
             if git ls-remote --exit-code --tags origin "refs/tags/$TAG_VERSION" >/dev/null 2>&1; then
-              echo "Tag $TAG_VERSION already exists on origin." >&2
+              echo "::error::Tag $TAG_VERSION already exists on origin."
               exit 1
             fi
-
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git tag "$TAG_VERSION"
-            git push origin "$TAG_VERSION"
           fi
 
+          # Sparkle compares this against the installed CFBundleVersion
           BUILD_NUMBER=$(git rev-list --count HEAD)
 
-          echo "TAG_VERSION=$TAG_VERSION" >> "$GITHUB_ENV"
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
+          {
+            echo "TAG_VERSION=$TAG_VERSION"
+            echo "VERSION=$VERSION"
+            echo "BUILD_NUMBER=$BUILD_NUMBER"
+            echo "DRY_RUN=$DRY_RUN"
+          } >> "$GITHUB_ENV"
 
           echo "Marketing Version: $VERSION"
           echo "Build Number: $BUILD_NUMBER"
 
-      - name: Build and ad-hoc sign
+      - name: Check release signing configuration
+        env:
+          HAS_CERT: ${{ secrets.MACOS_SIGNING_CERT_P12 != '' && secrets.MACOS_SIGNING_CERT_PASSWORD != '' }}
+          HAS_ED_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY != '' }}
+          SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY }}
+        run: |
+          missing=()
+          [[ "$HAS_CERT" == "true" ]] || missing+=("secrets MACOS_SIGNING_CERT_P12 and MACOS_SIGNING_CERT_PASSWORD")
+          [[ "$HAS_ED_KEY" == "true" ]] || missing+=("secret SPARKLE_ED_PRIVATE_KEY")
+          [[ -n "$SPARKLE_PUBLIC_ED_KEY" ]] || missing+=("variable SPARKLE_PUBLIC_ED_KEY")
+          if (( ${#missing[@]} )); then
+            for item in "${missing[@]}"; do
+              echo "::error::Missing $item. Run Scripts/setup-release-signing.sh on your Mac (see CODESIGNING.md)."
+            done
+            exit 1
+          fi
+
+      - name: Import signing certificate
+        env:
+          MACOS_SIGNING_CERT_P12: ${{ secrets.MACOS_SIGNING_CERT_P12 }}
+          MACOS_SIGNING_CERT_PASSWORD: ${{ secrets.MACOS_SIGNING_CERT_PASSWORD }}
+          EXPECTED_SIGNING_CERT_SHA1: ${{ vars.SIGNING_CERT_SHA1 }}
+        run: ./Scripts/import-signing-identity.sh
+
+      - name: Build and sign
+        env:
+          SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY }}
         run: ./Scripts/build-app.sh
 
-      - name: Prepare DMG
+      - name: Package DMG
         run: |
           APP_PATH="build/Build/Products/Release/AlwaysOn.app"
-          DMG_PATH="artifacts/AlwaysOn-${TAG_VERSION}.dmg"
+          DMG_NAME="AlwaysOn-${TAG_VERSION}.dmg"
+          DMG_PATH="artifacts/$DMG_NAME"
 
           mkdir -p artifacts
           ./Scripts/build-dmg.sh "$APP_PATH" "$DMG_PATH"
 
           DMG_SHA256=$(shasum -a 256 "$DMG_PATH" | awk '{print $1}')
-          echo "DMG_SHA256=$DMG_SHA256" >> "$GITHUB_ENV"
+          {
+            echo "DMG_NAME=$DMG_NAME"
+            echo "DMG_PATH=$DMG_PATH"
+            echo "DMG_SHA256=$DMG_SHA256"
+          } >> "$GITHUB_ENV"
 
           ls -la artifacts/
 
-      - name: Create release notes
+      - name: Sign the update for Sparkle
+        env:
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+          SPARKLE_PUBLIC_ED_KEY: ${{ vars.SPARKLE_PUBLIC_ED_KEY }}
         run: |
-          cat > release-notes.md << EOFNOTES
-          ## Installation
+          TOOLS="$RUNNER_TEMP/sparkle"
+          mkdir -p "$TOOLS"
+          curl -fsSL -o "$TOOLS/Sparkle.tar.xz" \
+            "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_VERSION}/Sparkle-${SPARKLE_VERSION}.tar.xz"
+          echo "${SPARKLE_SHA256}  $TOOLS/Sparkle.tar.xz" | shasum -a 256 -c -
+          tar -xJf "$TOOLS/Sparkle.tar.xz" -C "$TOOLS" ./bin/sign_update
 
-          1. Download \`AlwaysOn-${TAG_VERSION}.dmg\` below.
+          KEY_FILE="$RUNNER_TEMP/sparkle-ed-key"
+          (umask 077; printf '%s' "$SPARKLE_ED_PRIVATE_KEY" > "$KEY_FILE")
+          SIGN_OUTPUT=$("$TOOLS/bin/sign_update" --ed-key-file "$KEY_FILE" "$DMG_PATH")
+          rm -f "$KEY_FILE"
+
+          ED_SIGNATURE=$(printf '%s' "$SIGN_OUTPUT" | sed -n 's/.*sparkle:edSignature="\([^"]*\)".*/\1/p')
+          if [[ -z "$ED_SIGNATURE" ]]; then
+            echo "::error::sign_update did not return a signature"
+            exit 1
+          fi
+          echo "ED_SIGNATURE=$ED_SIGNATURE" >> "$GITHUB_ENV"
+
+          # The app only trusts updates signed with the key matching the one it carries
+          APP_KEY=$(/usr/libexec/PlistBuddy -c "Print :SUPublicEDKey" build/Build/Products/Release/AlwaysOn.app/Contents/Info.plist)
+          if [[ "$APP_KEY" != "$SPARKLE_PUBLIC_ED_KEY" ]]; then
+            echo "::error::The app's SUPublicEDKey does not match vars.SPARKLE_PUBLIC_ED_KEY"
+            exit 1
+          fi
+
+      - name: Write release notes and appcast
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REPO_URL="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
+          RELEASE_URL="$REPO_URL/releases/tag/$TAG_VERSION"
+          DOWNLOAD_URL="$REPO_URL/releases/download/$TAG_VERSION/$DMG_NAME"
+
+          # What changed since the previous release, from merged PRs and commits
+          gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
+            -f tag_name="$TAG_VERSION" \
+            -f target_commitish="$GITHUB_SHA" \
+            --jq .body > changes.md || echo "" > changes.md
+          if [[ ! -s changes.md ]]; then
+            echo "Maintenance release." > changes.md
+          fi
+
+          {
+            cat changes.md
+            cat << EOFNOTES
+
+          ## Updating
+
+          If your AlwaysOn has **Settings > Updates > Check for Updates…**, it installs this release itself and keeps its Accessibility access. Older versions need one manual install from the DMG below; after replacing the app, remove the old AlwaysOn entry from System Settings > Privacy & Security > Accessibility and add \`/Applications/AlwaysOn.app\` again. That's the last time.
+
+          ## Installing
+
+          1. Download \`${DMG_NAME}\` below.
           2. Open the DMG and drag \`AlwaysOn.app\` to Applications.
           3. Launch AlwaysOn from Applications.
           4. If macOS says Apple could not verify the app is free of malware, open System Settings > Privacy & Security, scroll to Security, click Open Anyway for AlwaysOn, then confirm Open Anyway.
           5. Grant Accessibility permission when prompted.
 
-          This release is unsigned and uses manual updates from GitHub Releases.
-
-          If Accessibility stops working after replacing the app, remove the old AlwaysOn entry from System Settings > Privacy & Security > Accessibility, then add and enable \`/Applications/AlwaysOn.app\` again.
+          This release is signed with AlwaysOn's own certificate rather than an Apple Developer ID, which is why macOS asks you to confirm the first launch.
 
           DMG SHA-256:
 
           \`\`\`
           ${DMG_SHA256}
           \`\`\`
-
-          See the README for full installation and troubleshooting instructions.
           EOFNOTES
+          } > release-notes.md
 
-      - name: Create GitHub Release
+          # Sparkle shows the changes as HTML in its update window
+          jq -n --rawfile text changes.md --arg context "$GITHUB_REPOSITORY" \
+            '{text: $text, mode: "gfm", context: $context}' \
+            | gh api markdown --input - > changes.html
+
+          python3 Scripts/make-appcast.py \
+            --version "$VERSION" \
+            --build "$BUILD_NUMBER" \
+            --dmg "$DMG_PATH" \
+            --ed-signature "$ED_SIGNATURE" \
+            --download-url "$DOWNLOAD_URL" \
+            --release-url "$RELEASE_URL" \
+            --notes-html changes.html \
+            --minimum-system-version "$MINIMUM_MACOS" \
+            --output artifacts/appcast.xml
+
+          cp release-notes.md artifacts/release-notes.md
+          cat release-notes.md
+
+      - name: Upload dry-run artifacts
+        if: env.DRY_RUN == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: AlwaysOn-${{ env.TAG_VERSION }}-dry-run
+          path: artifacts/
+          retention-days: 7
+
+      - name: Publish GitHub release
+        if: env.DRY_RUN != 'true'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          DMG="artifacts/AlwaysOn-${TAG_VERSION}.dmg"
           if gh release view "$TAG_VERSION" >/dev/null 2>&1; then
-            gh release upload "$TAG_VERSION" --clobber "$DMG"
+            # Re-run for an existing release: refresh the assets only
+            gh release upload "$TAG_VERSION" --clobber "$DMG_PATH" artifacts/appcast.xml
           else
             gh release create "$TAG_VERSION" \
-              --title "$TAG_VERSION (unsigned)" \
+              --target "$GITHUB_SHA" \
+              --title "AlwaysOn $TAG_VERSION" \
               --notes-file release-notes.md \
-              "$DMG"
+              --latest \
+              "$DMG_PATH" \
+              artifacts/appcast.xml
+          fi
+
+      - name: Remove signing keychain
+        if: always()
+        run: |
+          if [[ -n "${SIGN_KEYCHAIN:-}" ]]; then
+            security delete-keychain "$SIGN_KEYCHAIN" || true
           fi

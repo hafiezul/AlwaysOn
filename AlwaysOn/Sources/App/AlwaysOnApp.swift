@@ -9,6 +9,8 @@ struct AlwaysOnApp: App {
         let state = AppState()
         _appState = StateObject(wrappedValue: state)
         appDelegate.appState = state
+        // Start Sparkle's scheduled checks; a no-op in builds without an update key
+        _ = AppUpdater.shared
     }
 
     private var menuBarIconName: String {

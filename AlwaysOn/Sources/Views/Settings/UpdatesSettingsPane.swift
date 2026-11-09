@@ -1,7 +1,72 @@
 import SwiftUI
 
-/// Updates settings pane for manual update from GitHub Releases
+/// Updates settings: Sparkle auto-updates in release builds, a manual GitHub
+/// release check in local builds that carry no update key.
 struct UpdatesSettingsPane: View {
+    @ObservedObject private var updater = AppUpdater.shared
+
+    var body: some View {
+        if updater.isConfigured {
+            AutomaticUpdatesForm(updater: updater)
+        } else {
+            ManualUpdatesForm()
+        }
+    }
+}
+
+// MARK: - Automatic (Sparkle)
+
+private struct AutomaticUpdatesForm: View {
+    @ObservedObject var updater: AppUpdater
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Check for updates automatically", isOn: $updater.automaticallyChecksForUpdates)
+
+                Toggle("Download and install updates automatically", isOn: $updater.automaticallyDownloadsUpdates)
+                    .disabled(!updater.automaticallyChecksForUpdates)
+
+                HStack {
+                    Button("Check for Updates…") {
+                        updater.checkForUpdates()
+                    }
+                    .disabled(!updater.canCheckForUpdates)
+
+                    Spacer()
+
+                    Text(lastCheckedText)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+            } header: {
+                Text("Automatic Updates")
+            } footer: {
+                Text("AlwaysOn relaunches to finish installing an update.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
+
+            Section {
+                Text("Updates come from GitHub Releases. AlwaysOn installs one only after checking its signature, and every release is signed with the same certificate, so Accessibility access carries over to the new version.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            } header: {
+                Text("About Updates")
+            }
+        }
+        .formStyle(.grouped)
+    }
+
+    private var lastCheckedText: String {
+        guard let date = updater.lastUpdateCheckDate else { return "Not checked yet" }
+        return "Last checked \(date.formatted(.relative(presentation: .named)))"
+    }
+}
+
+// MARK: - Manual (local builds)
+
+private struct ManualUpdatesForm: View {
     @Environment(\.openURL) private var openURL
     @State private var isChecking = false
     @State private var updateInfo: UpdateChecker.UpdateInfo?
@@ -10,7 +75,7 @@ struct UpdatesSettingsPane: View {
     var body: some View {
         Form {
             Section {
-                Text("This build uses manual updates because it is not signed with Apple Developer ID.")
+                Text("This build can't update itself. Release builds from GitHub update automatically.")
                     .font(.caption)
                     .foregroundColor(.secondary)
 
@@ -32,14 +97,6 @@ struct UpdatesSettingsPane: View {
                 }
             } header: {
                 Text("Manual Updates")
-            }
-
-            Section {
-                Text("Download updates from GitHub Releases. If Accessibility access breaks after installing a new version, remove the old AlwaysOn entry from Accessibility settings and re-add it.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            } header: {
-                Text("About Updates")
             }
         }
         .formStyle(.grouped)

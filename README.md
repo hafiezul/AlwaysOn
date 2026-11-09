@@ -37,6 +37,7 @@ If you find this app useful, consider supporting its development:
 - Stop automatically after you've been away too long or the battery runs low
 - Control sessions from Shortcuts, Spotlight, and Siri
 - Enable launch at login and optional notifications
+- Update automatically from GitHub Releases, keeping Accessibility access
 - Save profiles for different activity and schedule setups
 - Switch profiles automatically when you join a Wi-Fi network
 
@@ -50,7 +51,9 @@ If you find this app useful, consider supporting its development:
 4. If macOS says Apple could not verify the app is free of malware, open **System Settings > Privacy & Security**, scroll to **Security**, click **Open Anyway** for AlwaysOn, then confirm **Open Anyway**.
 5. The setup window lists every permission AlwaysOn uses. Allow **Accessibility**, which is required. **Notifications**, **Location** (for Wi-Fi profile switching), and **Calendar** (for Keep Online Until a meeting ends) are optional, and you can change them later in **Settings > General > Permissions**.
 
-If Accessibility breaks after a reinstall or update, remove the old AlwaysOn entry from **System Settings > Privacy & Security > Accessibility**, then add and enable `/Applications/AlwaysOn.app` again.
+After that, AlwaysOn updates itself (see [Updates](#permissions-and-updates)). Every release is signed with the same certificate, so Accessibility access carries over to each new version.
+
+Coming from a version without **Settings > Updates > Check for Updates…**? Install the new release from the DMG once, then remove the old AlwaysOn entry from **System Settings > Privacy & Security > Accessibility** and add and enable `/Applications/AlwaysOn.app` again. You won't need to do this for later updates.
 
 ### Build From Source
 
@@ -267,8 +270,9 @@ Ctrl-C reaches the command directly. The helper waits for the command to exit, t
 
 - Accessibility permission is required because the app simulates keyboard or mouse input.
 - Calendar access is optional. AlwaysOn asks for it only when you allow it in the setup window or load events in the **Keep Online Until…** window.
-- Releases are unsigned and updated manually from [GitHub Releases](../../releases/latest).
-- If Accessibility stops working after an upgrade or reinstall, remove the old entry in Accessibility settings and add `AlwaysOn.app` again.
+- AlwaysOn checks [GitHub Releases](../../releases/latest) for updates once a day and offers to install them. **Settings > Updates** lets you check now, turn the daily check off, or have updates download and install on their own.
+- Updates install only when their EdDSA signature matches the key built into the app.
+- Releases are signed with AlwaysOn's own self-signed certificate, not an Apple Developer ID. macOS asks you to confirm the first launch, but because the certificate never changes, Accessibility access survives updates. See [CODESIGNING.md](CODESIGNING.md).
 - The app does not collect data.
 
 ## Troubleshooting
@@ -279,7 +283,7 @@ Try launching AlwaysOn once, then open **System Settings > Privacy & Security**,
 
 ### Accessibility permission is not working
 
-Remove any old AlwaysOn entry from **System Settings > Privacy & Security > Accessibility**, add `/Applications/AlwaysOn.app` again, enable it, and relaunch AlwaysOn.
+This can happen once when you move from an older release to one that updates itself, or after building the app yourself. Remove any old AlwaysOn entry from **System Settings > Privacy & Security > Accessibility**, add `/Applications/AlwaysOn.app` again, enable it, and relaunch AlwaysOn.
 
 ### The app is not keeping status active
 

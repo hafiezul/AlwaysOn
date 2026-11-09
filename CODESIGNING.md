@@ -1,43 +1,80 @@
-# Unsigned Release Workflow
+# Release Signing and Updates
 
-AlwaysOn releases are built for manual installation without an Apple Developer ID.
+AlwaysOn ships without an Apple Developer ID. Releases are signed with a long-lived self-signed certificate, and updates are delivered with [Sparkle](https://sparkle-project.org) and verified with an EdDSA key.
 
-The release can be started from the GitHub Actions tab by running the Release workflow with a version like `1.8.0`, or by pushing a `v1.8.0` tag. Both entry points run the same pipeline; the Actions-tab run creates the tag itself and refuses to reuse an existing tag.
+## Why a self-signed certificate
 
-The GitHub Actions release workflow:
+macOS ties Accessibility access to the app's *designated requirement*, a rule recorded in the code signature that says which code counts as "the same app".
 
-1. Builds `AlwaysOn.app` in Release configuration.
-2. Disables Xcode-managed signing during the build.
-3. Ad-hoc signs the finished app bundle.
-4. Verifies the ad-hoc signature.
-5. Packages a single drag-install DMG with `Scripts/build-dmg.sh`. The installer window's art and geometry live in `Scripts/dmg/`: edit `layout.json` or `make-background.py`, then rerun `python3 Scripts/dmg/make-background.py --preview <file.png>` and commit the regenerated PNGs.
-6. Publishes the DMG SHA-256 in the GitHub release notes.
+- **Ad-hoc signature** (`codesign --sign -`, used by releases up to 1.11): the requirement is the exact hash of that build. Every new build fails it, so macOS treats each update as a different app. That's why you had to remove AlwaysOn from Accessibility settings and add it again after each update.
+- **Self-signed certificate**: the requirement becomes the bundle identifier plus the certificate's hash (`identifier "com.alwayson.app" and certificate … = H"…"`). Every build signed with the same certificate meets it, so Accessibility access carries over.
 
-## Signing Command
+The certificate does not make Gatekeeper trust the app. The first launch still needs **Open Anyway** in Privacy & Security. Updates installed by Sparkle don't, because Sparkle removes the download quarantine flag.
 
-The release workflow signs the app with a local ad-hoc identity:
+**Never replace the certificate.** A release signed with a new one resets Accessibility access for every user once. Set the `SIGNING_CERT_SHA1` variable and the release workflow refuses to sign with any other certificate.
+
+## How updates work
+
+1. The app reads `https://github.com/hafiezul/AlwaysOn/releases/latest/download/appcast.xml`, the appcast attached to the latest release.
+2. If the appcast lists a higher build number (`sparkle:version`, the commit count), Sparkle offers the update.
+3. Sparkle downloads the DMG, checks its EdDSA signature against `SUPublicEDKey` in the running app, and checks that the new app has the same code signing requirement. Then it replaces the app and relaunches it.
+
+Builds without `SPARKLE_PUBLIC_ED_KEY` (local and CI builds) have no updater; **Settings > Updates** falls back to a manual GitHub release check.
+
+## One-time setup
+
+On your Mac, from the repository:
 
 ```bash
-codesign --force --deep --sign - build/Build/Products/Release/AlwaysOn.app
-codesign --verify --deep --strict --verbose=2 build/Build/Products/Release/AlwaysOn.app
+Scripts/setup-release-signing.sh            # writes to ~/AlwaysOn-release-signing
 ```
 
-This gives macOS a stable signed bundle to evaluate, but it does not make the app trusted as an identified developer download.
+The script:
 
-Hardened runtime stays disabled for unsigned releases because the ad-hoc signature combined with Gatekeeper checks is sufficient for drag-install distribution, and it keeps the signing surface minimal.
+1. Creates the self-signed code signing certificate (valid for 20 years) as `cert.p12` with a random password.
+2. Creates the Sparkle EdDSA key pair with OpenSSL 3 (`brew install openssl@3`), which needs no keychain and so also works over SSH. Without OpenSSL 3 it falls back to Sparkle's `generate_keys` (version and SHA-256 pinned), which also stores the key in your login keychain under the account `alwayson-release`.
+3. Prints the GitHub Actions secrets and variables, and offers to set them with `gh`:
 
-## User Install Behavior
+| Name | Kind | Value |
+| --- | --- | --- |
+| `MACOS_SIGNING_CERT_P12` | secret | `cert.p12.base64` |
+| `MACOS_SIGNING_CERT_PASSWORD` | secret | `cert-password.txt` |
+| `SPARKLE_ED_PRIVATE_KEY` | secret | `sparkle-private-key.txt` |
+| `SPARKLE_PUBLIC_ED_KEY` | variable | the public key it prints |
+| `SIGNING_CERT_SHA1` | variable | the certificate SHA-1 it prints |
 
-Users install the app from Finder:
+4. Offers to import the certificate into your login keychain, so your local builds can keep Accessibility access too.
 
-1. Download the latest DMG from GitHub Releases.
-2. Open the DMG.
-3. Drag `AlwaysOn.app` to Applications.
-4. If Gatekeeper blocks first launch, open **System Settings > Privacy & Security**, scroll to **Security**, click **Open Anyway** for AlwaysOn, then confirm **Open Anyway**.
-5. Grant Accessibility permission when prompted.
+Back up `~/AlwaysOn-release-signing` (a password manager works) and keep it out of git. Running the script again reuses what's there.
 
-Accessibility permission is still required because AlwaysOn simulates keyboard or mouse input. After replacing the app with a new release, macOS may require users to remove the old AlwaysOn entry from **System Settings > Privacy & Security > Accessibility**, then add and enable `/Applications/AlwaysOn.app` again.
+Over SSH, macOS doesn't unlock the login keychain, so `gh` on the Mac may look logged out and the keychain import fails. Answer no to both, then copy the files to the GitHub settings with `gh` from another machine.
 
-## Fully Trusted Distribution
+## Cutting a release
 
-A fully seamless install for downloaded macOS apps requires an Apple Developer ID certificate and notarization. That path is intentionally not part of the current release workflow.
+From the Actions tab, run **Release** with a version like `1.12.0`, or push a `v1.12.0` tag. Tick **dry run** to build, sign, and package without publishing; the DMG and appcast are uploaded as a workflow artifact. A dry run is a good first check that the secrets work.
+
+The workflow:
+
+1. Validates the version and, for Actions-tab runs, that the tag doesn't exist yet. The tag is created only when the release is published, so a failed run can be rerun.
+2. Fails early if a secret or variable is missing.
+3. Imports the certificate into a temporary keychain, checking it against `SIGNING_CERT_SHA1`.
+4. Builds a universal Release app with `Scripts/build-app.sh` and signs it from the inside out: the CLI helper, Sparkle's helpers, Sparkle, then the app. It fails if the designated requirement isn't certificate-based.
+5. Packages the drag-install DMG with `Scripts/build-dmg.sh`. The installer window's art and geometry live in `Scripts/dmg/`: edit `layout.json` or `make-background.py`, then rerun `python3 Scripts/dmg/make-background.py --preview <file.png>` and commit the regenerated PNGs.
+6. Signs the DMG with the Sparkle EdDSA key and checks that the app carries the matching public key.
+7. Builds the release notes from GitHub's generated notes (merged PRs since the last tag) plus install instructions, and writes `appcast.xml` with the same notes as HTML.
+8. Publishes the release with the DMG and `appcast.xml`, and deletes the temporary keychain.
+
+## Local builds
+
+```bash
+Scripts/build-app.sh                                    # ad-hoc, no updater
+SIGN_IDENTITY=<certificate SHA-1> Scripts/build-app.sh  # same requirement as releases
+```
+
+Add `SPARKLE_PUBLIC_ED_KEY=<public key>` to build an app that updates itself.
+
+Hardened runtime stays off: its library validation needs an Apple Team ID, which a self-signed certificate doesn't have.
+
+## Fully trusted distribution
+
+Skipping the **Open Anyway** step on first launch requires an Apple Developer ID certificate and notarization. Sparkle updates work the same way with either certificate. Switching to a Developer ID later resets Accessibility access once, like any certificate change.

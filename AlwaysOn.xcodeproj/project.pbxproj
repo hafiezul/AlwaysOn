@@ -24,6 +24,8 @@
 
 
 /* Begin PBXBuildFile section */
+		E100000000000001 /* AppUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = E200000000000001 /* AppUpdater.swift */; };
+		E100000000000002 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = E300000000000001 /* Sparkle */; };
 		DBD994DC6D1397B3 /* HotKeyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D912935646364868 /* HotKeyTests.swift */; };
 		D69C74EBBD0F6F3C /* HotKeyRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCF1B9043C1B7720 /* HotKeyRecorder.swift */; };
 		D6D9F6EB6BC49DCF /* HotKey.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE3C0A7296B2C07D /* HotKey.swift */; };
@@ -203,6 +205,7 @@
 		A2000000000000A3 /* UntilSessionWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UntilSessionWindowController.swift; sourceTree = "<group>"; };
 		A2000000000000A4 /* CalendarEventProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarEventProvider.swift; sourceTree = "<group>"; };
 		A2000000000000A5 /* PulseLogWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PulseLogWindowController.swift; sourceTree = "<group>"; };
+		E200000000000001 /* AppUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppUpdater.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -210,6 +213,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				E100000000000002 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -303,6 +307,7 @@
 				200000000000000F /* PermissionsWindowController.swift */,
 				2000000000000020 /* ProfileManager.swift */,
 				2000000000000015 /* SettingsWindowController.swift */,
+				E200000000000001 /* AppUpdater.swift */,
 				2000000000000009 /* UpdateChecker.swift */,
 				A2000000000000A5 /* PulseLogWindowController.swift */,
 				A2000000000000A4 /* CalendarEventProvider.swift */,
@@ -428,6 +433,9 @@
                 C1000000000000000000000C,
 			);
 			name = AlwaysOn;
+			packageProductDependencies = (
+				E300000000000001 /* Sparkle */,
+			);
 			productName = AlwaysOn;
 			productReference = 3000000000000001 /* AlwaysOn.app */;
 			productType = "com.apple.product-type.application";
@@ -474,6 +482,9 @@
 				Base,
 			);
 			mainGroup = 5000000000000001;
+			packageReferences = (
+				E400000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			productRefGroup = 5000000000000009 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
@@ -531,6 +542,7 @@
 				1000000000000002 /* AppState.swift in Sources */,
 				1000000000000003 /* ActivitySimulator.swift in Sources */,
 				1000000000000005 /* MenuBarView.swift in Sources */,
+				E100000000000001 /* AppUpdater.swift in Sources */,
 				1000000000000007 /* UpdateChecker.swift in Sources */,
 				1000000000000008 /* LaunchAtLoginManager.swift in Sources */,
 				100000000000000C /* AccessibilityPermission.swift in Sources */,
@@ -829,6 +841,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		E400000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = exactVersion;
+				version = 2.10.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		E300000000000001 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = E400000000000001 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 8000000000000001 /* Project object */;
 }
