@@ -28,13 +28,24 @@ const BUMP_HEIGHT = 2.2;
 const RIPPLE_SPEED = 18; // blocks per second
 const RIPPLE_LIFE = 2.6; // seconds
 
-const COLORS = {
-  block: new Color("#09090a"),
-  lift: new Color("#6e6e76"),
-  ripple: new Color("#30d158"),
-  away: new Color("#3a2608"),
-  gap: new Color("#000000"),
+// One palette per appearance. Control Center on the page switches between them.
+const PALETTES = {
+  dark: {
+    block: new Color("#09090a"),
+    lift: new Color("#6e6e76"),
+    ripple: new Color("#30d158"),
+    away: new Color("#3a2608"),
+    gap: new Color("#000000"),
+  },
+  light: {
+    block: new Color("#d9d9e0"),
+    lift: new Color("#ffffff"),
+    ripple: new Color("#34c759"),
+    away: new Color("#ecd9a0"),
+    gap: new Color("#b9b9c2"),
+  },
 };
+let COLORS = PALETTES.dark;
 
 export function start({ demo, hero }) {
   const canvas = document.createElement("canvas");
@@ -44,7 +55,12 @@ export function start({ demo, hero }) {
 
   const renderer = new WebGLRenderer({ canvas, antialias: true, powerPreference: "low-power" });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-  renderer.setClearColor(COLORS.gap);
+  const applyTheme = () => {
+    COLORS = document.documentElement.dataset.theme === "light" ? PALETTES.light : PALETTES.dark;
+    renderer.setClearColor(COLORS.gap);
+  };
+  applyTheme();
+  document.addEventListener("themechange", applyTheme);
 
   const scene = new Scene();
   scene.add(new AmbientLight(0xffffff, 0.45 * Math.PI));
