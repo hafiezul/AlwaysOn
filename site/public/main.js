@@ -5,6 +5,11 @@
 // window records each attempt in the app's own words. With no input for 5
 // simulated minutes, the headline's second dot turns Away yellow. hero3d.js
 // draws the hero's pixel field when WebGL is available and motion is allowed.
+//
+// Around the demo, the page behaves like a Mac: windows open from the Dock
+// and the desktop, drag, resize, zoom and minimize; the app's name opens a
+// menu; notifications slide in under the menu bar; and the screen can lock,
+// which pauses AlwaysOn the way a locked Mac does.
 
 const SPEED = 20;
 const TICK_MS = 100;
@@ -19,6 +24,7 @@ const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
 const timeFormat = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
 const clockFormat = new Intl.DateTimeFormat(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" });
+const dateFormat = new Intl.DateTimeFormat(undefined, { weekday: "long", month: "long", day: "numeric" });
 const secondsFormat = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit", second: "2-digit" });
 
 function hms(seconds) {
@@ -33,13 +39,69 @@ function duration(seconds) {
   return h ? `${h}h` : `${m}m`;
 }
 
-// Latest version
+// Visit counts. They're anonymous and nothing is stored in the browser;
+// src/worker.js explains what is sent on. The ID below only ties this page
+// load's events together and is gone when the page closes.
+
+const visit = uuidv7();
+
+function uuidv7() {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  const time = Date.now();
+  for (let index = 0; index < 6; index += 1) bytes[index] = Math.floor(time / 2 ** (8 * (5 - index))) % 256;
+  bytes[6] = (bytes[6] & 0x0f) | 0x70;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function track(event, name) {
+  try {
+    navigator.sendBeacon?.(
+      "/e",
+      JSON.stringify({
+        event,
+        name,
+        session: visit,
+        url: location.href,
+        referrer: document.referrer,
+        width: window.innerWidth,
+        height: window.innerHeight,
+      }),
+    );
+  } catch {}
+}
+
+track("$pageview");
+document.addEventListener("click", (event) => {
+  const link = event.target.closest?.("[data-outbound]");
+  if (link) track("outbound_click", link.dataset.outbound);
+});
+
+// Latest version and star count
+
+const latest = { version: null, stars: null };
+const compact = new Intl.NumberFormat("en", { notation: "compact", maximumFractionDigits: 1 });
 
 fetch("/latest.json")
-  .then((response) => (response.ok ? response.json() : null))
-  .then((latest) => {
-    const slot = $("[data-version]");
-    if (slot && latest?.version) slot.textContent = `Latest version ${latest.version}.`;
+  .then((response) => response.json())
+  .then((data) => {
+    Object.assign(latest, data);
+    if (latest.version) {
+      setText($("[data-version]"), `Latest version ${latest.version}.`);
+      setText($("[data-about-version]"), `Version ${latest.version}`);
+    }
+    if (Number.isInteger(latest.stars)) {
+      const count = compact.format(latest.stars);
+      const slot = $("[data-stars]");
+      setText(slot, count);
+      slot.hidden = false;
+      slot.parentElement.setAttribute("aria-label", `Star AlwaysOn on GitHub. ${count} so far.`);
+      setText(
+        $("[data-about-stars]"),
+        latest.stars === 0 ? "Be the first to star it on GitHub" : `${count} ${latest.stars === 1 ? "star" : "stars"} on GitHub`,
+      );
+    }
   })
   .catch(() => {});
 
@@ -65,6 +127,11 @@ const state = {
   method: "alternate",
   nextAlternate: "mouse",
   status: "available",
+  locked: false, // the page's lock screen is up
+  lowPower: false, // Low Power Mode doubles the time between inputs
+  profile: "Work",
+  pendingProfile: null, // applies when the running session ends
+  focusSession: false, // the running session was started by a Focus
   pulses: [],
 };
 
@@ -113,6 +180,7 @@ function startTimer(minutes, label = "via Quick Timer") {
     elapsed: 0,
     label,
     resumesAt: null,
+    focusSession: false,
   });
   render();
 }
@@ -128,23 +196,27 @@ function startUntil(endAt, label) {
     elapsed: 0,
     label: label ? `Until · ${label}` : "Until",
     resumesAt: null,
+    focusSession: false,
   });
   render();
 }
 
 function keepOnline() {
-  Object.assign(state, { phase: "active", timed: false, absolute: false, elapsed: 0, label: null, resumesAt: null });
+  Object.assign(state, { phase: "active", timed: false, absolute: false, elapsed: 0, label: null, resumesAt: null, focusSession: false });
   render();
 }
 
+// Pausing or resuming a session a Focus started makes it yours
 function pause(minutes = null) {
   state.phase = "paused";
+  state.focusSession = false;
   state.resumesAt = minutes ? state.now + minutes * 60 * 1000 : null;
   render();
 }
 
 function resume() {
   state.phase = "active";
+  state.focusSession = false;
   state.resumesAt = null;
   render();
 }
@@ -152,6 +224,12 @@ function resume() {
 function stop() {
   state.phase = "off";
   state.resumesAt = null;
+  state.focusSession = false;
+  // A profile that was waiting for the session to end applies now
+  if (state.pendingProfile) {
+    state.profile = state.pendingProfile;
+    state.pendingProfile = null;
+  }
   render();
 }
 
@@ -170,6 +248,13 @@ function stopAfter(minutes) {
 
 function pulse() {
   if (state.phase !== "active") return;
+
+  // A locked Mac takes no input, so the app waits and says so
+  if (state.locked) {
+    heldBack += 1;
+    record("systemPaused", state.now, true);
+    return;
+  }
 
   let kind = "posted";
   if (state.sinceYou < PULSE_EVERY) {
@@ -200,11 +285,18 @@ function tick() {
     state.remaining -= dt;
   }
 
-  if (state.timed && state.phase !== "off" && state.remaining <= 0) stop();
+  if (state.timed && state.phase !== "off" && state.remaining <= 0) {
+    stop();
+    notify({
+      title: "Session ended",
+      body: "The timer ran out, so AlwaysOn stopped keeping you online. Click to start another hour.",
+      onClick: () => startTimer(60),
+    });
+  }
 
   state.nextPulse -= dt;
   if (state.nextPulse <= 0) {
-    state.nextPulse += PULSE_EVERY;
+    state.nextPulse += PULSE_EVERY * (state.lowPower ? 2 : 1);
     pulse();
   }
 
@@ -221,7 +313,7 @@ function tick() {
 let lastInput = 0;
 function onInput() {
   const now = performance.now();
-  if (now - lastInput < 100) return;
+  if (state.locked || now - lastInput < 100) return;
   lastInput = now;
   state.sinceYou = 0;
   state.idle = 0;
@@ -249,6 +341,9 @@ const el = {
   bars: $("[data-pulse-bars]"),
   pulseTime: $("[data-pulse-time]"),
   clock: $("[data-clock]"),
+  profile: $("[data-profile]"),
+  lockTime: $("[data-lock-time]"),
+  lockDate: $("[data-lock-date]"),
   headlineDot: $("[data-headline-dot]"),
   logTallies: $("[data-log-tallies]"),
   logBars: $("[data-log-bars]"),
@@ -417,7 +512,12 @@ function render() {
   renderChips();
   renderBars();
 
+  setText(el.profile, state.pendingProfile ? `${state.profile}, then ${state.pendingProfile} ›` : `${state.profile} ›`);
   setText(el.clock, clockFormat.format(state.now));
+  if (state.locked) {
+    setText(el.lockTime, timeFormat.format(state.now));
+    setText(el.lockDate, dateFormat.format(state.now));
+  }
 
   el.headlineDot?.classList.toggle("is-away", state.status === "away");
 }
@@ -433,6 +533,7 @@ $("[data-log-clear]")?.addEventListener("click", () => {
 // The menu starts closed. Until someone opens it, a note under the menu bar
 // icon points it out.
 const menuToggle = $("[data-menu-toggle]");
+const dockMenu = $("[data-dock-menu]");
 const coach = $("[data-coach]");
 const COACH_KEY = "alwayson-menu-opened";
 
@@ -516,10 +617,11 @@ if (menu) {
     if (stacked.matches) menu.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
     else setMenuOpen(menu.hidden);
   });
+  dockMenu?.addEventListener("click", () => setMenuOpen(menu.hidden));
   // Like a real menu, it closes when you click anywhere else on the desktop
   document.addEventListener("pointerdown", (event) => {
     if (menu.hidden || stacked.matches) return;
-    if (menu.contains(event.target) || menuToggle.contains(event.target)) return;
+    if ([menu, menuToggle, dockMenu].some((part) => part?.contains(event.target))) return;
     setMenuOpen(false);
   });
   document.addEventListener("keydown", (event) => {
@@ -535,21 +637,43 @@ if (menu) {
 
 }
 
-// Windows: open from desktop icons, the menu bar, and the AlwaysOn menu.
-// Drag them by the title bar, close them, or zoom them. On narrow or short
+// Windows: open from the Dock, the desktop icons, the menu bar, and the
+// AlwaysOn menu. Drag them by the title bar, resize them from the corner,
+// and close, minimize, or zoom them with the lights. On narrow or short
 // screens they stack as a normal scrolling page instead.
 
 const BAR = 32;
 const stacked = window.matchMedia("(max-width: 900px), (max-height: 600px)");
 const windows = Object.fromEntries($$("[data-window]").map((win) => [win.dataset.window, win]));
-const sizes = { settings: [800, 600], until: [440, 620], terminal: [880, 470], activity: [560, 660] };
+// Height 0 means as tall as the content
+const sizes = { settings: [800, 600], until: [440, 620], terminal: [880, 470], activity: [560, 660], install: [600, 640], about: [300, 0] };
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
-let stack = 10;
+const dock = $("[data-dock]");
+const minimizedSlot = $("[data-dock-minimized]");
+// The room the Dock takes at the bottom of the desktop
+const dockSpace = () => (dock?.offsetParent ? dock.offsetHeight + 14 : 0);
+let order = [];
 
 function bringToFront(win) {
-  for (const other of Object.values(windows)) other.classList.toggle("is-front", other === win);
-  stack += 1;
-  win.style.zIndex = String(stack);
+  order = order.filter((other) => other !== win);
+  order.push(win);
+  order.forEach((other, index) => {
+    other.style.zIndex = String(10 + index);
+    other.classList.toggle("is-front", other === win);
+  });
+}
+
+function frontNext() {
+  const next = order.filter((other) => !other.hidden).pop();
+  if (next) bringToFront(next);
+}
+
+// A dot under each Dock icon whose window is open or minimized
+function syncDock() {
+  for (const item of $$(".dock-item[data-open]")) {
+    const win = windows[item.dataset.open];
+    item.classList.toggle("is-running", Boolean(win && (!win.hidden || win.dataset.minimized)));
+  }
 }
 
 function place(win, x, y, width, height) {
@@ -562,7 +686,7 @@ function place(win, x, y, width, height) {
 }
 
 // Only the Read Me is open on arrival, a little left of center and clear of
-// the icons, which wrap into a second column on short screens
+// the icons and the Dock
 function arrange() {
   if (stacked.matches) return;
   const W = window.innerWidth;
@@ -573,7 +697,7 @@ function arrange() {
     const left = ($(".icons")?.offsetWidth ?? 98) + 18;
     const room = Math.max(420, W - rightColumn(W) - left);
     const width = Math.min(760, room);
-    place(readme, left + (room - width) * 0.4, BAR + 14, width, H - BAR - 28);
+    place(readme, left + (room - width) * 0.4, BAR + 14, width, H - BAR - 22 - dockSpace());
   }
   if (pulse && pulse.dataset.placed && !pulse.dataset.moved) placePulse(pulse);
   placeCoach();
@@ -588,7 +712,7 @@ function placePulse(win) {
   const width = pulseWidth(W);
   const y = BAR + 14;
   place(win, W - 12 - width, y, width, null);
-  win.style.maxHeight = `${Math.max(240, window.innerHeight - y - 12)}px`;
+  win.style.maxHeight = `${Math.max(240, window.innerHeight - y - 8 - dockSpace())}px`;
   win.dataset.placed = "1";
 }
 
@@ -598,12 +722,61 @@ function cascade(win, name) {
   const H = window.innerHeight;
   const open = $$("[data-window]:not([hidden])").length;
   const w = Math.min(width, W - 140);
-  const h = Math.min(height, H - BAR - 32);
+  const h = Math.min(height, H - BAR - 24 - dockSpace());
   const left = ($(".icons")?.offsetWidth ?? 98) + 18;
   const x = clamp(left + (W - left - w) * 0.3 + open * 26, left, W - w - 12);
-  const y = clamp(BAR + 30 + open * 24, BAR + 8, H - h - 12);
+  const y = clamp(BAR + 30 + open * 24, BAR + 8, Math.max(BAR + 8, H - dockSpace() - (h || 420) - 8));
   place(win, x, y, w, h);
   win.dataset.placed = "1";
+}
+
+// Minimizing: the window shrinks into a tile at the right of the Dock, and
+// comes back out of it
+
+function titleOf(win) {
+  return $(".titlebar-title", win)?.textContent || "About AlwaysOn";
+}
+
+function fly(win, tile, back) {
+  if (reduceMotion || !win.animate) return Promise.resolve();
+  const from = win.getBoundingClientRect();
+  const to = tile.getBoundingClientRect();
+  const x = to.left + to.width / 2 - (from.left + from.width / 2);
+  const y = to.top + to.height / 2 - (from.top + from.height / 2);
+  const small = `translate(${x}px, ${y}px) scale(${to.width / from.width}, ${to.height / from.height})`;
+  const frames = [
+    { transform: "none", opacity: 1 },
+    { transform: small, opacity: 0.3 },
+  ];
+  return win
+    .animate(back ? frames.reverse() : frames, { duration: 300, easing: back ? "cubic-bezier(0.2, 0.7, 0.3, 1)" : "cubic-bezier(0.5, 0, 0.8, 0.5)" })
+    .finished.catch(() => {});
+}
+
+function minimize(win) {
+  if (stacked.matches || win.dataset.minimized) return;
+  const name = win.dataset.window;
+  const tile = document.createElement("button");
+  tile.type = "button";
+  tile.className = "dock-item dock-tile";
+  tile.dataset.restore = name;
+  tile.innerHTML =
+    '<svg viewBox="0 0 48 48" aria-hidden="true"><rect x="4" y="8" width="40" height="32" rx="5" fill="#1c1c1e" stroke="#48484a"/><path d="M4 16.5h40" stroke="#48484a"/><circle cx="9.5" cy="12.3" r="1.6" fill="#ff5f57"/><circle cx="14.5" cy="12.3" r="1.6" fill="#febc2e"/><circle cx="19.5" cy="12.3" r="1.6" fill="#28c840"/><path d="M11 23.5h20M11 29.5h26M11 35.5h14" stroke="#636366" stroke-width="2" stroke-linecap="round"/></svg><span class="dock-label"></span>';
+  tile.lastChild.textContent = titleOf(win);
+  tile.setAttribute("aria-label", `Restore ${titleOf(win)}`);
+  tile.addEventListener("click", () => openWindow(name));
+  minimizedSlot.append(tile);
+
+  win.dataset.minimized = "1";
+  win.classList.toggle("is-zoomed", false);
+  fly(win, tile, false).then(() => {
+    // It may have been restored while it was still shrinking
+    if (!win.dataset.minimized) return;
+    win.hidden = true;
+    win.classList.toggle("is-front", false);
+    frontNext();
+    syncDock();
+  });
 }
 
 function scrollWithin(body, target) {
@@ -614,7 +787,7 @@ function scrollWithin(body, target) {
 }
 
 // Parts of the Read Me that the menu bar links to
-const sections = { features: "#features-title", install: "#install-title" };
+const sections = { features: "#features-title" };
 
 function openWindow(name) {
   if (sections[name]) {
@@ -622,6 +795,10 @@ function openWindow(name) {
     const title = $(sections[name]);
     if (stacked.matches) title.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
     else scrollWithin($(".window-body", windows.readme), title);
+    // The heading flashes, so the link visibly lands even with nothing to scroll
+    title.classList.toggle("is-flash", false);
+    void title.offsetWidth;
+    title.classList.add("is-flash");
     return;
   }
   const win = windows[name];
@@ -630,7 +807,13 @@ function openWindow(name) {
     win.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
     return;
   }
-  if (win.hidden) {
+  const tile = $(`[data-restore="${name}"]`);
+  if (tile) {
+    delete win.dataset.minimized;
+    win.hidden = false;
+    fly(win, tile, true);
+    tile.remove();
+  } else if (win.hidden) {
     win.hidden = false;
     if (!win.dataset.placed && name === "pulse") placePulse(win);
     else if (!win.dataset.placed && name !== "readme") cascade(win, name);
@@ -641,18 +824,33 @@ function openWindow(name) {
     }
   }
   bringToFront(win);
+  syncDock();
   win.focus({ preventScroll: true });
 }
 
 function closeWindow(win) {
+  const name = win.dataset.window;
   win.hidden = true;
   win.classList.toggle("is-zoomed", false);
   win.classList.toggle("is-front", false);
-  $(`.icon[data-open="${win.dataset.window}"]`)?.focus({ preventScroll: true });
-  const next = Object.values(windows)
-    .filter((other) => !other.hidden)
-    .sort((a, b) => Number(b.style.zIndex) - Number(a.style.zIndex))[0];
-  if (next) bringToFront(next);
+  $(`.dock-item[data-open="${name}"], .icon[data-open="${name}"]`)?.focus({ preventScroll: true });
+  frontNext();
+  syncDock();
+}
+
+// Follows a pointer from a press to its release
+function dragFrom(handle, event, onMove, onEnd) {
+  handle.setPointerCapture(event.pointerId);
+  const move = (moveEvent) => onMove(moveEvent.clientX - event.clientX, moveEvent.clientY - event.clientY);
+  const end = () => {
+    handle.removeEventListener("pointermove", move);
+    handle.removeEventListener("pointerup", end);
+    handle.removeEventListener("pointercancel", end);
+    onEnd?.();
+  };
+  handle.addEventListener("pointermove", move);
+  handle.addEventListener("pointerup", end);
+  handle.addEventListener("pointercancel", end);
 }
 
 for (const win of Object.values(windows)) {
@@ -660,33 +858,43 @@ for (const win of Object.values(windows)) {
     if (!win.classList.contains("is-front")) bringToFront(win);
   });
   $("[data-close]", win)?.addEventListener("click", () => closeWindow(win));
+  $("[data-min]", win)?.addEventListener("click", () => minimize(win));
   $("[data-zoom]", win)?.addEventListener("click", () => win.classList.toggle("is-zoomed"));
 
   const bar = $("[data-drag]", win);
   bar.addEventListener("dblclick", (event) => {
-    if (!event.target.closest("button") && !stacked.matches) win.classList.toggle("is-zoomed");
+    if (!event.target.closest("button") && !stacked.matches && $("[data-zoom]", win)) win.classList.toggle("is-zoomed");
   });
   bar.addEventListener("pointerdown", (event) => {
     if (stacked.matches || event.button !== 0 || event.target.closest("button") || win.classList.contains("is-zoomed")) return;
-    const startX = event.clientX;
-    const startY = event.clientY;
     const originX = win.offsetLeft;
     const originY = win.offsetTop;
-    bar.setPointerCapture(event.pointerId);
-    const move = (moveEvent) => {
-      win.style.left = `${clamp(originX + moveEvent.clientX - startX, 120 - win.offsetWidth, window.innerWidth - 120)}px`;
-      win.style.top = `${clamp(originY + moveEvent.clientY - startY, BAR, window.innerHeight - 44)}px`;
+    dragFrom(bar, event, (dx, dy) => {
+      win.style.left = `${clamp(originX + dx, 120 - win.offsetWidth, window.innerWidth - 120)}px`;
+      win.style.top = `${clamp(originY + dy, BAR, window.innerHeight - 44)}px`;
       win.dataset.moved = "1";
       win.dataset.placed = "1";
-    };
-    const end = () => {
-      bar.removeEventListener("pointermove", move);
-      bar.removeEventListener("pointerup", end);
-      bar.removeEventListener("pointercancel", end);
-    };
-    bar.addEventListener("pointermove", move);
-    bar.addEventListener("pointerup", end);
-    bar.addEventListener("pointercancel", end);
+    });
+  });
+
+  // The bottom right corner resizes, except on the fixed-size About box
+  if (!$("[data-zoom]", win)) continue;
+  const grip = document.createElement("span");
+  grip.className = "grip";
+  grip.setAttribute("aria-hidden", "true");
+  win.append(grip);
+  grip.addEventListener("pointerdown", (event) => {
+    if (stacked.matches || event.button !== 0 || win.classList.contains("is-zoomed")) return;
+    event.preventDefault();
+    const width = win.offsetWidth;
+    const height = win.offsetHeight;
+    win.style.maxHeight = "none";
+    dragFrom(grip, event, (dx, dy) => {
+      win.style.width = `${clamp(width + dx, 320, window.innerWidth - win.offsetLeft - 4)}px`;
+      win.style.height = `${clamp(height + dy, 220, window.innerHeight - win.offsetTop - 4)}px`;
+      win.dataset.moved = "1";
+      win.dataset.placed = "1";
+    });
   });
 }
 
@@ -699,14 +907,71 @@ for (const opener of $$("[data-open]")) {
     if (menu?.contains(opener) && !stacked.matches) setMenuOpen(false);
     openWindow(name);
     history.replaceState(null, "", `#${name}`);
+    track("window_opened", name);
   });
 }
 
-// Clicking the empty desktop clears the icon selection
-$(".desktop")?.addEventListener("pointerdown", (event) => {
-  if (event.target === event.currentTarget || event.target.classList.contains("field-canvas")) {
-    for (const icon of $$(".icon")) icon.classList.toggle("is-selected", false);
+// What the address asks for: a window, a part of the Read Me, or the download
+function route() {
+  const name = location.hash.slice(1);
+  if (name === "download") {
+    // Reloading the page shouldn't download it twice
+    history.replaceState(null, "", "#install");
+    startDownload();
+  } else if (windows[name] || sections[name]) {
+    openWindow(name);
   }
+}
+
+// The Dock's icons grow under the pointer
+if (dock && !reduceMotion && window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+  const PEAK = 1.42; // times the resting size
+  const REACH = 120;
+  const short = window.matchMedia("(max-height: 720px)");
+  dock.addEventListener("pointermove", (event) => {
+    const base = short.matches ? 38 : 48;
+    for (const item of $$(".dock-item", dock)) {
+      const rect = item.getBoundingClientRect();
+      const distance = Math.abs(event.clientX - (rect.left + rect.width / 2));
+      const lift = Math.cos((Math.min(distance / REACH, 1) * Math.PI) / 2);
+      item.style.setProperty("--size", `${(base * (1 + (PEAK - 1) * lift)).toFixed(1)}px`);
+    }
+  });
+  dock.addEventListener("pointerleave", () => {
+    for (const item of $$(".dock-item", dock)) item.style.removeProperty("--size");
+  });
+}
+
+// Pressing the empty desktop clears the icon selection. Dragging from there
+// draws a selection box that picks up the icons it touches.
+const desk = $(".desktop");
+// The wallpaper, or the gaps in the column the icons sit in
+const isEmptyDesktop = (target) => target === desk || target.classList.contains("field-canvas") || target.classList.contains("icons");
+desk?.addEventListener("pointerdown", (event) => {
+  if (!isEmptyDesktop(event.target)) return;
+  const icons = $$(".icon");
+  for (const icon of icons) icon.classList.toggle("is-selected", false);
+  if (stacked.matches || event.pointerType !== "mouse" || event.button !== 0) return;
+
+  const box = document.createElement("div");
+  box.className = "marquee";
+  desk.append(box);
+  dragFrom(
+    desk,
+    event,
+    (dx, dy) => {
+      const left = Math.min(event.clientX, event.clientX + dx);
+      const top = Math.max(BAR, Math.min(event.clientY, event.clientY + dy));
+      const right = Math.max(event.clientX, event.clientX + dx);
+      const bottom = Math.max(event.clientY, event.clientY + dy);
+      Object.assign(box.style, { left: `${left}px`, top: `${top}px`, width: `${right - left}px`, height: `${bottom - top}px` });
+      for (const icon of icons) {
+        const rect = icon.getBoundingClientRect();
+        icon.classList.toggle("is-selected", rect.left < right && rect.right > left && rect.top < bottom && rect.bottom > top);
+      }
+    },
+    () => box.remove(),
+  );
 });
 
 let arrangeQueued = false;
@@ -739,8 +1004,535 @@ if (coach && menu && !coachSeen) {
   menuToggle.classList.add("is-beckoning");
 }
 if (windows.readme) bringToFront(windows.readme);
-const initial = location.hash.slice(1);
-if (initial && (windows[initial] || sections[initial])) openWindow(initial);
+
+// The app menu, under the app's name in the menu bar
+
+const appToggle = $("[data-app-menu-toggle]");
+const appMenu = $("[data-app-menu]");
+
+function setAppMenuOpen(open) {
+  if (!appMenu) return;
+  appMenu.hidden = !open;
+  appToggle.setAttribute("aria-expanded", String(open));
+}
+
+if (appMenu) {
+  const items = () => $$('[role="menuitem"]', appMenu).filter((item) => item.offsetParent);
+  appToggle.addEventListener("click", (event) => {
+    setAppMenuOpen(appMenu.hidden);
+    // Opened from the keyboard, so start on the first item
+    if (!appMenu.hidden && event.detail === 0) items()[0]?.focus();
+  });
+  appMenu.addEventListener("click", (event) => {
+    if (event.target.closest('[role="menuitem"]')) setAppMenuOpen(false);
+  });
+  appMenu.addEventListener("keydown", (event) => {
+    const step = { ArrowDown: 1, ArrowUp: -1 }[event.key];
+    if (!step) return;
+    event.preventDefault();
+    const all = items();
+    all[(all.indexOf(document.activeElement) + step + all.length) % all.length]?.focus();
+  });
+  document.addEventListener("pointerdown", (event) => {
+    if (!appMenu.hidden && !appMenu.contains(event.target) && !appToggle.contains(event.target)) setAppMenuOpen(false);
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape" || appMenu.hidden) return;
+    setAppMenuOpen(false);
+    appToggle.focus();
+  });
+
+  $("[data-check-updates]")?.addEventListener("click", () => {
+    notify(
+      latest.version
+        ? {
+            title: `AlwaysOn ${latest.version} is the latest version`,
+            body: "The app checks for itself and installs signed updates from GitHub Releases. Click to download.",
+            onClick: () => startDownload(),
+          }
+        : { title: "Couldn't check for updates", body: "GitHub didn't answer. Click to open the Releases page.", onClick: () => window.open("https://github.com/hafiezul/AlwaysOn/releases", "_blank", "noopener") },
+    );
+  });
+}
+
+// Notifications slide in under the menu bar and leave on their own
+
+const notes = $("[data-notes]");
+
+function notify({ title, body, onClick }) {
+  if (!notes) return;
+  const note = document.createElement("button");
+  note.type = "button";
+  note.className = "note";
+  note.innerHTML = '<img src="/images/icon-64.png" width="34" height="34" alt=""><span><strong></strong><small></small></span>';
+  note.querySelector("strong").textContent = title;
+  note.querySelector("small").textContent = body;
+  const dismiss = () => {
+    if (note.classList.contains("is-leaving")) return;
+    note.classList.add("is-leaving");
+    setTimeout(() => note.remove(), reduceMotion ? 0 : 220);
+  };
+  note.addEventListener("click", () => {
+    dismiss();
+    onClick?.();
+  });
+  notes.prepend(note);
+  // The note about the menu sits in the same corner, so it steps aside
+  if (coach) coach.hidden = true;
+  while (notes.children.length > 3) notes.lastChild.remove();
+  setTimeout(dismiss, 8000);
+}
+
+// Lock Screen: the app waits while the Mac is locked, and the Pulse Log says so
+
+const lockScreen = $("[data-lock-screen]");
+let heldBack = 0;
+let lockedAt = 0;
+
+function lock() {
+  if (!lockScreen || state.locked) return;
+  state.locked = true;
+  heldBack = 0;
+  lockedAt = performance.now();
+  setMenuOpen(false);
+  for (const part of [desk, $(".menubar"), notes]) if (part) part.inert = true;
+  lockScreen.hidden = false;
+  render();
+  $("[data-unlock]", lockScreen)?.focus({ preventScroll: true });
+}
+
+function unlock() {
+  // The click or key press that locked the screen shouldn't also unlock it
+  if (!state.locked || performance.now() - lockedAt < 400) return;
+  state.locked = false;
+  state.sinceYou = 0;
+  state.idle = 0;
+  for (const part of [desk, $(".menubar"), notes]) if (part) part.inert = false;
+  lockScreen.hidden = true;
+  notify({
+    title: "Welcome back",
+    body:
+      state.phase !== "active"
+        ? "AlwaysOn wasn't running, so there was nothing to hold back."
+        : heldBack
+          ? `AlwaysOn held back ${heldBack} ${heldBack === 1 ? "attempt" : "attempts"} while the Mac was locked. Click to see them in the Pulse Log.`
+          : "That was quick. AlwaysOn had no attempt to hold back.",
+    onClick: () => openWindow("pulse"),
+  });
+}
+
+for (const button of $$("[data-lock]")) {
+  button.addEventListener("click", () => {
+    setPanel(null);
+    lock();
+  });
+}
+lockScreen?.addEventListener("click", unlock);
+document.addEventListener("keydown", (event) => {
+  if (!state.locked) return;
+  event.preventDefault();
+  unlock();
+});
+
+// Appearance: dark unless the visitor picks light, which is remembered
+
+const THEME_KEY = "alwayson-theme";
+const isLight = () => document.documentElement.dataset.theme === "light";
+
+function setTheme(light) {
+  if (light) document.documentElement.dataset.theme = "light";
+  else delete document.documentElement.dataset.theme;
+  try {
+    localStorage.setItem(THEME_KEY, light ? "light" : "dark");
+  } catch {}
+  showTheme();
+  document.dispatchEvent(new CustomEvent("themechange"));
+}
+
+function showTheme() {
+  const light = isLight();
+  $('meta[name="theme-color"]')?.setAttribute("content", light ? "#f5f5f7" : "#000000");
+  $('meta[name="color-scheme"]')?.setAttribute("content", light ? "light" : "dark");
+  setText($("[data-theme-toggle]"), light ? "Use Dark Appearance" : "Use Light Appearance");
+  // The app's screenshots come in both appearances
+  for (const shot of $$('img[src*="/screenshots/"]')) {
+    const name = shot.getAttribute("src").replace(/(-dark)?\.png$/, "");
+    const src = `${name}${light ? "" : "-dark"}.png`;
+    if (shot.getAttribute("src") !== src) shot.setAttribute("src", src);
+  }
+  showSystem();
+}
+
+$("[data-theme-toggle]")?.addEventListener("click", () => setTheme(!isLight()));
+
+// The menu bar's right-hand side: Wi-Fi, the battery, and Control Center.
+// Each one changes something the app reacts to. Joining a network switches
+// profiles, Low Power Mode halves how often input is sent, and a Focus starts
+// a session of its own.
+
+const sys = { wifi: true, network: "Office", focus: false, battery: 0.82, charging: false };
+const networks = [
+  { name: "Office", profile: "Work" },
+  { name: "Home", profile: "Home" },
+  { name: "Cafe Guest", profile: null },
+];
+const WIFI_ICON =
+  '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path d="M2.5 9a14 14 0 0 1 19 0M5.8 12.4a9.2 9.2 0 0 1 12.4 0M9.1 15.8a4.4 4.4 0 0 1 5.8 0" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="19" r="1.6" fill="currentColor"/></svg>';
+
+const networkList = $("[data-networks]");
+networkList?.replaceChildren(
+  ...networks.map(({ name, profile }) => {
+    const row = document.createElement("button");
+    row.type = "button";
+    row.className = "panel-row";
+    row.setAttribute("role", "radio");
+    row.dataset.network = name;
+    row.innerHTML = `<i>${WIFI_ICON}</i><span></span><small></small>`;
+    row.querySelector("span").textContent = name;
+    row.querySelector("small").textContent = profile ? `${profile} profile` : "";
+    row.addEventListener("click", () => joinNetwork(name));
+    return row;
+  }),
+);
+
+function showSystem() {
+  const body = document.body;
+  body.dataset.wifi = sys.wifi ? "on" : "off";
+  body.toggleAttribute("data-low-power", state.lowPower);
+
+  const on = { wifi: sys.wifi, lowPower: state.lowPower, focus: sys.focus, dark: !isLight() };
+  for (const control of $$("[data-sys]")) {
+    control.setAttribute(control.matches(".switch") ? "aria-checked" : "aria-pressed", String(on[control.dataset.sys]));
+  }
+  for (const row of $$("[data-network]")) row.setAttribute("aria-checked", String(sys.wifi && row.dataset.network === sys.network));
+
+  setText($("[data-tile-wifi]"), sys.wifi ? sys.network : "Off");
+  setText($("[data-tile-focus]"), sys.focus ? "Work" : "Off");
+  setText($("[data-tile-power]"), state.lowPower ? "On" : "Off");
+  setText($("[data-tile-dark]"), isLight() ? "Off" : "On");
+
+  const percent = Math.round(sys.battery * 100);
+  setText($("[data-battery-text]"), `${percent}%`);
+  setText($("[data-battery-source]"), `Power Source: ${sys.charging ? "Power Adapter" : "Battery"}`);
+  $("[data-battery-level]")?.setAttribute("width", String(Math.max(2, Math.round(18 * sys.battery))));
+  $('[data-panel-toggle="battery"]')?.setAttribute("aria-label", `Battery, ${percent}%`);
+}
+
+// Joining a network applies its profile, but never in the middle of a session
+function joinNetwork(name) {
+  sys.wifi = true;
+  sys.network = name;
+  const profile = networks.find((network) => network.name === name)?.profile;
+  state.pendingProfile = null;
+  if (profile && profile !== state.profile) {
+    if (state.phase === "off") {
+      state.profile = profile;
+      notify({ title: `Switched to the ${profile} profile`, body: `You joined ${name}, and that network belongs to the ${profile} profile.` });
+    } else {
+      state.pendingProfile = profile;
+      notify({ title: `Joined ${name}`, body: `A session always finishes first. The ${profile} profile applies when this one ends.` });
+    }
+  }
+  showSystem();
+  render();
+}
+
+function setLowPower(enabled) {
+  state.lowPower = enabled;
+  if (enabled) {
+    notify({ title: "Low Power Mode is on", body: `AlwaysOn now sends input every ${PULSE_EVERY * 2} seconds instead of every ${PULSE_EVERY}.` });
+  }
+  showSystem();
+}
+
+// A Focus with the Keep Me Online filter starts a session, and ends that
+// session when it turns off, unless you made the session yours in between
+function setFocus(enabled) {
+  sys.focus = enabled;
+  if (enabled && state.phase === "off") {
+    keepOnline();
+    Object.assign(state, { label: "via Work Focus", focusSession: true });
+    notify({ title: "Work Focus is on", body: "Its Keep Me Online filter started a session. It ends when the Focus turns off." });
+  } else if (enabled) {
+    notify({ title: "Work Focus is on", body: "A session was already running, so AlwaysOn left it as it is." });
+  } else if (state.focusSession && state.phase !== "off") {
+    stop();
+    notify({ title: "Work Focus is off", body: "AlwaysOn stopped the session the Focus started." });
+  }
+  showSystem();
+  render();
+}
+
+for (const control of $$("[data-sys]")) {
+  control.addEventListener("click", () => {
+    const name = control.dataset.sys;
+    if (name === "wifi" && sys.wifi) {
+      sys.wifi = false;
+      showSystem();
+    } else if (name === "wifi") joinNetwork(sys.network);
+    else if (name === "lowPower") setLowPower(!state.lowPower);
+    else if (name === "focus") setFocus(!sys.focus);
+    else if (name === "dark") setTheme(!isLight());
+  });
+}
+
+// The visitor's own battery, where the browser reports it
+navigator.getBattery?.()
+  .then((battery) => {
+    const read = () => {
+      sys.battery = battery.level;
+      sys.charging = battery.charging;
+      showSystem();
+    };
+    battery.addEventListener("levelchange", read);
+    battery.addEventListener("chargingchange", read);
+    read();
+  })
+  .catch(() => {});
+
+// One panel open at a time, under the icon that opened it
+const panelToggles = $$("[data-panel-toggle]");
+const panelFor = (toggle) => $(`[data-panel="${toggle.dataset.panelToggle}"]`);
+
+function setPanel(name) {
+  for (const toggle of panelToggles) {
+    const open = toggle.dataset.panelToggle === name;
+    const panel = panelFor(toggle);
+    if (open) panel.style.right = `${Math.max(8, window.innerWidth - toggle.getBoundingClientRect().right - 6)}px`;
+    panel.hidden = !open;
+    toggle.setAttribute("aria-expanded", String(open));
+  }
+}
+
+for (const toggle of panelToggles) {
+  toggle.addEventListener("click", () => setPanel(panelFor(toggle).hidden ? toggle.dataset.panelToggle : null));
+}
+document.addEventListener("pointerdown", (event) => {
+  if (!event.target.closest("[data-panel], [data-panel-toggle]")) setPanel(null);
+});
+document.addEventListener("keydown", (event) => {
+  const open = panelToggles.find((toggle) => !panelFor(toggle).hidden);
+  if (event.key !== "Escape" || !open) return;
+  setPanel(null);
+  open.focus();
+});
+window.addEventListener("resize", () => setPanel(null));
+
+showTheme();
+
+// Desktop icons can be dragged, alone or as a selection. A drag isn't a click.
+
+const iconLayer = $(".icons");
+let draggedIcon = false;
+
+iconLayer?.addEventListener("dragstart", (event) => event.preventDefault());
+iconLayer?.addEventListener("pointerdown", (event) => {
+  const icon = event.target.closest(".icon");
+  if (!icon || stacked.matches || event.button !== 0 || event.pointerType === "touch") return;
+  const group = icon.classList.contains("is-selected") ? $$(".icon.is-selected") : [icon];
+  const origins = group.map((item) => ({ item, x: Number(item.dataset.x ?? 0), y: Number(item.dataset.y ?? 0), rect: item.getBoundingClientRect() }));
+  let moved = false;
+  dragFrom(
+    icon,
+    event,
+    (dx, dy) => {
+      if (!moved && Math.hypot(dx, dy) < 4) return;
+      moved = true;
+      for (const { item, x, y, rect } of origins) {
+        // Keep every icon on the desktop: under the menu bar, above the Dock
+        const moveX = clamp(dx, 4 - rect.left, window.innerWidth - 4 - rect.right);
+        const moveY = clamp(dy, BAR + 4 - rect.top, window.innerHeight - dockSpace() - rect.bottom);
+        item.dataset.x = String(x + moveX);
+        item.dataset.y = String(y + moveY);
+        item.style.transform = `translate(${x + moveX}px, ${y + moveY}px)`;
+        item.classList.add("is-dragging");
+      }
+    },
+    () => {
+      for (const { item } of origins) item.classList.toggle("is-dragging", false);
+      draggedIcon = moved;
+    },
+  );
+});
+// Capturing here runs before the icon's own click handlers
+iconLayer?.addEventListener(
+  "click",
+  (event) => {
+    if (!draggedIcon) return;
+    draggedIcon = false;
+    event.preventDefault();
+    event.stopPropagation();
+  },
+  true,
+);
+
+function cleanUp() {
+  for (const icon of $$(".icon")) {
+    icon.style.transform = "";
+    delete icon.dataset.x;
+    delete icon.dataset.y;
+  }
+}
+
+const FOLDER_ICON =
+  '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M4 12a3 3 0 0 1 3-3h12l4 4h18a3 3 0 0 1 3 3v22a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z" fill="#1d7ee0"/><path d="M4 18h40v20a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z" fill="#47a8ff"/></svg>';
+const MAX_FOLDERS = 8;
+
+function newFolder() {
+  const count = $$(".icon[data-folder]").length;
+  const folder = document.createElement("button");
+  folder.type = "button";
+  folder.className = "icon is-selected";
+  folder.dataset.folder = "1";
+  folder.innerHTML = `${FOLDER_ICON}<span></span>`;
+  folder.lastChild.textContent = count ? `untitled folder ${count + 1}` : "untitled folder";
+  folder.addEventListener("click", () => {
+    for (const icon of $$(".icon")) icon.classList.toggle("is-selected", icon === folder);
+  });
+  for (const icon of $$(".icon")) icon.classList.toggle("is-selected", false);
+  iconLayer.append(folder);
+}
+
+// The menu that opens on a right-click: one for the desktop, one for an icon
+
+const context = $("[data-context]");
+
+function openContext(event, items) {
+  context.replaceChildren(
+    ...items.map((item) => {
+      if (!item) return document.createElement("hr");
+      const button = document.createElement("button");
+      button.type = "button";
+      button.setAttribute("role", "menuitem");
+      button.textContent = item.title;
+      button.disabled = Boolean(item.disabled);
+      button.addEventListener("click", () => {
+        closeContext();
+        item.run();
+      });
+      return button;
+    }),
+  );
+  context.hidden = false;
+  context.style.left = `${Math.min(event.clientX, window.innerWidth - context.offsetWidth - 8)}px`;
+  context.style.top = `${Math.min(event.clientY, window.innerHeight - context.offsetHeight - 8)}px`;
+}
+
+function closeContext() {
+  if (context) context.hidden = true;
+}
+
+desk?.addEventListener("contextmenu", (event) => {
+  if (stacked.matches || !context) return;
+  const icon = event.target.closest(".icon");
+  const empty = isEmptyDesktop(event.target);
+  // Windows, the Dock and the menus keep the browser's own menu
+  if (!icon && !empty) return;
+  event.preventDefault();
+
+  if (icon) {
+    for (const other of $$(".icon")) other.classList.toggle("is-selected", other === icon);
+    openContext(event, [
+      { title: "Open", run: () => icon.click(), disabled: Boolean(icon.dataset.folder) },
+      ...(icon.dataset.folder ? [null, { title: "Move to Trash", run: () => icon.remove() }] : []),
+    ]);
+    return;
+  }
+  openContext(event, [
+    { title: "New Folder", run: newFolder, disabled: $$(".icon[data-folder]").length >= MAX_FOLDERS },
+    null,
+    { title: "Clean Up", run: cleanUp },
+    { title: isLight() ? "Use Dark Appearance" : "Use Light Appearance", run: () => setTheme(!isLight()) },
+    null,
+    { title: "Lock Screen", run: lock },
+  ]);
+});
+document.addEventListener("pointerdown", (event) => {
+  if (context && !context.hidden && !context.contains(event.target)) closeContext();
+});
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeContext();
+});
+window.addEventListener("resize", closeContext);
+
+// Installing: the Download buttons and the installer window. The window is
+// the DMG's own, and dragging the app into Applications starts the download.
+
+const isMac = /Mac/i.test(navigator.userAgentData?.platform ?? navigator.platform ?? "") && navigator.maxTouchPoints < 2;
+let downloadStarted = 0;
+
+function startDownload({ navigate = true } = {}) {
+  openWindow("install");
+  const name = latest.version ? `AlwaysOn ${latest.version}` : "AlwaysOn";
+  setText(
+    $("[data-install-status]"),
+    isMac
+      ? `Downloading ${name}. Open the DMG from your Downloads folder, then follow the steps below.`
+      : `Downloading ${name}. It only runs on a Mac, so move the DMG to one, then follow the steps below.`,
+  );
+  setText($("[data-install-button]"), "Download Again");
+  notify({ title: `Downloading ${name}`, body: "Open the DMG, drag AlwaysOn into Applications, then open it once." });
+
+  const item = $("[data-dock-download]");
+  if (item && !reduceMotion) {
+    item.classList.toggle("is-bouncing", false);
+    void item.offsetWidth;
+    item.classList.add("is-bouncing");
+  }
+
+  // A link that was clicked downloads by itself. Anything else, such as the
+  // drag below or arriving at /download, has to ask for the file.
+  const now = performance.now();
+  if (navigate && (!downloadStarted || now - downloadStarted > 3000)) location.assign("/download/dmg");
+  downloadStarted = now;
+}
+
+for (const link of $$("[data-download]")) {
+  link.addEventListener("click", () => startDownload({ navigate: false }));
+}
+
+const dmgApp = $("[data-dmg-app]");
+const dmgTarget = $("[data-dmg-target]");
+if (dmgApp && dmgTarget) {
+  const overTarget = () => {
+    const app = dmgApp.getBoundingClientRect();
+    const target = dmgTarget.getBoundingClientRect();
+    const x = app.left + app.width / 2;
+    const y = app.top + app.height / 2;
+    return x > target.left - 12 && x < target.right + 12 && y > target.top - 12 && y < target.bottom + 12;
+  };
+  dmgApp.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    dmgApp.classList.add("is-dragging");
+    dragFrom(
+      dmgApp,
+      event,
+      (dx, dy) => {
+        dmgApp.style.transform = `translate(${dx}px, ${dy}px)`;
+        dmgTarget.classList.toggle("is-over", overTarget());
+      },
+      () => {
+        const dropped = overTarget();
+        dmgApp.classList.toggle("is-dragging", false);
+        dmgTarget.classList.toggle("is-over", false);
+        if (!dropped) {
+          dmgApp.style.transform = "";
+          return;
+        }
+        // It drops into the folder, then a copy reappears where it started
+        dmgApp.classList.add("is-dropped");
+        dmgTarget.classList.add("is-filled");
+        startDownload();
+        setTimeout(() => {
+          dmgApp.style.transform = "";
+          dmgApp.classList.toggle("is-dropped", false);
+          dmgTarget.classList.toggle("is-filled", false);
+        }, 700);
+      },
+    );
+  });
+}
 
 // Input methods
 
@@ -961,6 +1753,9 @@ if (terminal) {
 // Start
 
 render();
+if (document.readyState === "complete") route();
+else window.addEventListener("load", route, { once: true });
+window.addEventListener("hashchange", route);
 let timer = setInterval(tick, TICK_MS);
 document.addEventListener("visibilitychange", () => {
   clearInterval(timer);
