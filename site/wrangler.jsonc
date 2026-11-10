@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "alwayson",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-10-01",
+  // Static files come from dist/, which `npm run build` assembles. The Worker
+  // only runs for paths with no matching file, such as /download.
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "404-page"
+  },
+  "workers_dev": false,
+  // Cloudflare creates the DNS record and certificate for this hostname
+  "routes": [{ "pattern": "alwayson.hafiezulzikry.com", "custom_domain": true }],
+  "observability": { "enabled": true }
+}
