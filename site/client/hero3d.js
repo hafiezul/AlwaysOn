@@ -1,7 +1,9 @@
 // The desktop wallpaper: a 3D grid of graphite pixel blocks. Blocks
-// rise and brighten around the pointer. Each time the demo posts an input, a
-// green ripple spreads from the headline's status dot. When your demo status
-// goes Away, the field warms toward the Away yellow.
+// rise and brighten around the pointer, and stay faintly blue for a moment
+// where it has been. Each time the demo posts an input, a green ripple spreads
+// from the headline's status dot; a skipped attempt sends a much fainter orange
+// one. A click on the bare desktop makes a ripple of its own. When your demo
+// status goes Away, the field warms toward the Away yellow.
 
 import {
   AmbientLight,
@@ -34,6 +36,8 @@ const PALETTES = {
     block: new Color("#09090a"),
     lift: new Color("#6e6e76"),
     ripple: new Color("#30d158"),
+    skip: new Color("#ff9f0a"),
+    trail: new Color("#0a84ff"),
     away: new Color("#3a2608"),
     gap: new Color("#000000"),
   },
@@ -41,6 +45,8 @@ const PALETTES = {
     block: new Color("#d9d9e0"),
     lift: new Color("#ffffff"),
     ripple: new Color("#34c759"),
+    skip: new Color("#ff9500"),
+    trail: new Color("#007aff"),
     away: new Color("#ecd9a0"),
     gap: new Color("#b9b9c2"),
   },
@@ -81,6 +87,7 @@ export function start({ demo, hero }) {
   let cols = 0;
   let rows = 0;
   let heights = new Float32Array(0);
+  let heat = new Float32Array(0); // where the pointer has just been
 
   const raycaster = new Raycaster();
   const ground = new Plane(new Vector3(0, 0, 1), 0);
@@ -128,6 +135,7 @@ export function start({ demo, hero }) {
     mesh.instanceColor.setUsage(DynamicDrawUsage);
     scene.add(mesh);
     heights = new Float32Array(cols * rows).fill(BASE_HEIGHT);
+    heat = new Float32Array(cols * rows);
   }
 
   // Pointer
@@ -147,8 +155,13 @@ export function start({ demo, hero }) {
 
   // Ripples start at the headline's status dot, the period after "Stay green"
   const ripples = [];
+  const addRipple = (origin, tint, strength) => {
+    if (!origin) return;
+    ripples.push({ x: origin.x, y: origin.y, t0: performance.now(), tint, strength });
+    if (ripples.length > 5) ripples.shift();
+  };
   demo.subscribe((type) => {
-    if (type !== "nudge") return;
+    if (type !== "nudge" && type !== "skip") return;
     // With the Read Me window closed, ripples start at the menu bar icon
     const dot = hero.querySelector("[data-headline-dot]");
     const view = dot?.closest(".window-body")?.getBoundingClientRect();
@@ -156,15 +169,25 @@ export function start({ demo, hero }) {
     const visible = rect && rect.width && (!view || (rect.top >= view.top && rect.bottom <= view.bottom));
     if (!visible) rect = document.querySelector("[data-menu-toggle]").getBoundingClientRect();
     const origin = toWorld(rect.left + rect.width / 2, rect.top + rect.height / 2);
-    if (!origin) return;
-    ripples.push({ x: origin.x, y: origin.y, t0: performance.now() });
-    if (ripples.length > 4) ripples.shift();
+    if (type === "nudge") addRipple(origin, "ripple", 1);
+    else addRipple(origin, "skip", 0.2);
   });
+
+  // A click on the bare desktop ripples out from where it landed
+  hero.addEventListener("pointerdown", (event) => {
+    if (event.target === canvas || event.target === hero) addRipple(toWorld(event.clientX, event.clientY), "lift", 0.7);
+  });
+
+  // The cheat code: bands of colour sweep the field from left to right
+  let party = 0;
+  document.addEventListener("alwayson:party", () => (party = performance.now()));
+  const PARTY_SPEED = 46; // blocks per second
 
   // Frame loop
   const dummy = new Object3D();
   const color = new Color();
   const base = new Color();
+  const rainbow = new Color();
   let awayMix = demo.status === "away" ? 1 : 0;
 
   function frame(now) {
@@ -173,6 +196,8 @@ export function start({ demo, hero }) {
     base.copy(COLORS.block).lerp(COLORS.away, awayMix);
 
     while (ripples.length && (now - ripples[0].t0) / 1000 > RIPPLE_LIFE) ripples.shift();
+    const sweep = party ? ((now - party) / 1000) * PARTY_SPEED - cols / 2 - 8 : 0;
+    if (party && sweep > cols / 2 + 40) party = 0;
 
     let index = 0;
     for (let j = 0; j < rows; j += 1) {
@@ -182,6 +207,7 @@ export function start({ demo, hero }) {
         let target = BASE_HEIGHT;
         let lift = 0;
         let wave = 0;
+        let tint = COLORS.ripple;
 
         if (pointer) {
           const d = Math.hypot(x - pointer.x, y - pointer.y);
@@ -194,12 +220,34 @@ export function start({ demo, hero }) {
         for (const ripple of ripples) {
           const age = (now - ripple.t0) / 1000;
           const d = Math.hypot(x - ripple.x, y - ripple.y);
-          const band = Math.exp(-((d - age * RIPPLE_SPEED) ** 2) / 3) * (1 - age / RIPPLE_LIFE);
+          const band = Math.exp(-((d - age * RIPPLE_SPEED) ** 2) / 3) * (1 - age / RIPPLE_LIFE) * ripple.strength;
           target += band * 1.1;
-          wave = Math.max(wave, band);
+          if (band > wave) {
+            wave = band;
+            tint = COLORS[ripple.tint];
+          }
         }
 
-        color.copy(base).lerp(COLORS.lift, lift * 0.7).lerp(COLORS.ripple, Math.min(wave, 1) * 0.8);
+        // The pointer's trail cools over about a second
+        heat[index] = Math.max(heat[index] * 0.965, lift);
+        const trail = heat[index] - lift;
+        target += trail * 0.3;
+
+        color
+          .copy(base)
+          .lerp(COLORS.trail, trail * 0.3)
+          .lerp(COLORS.lift, lift * 0.7)
+          .lerp(tint, Math.min(wave, 1) * 0.8);
+
+        if (party) {
+          // Three bands, each a different part of the rainbow as it passes
+          for (let n = 0; n < 3; n += 1) {
+            const band = Math.exp(-((x - sweep + n * 14) ** 2) / 10);
+            if (band < 0.02) continue;
+            target += band * 2.4;
+            color.lerp(rainbow.setHSL((((x + y) * 0.02 + n / 3) % 1 + 1) % 1, 0.9, 0.55), band);
+          }
+        }
 
         heights[index] += (target - heights[index]) * 0.14;
         dummy.position.set(x, y, 0);
