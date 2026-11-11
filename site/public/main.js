@@ -121,6 +121,8 @@ const state = {
   label: "via Quick Timer",
   resumesAt: null,
   today: 3 * 3600,
+  // Today's online time by what started it, as the app's Activity keeps it
+  todayByKind: { schedule: 2 * 3600, timer: 3600 },
   idle: 0, // how long the Mac has had no input, from you or AlwaysOn
   sinceYou: 999, // how long since your own input
   nextPulse: PULSE_EVERY,
@@ -259,6 +261,7 @@ function pulse() {
   let kind = "posted";
   if (state.sinceYou < PULSE_EVERY) {
     kind = "skipped";
+    emit("skip");
   } else {
     state.idle = 0;
     const method = state.method === "alternate" ? state.nextAlternate : state.method;
@@ -279,6 +282,8 @@ function tick() {
 
   if (state.phase === "active") {
     state.today += dt;
+    const kind = sessionKind();
+    state.todayByKind[kind] = (state.todayByKind[kind] ?? 0) + dt;
     if (state.timed) state.remaining -= dt;
     else state.elapsed += dt;
   } else if (state.phase === "paused" && state.absolute) {
@@ -309,14 +314,44 @@ function tick() {
   render();
 }
 
+// What started the running session, in the app's own kinds
+function sessionKind() {
+  const label = state.label ?? "";
+  if (state.focusSession || label.includes("Focus")) return "focus";
+  if (label.startsWith("Until")) return "until";
+  if (label === "via Quick Timer") return "timer";
+  return "manual";
+}
+
 // Your own input counts as using the Mac
 let lastInput = 0;
+let lastTouched = Date.now(); // in real time, not the demo's
+const TEAMS_AWAY = 5 * 60; // seconds of no input before Teams shows Away
+
 function onInput() {
   const now = performance.now();
   if (state.locked || now - lastInput < 100) return;
   lastInput = now;
   state.sinceYou = 0;
   state.idle = 0;
+  welcomeBack();
+}
+
+// Leave the page alone for a real minute and it tells you what your status
+// would have done in the meantime
+function welcomeBack() {
+  const away = (Date.now() - lastTouched) / 1000;
+  lastTouched = Date.now();
+  if (away < 60) return;
+  notify({
+    title: `You were away for ${duration(away)}`,
+    body:
+      away < TEAMS_AWAY
+        ? `Teams turns you yellow after 5 minutes without input. You had ${duration(TEAMS_AWAY - away)} left.`
+        : away < TEAMS_AWAY + 60
+          ? "Teams turns you yellow after 5 minutes without input, so you had just gone Away."
+          : `Teams would have turned you yellow ${duration(away - TEAMS_AWAY)} ago. AlwaysOn would have kept you green.`,
+  });
 }
 
 for (const type of ["pointermove", "pointerdown", "keydown", "wheel", "touchstart"]) {
@@ -479,6 +514,7 @@ function renderBars() {
 }
 
 function render() {
+  renderActivity();
   const { phase } = state;
   menu.dataset.phase = phase;
   desktop.dataset.phase = phase;
@@ -533,18 +569,28 @@ $("[data-log-clear]")?.addEventListener("click", () => {
 // The menu starts closed. Until someone opens it, a note under the menu bar
 // icon points it out.
 const menuToggle = $("[data-menu-toggle]");
-const dockMenu = $("[data-dock-menu]");
 const coach = $("[data-coach]");
 const COACH_KEY = "alwayson-menu-opened";
+
+let coachSeen = false;
+try {
+  coachSeen = localStorage.getItem(COACH_KEY) === "1";
+} catch {}
 
 function setMenuOpen(open) {
   if (!menu) return;
   menu.hidden = !open;
   menuToggle.setAttribute("aria-expanded", String(open));
   if (open) dismissCoach();
+  // The first time it closes, a note shows where it went
+  else if (!coachSeen && coach && !state.locked && !stacked.matches) {
+    coach.hidden = false;
+    menuToggle.classList.add("is-beckoning");
+  }
 }
 
 function dismissCoach() {
+  coachSeen = true;
   menuToggle.classList.toggle("is-beckoning", false);
   if (coach) coach.hidden = true;
   try {
@@ -569,11 +615,6 @@ function seatMenu() {
   const target = stacked.matches ? menuSlot : menuHome;
   if (menu.parentNode !== target) target.append(menu);
 }
-
-$("[data-live]")?.addEventListener("click", () => {
-  setMenuOpen(true);
-  $("[data-primary]")?.focus({ preventScroll: true });
-});
 
 if (menu) {
   $("[data-primary]").addEventListener("click", () => {
@@ -617,11 +658,10 @@ if (menu) {
     if (stacked.matches) menu.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
     else setMenuOpen(menu.hidden);
   });
-  dockMenu?.addEventListener("click", () => setMenuOpen(menu.hidden));
   // Like a real menu, it closes when you click anywhere else on the desktop
   document.addEventListener("pointerdown", (event) => {
     if (menu.hidden || stacked.matches) return;
-    if ([menu, menuToggle, dockMenu].some((part) => part?.contains(event.target))) return;
+    if (menu.contains(event.target) || menuToggle.contains(event.target)) return;
     setMenuOpen(false);
   });
   document.addEventListener("keydown", (event) => {
@@ -646,7 +686,7 @@ const BAR = 32;
 const stacked = window.matchMedia("(max-width: 900px), (max-height: 600px)");
 const windows = Object.fromEntries($$("[data-window]").map((win) => [win.dataset.window, win]));
 // Height 0 means as tall as the content
-const sizes = { settings: [800, 600], until: [440, 620], terminal: [880, 470], activity: [560, 660], install: [600, 640], about: [300, 0] };
+const sizes = { settings: [800, 600], until: [440, 620], terminal: [880, 470], activity: [600, 560], install: [600, 640], about: [300, 0] };
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 const dock = $("[data-dock]");
 const minimizedSlot = $("[data-dock-minimized]");
@@ -749,7 +789,7 @@ function fly(win, tile, back) {
     { transform: small, opacity: 0.3 },
   ];
   return win
-    .animate(back ? frames.reverse() : frames, { duration: 300, easing: back ? "cubic-bezier(0.2, 0.7, 0.3, 1)" : "cubic-bezier(0.5, 0, 0.8, 0.5)" })
+    .animate(back ? frames.reverse() : frames, { duration: 300, easing: "cubic-bezier(0.32, 0.72, 0, 1)" })
     .finished.catch(() => {});
 }
 
@@ -825,6 +865,7 @@ function openWindow(name) {
   }
   bringToFront(win);
   syncDock();
+  if (name === "activity") renderActivity();
   win.focus({ preventScroll: true });
 }
 
@@ -930,12 +971,16 @@ if (dock && !reduceMotion && window.matchMedia("(hover: hover) and (pointer: fin
   const short = window.matchMedia("(max-height: 720px)");
   dock.addEventListener("pointermove", (event) => {
     const base = short.matches ? 38 : 48;
-    for (const item of $$(".dock-item", dock)) {
+    // Measure every icon before resizing any, so the Dock is laid out once
+    const items = $$(".dock-item", dock);
+    const centers = items.map((item) => {
       const rect = item.getBoundingClientRect();
-      const distance = Math.abs(event.clientX - (rect.left + rect.width / 2));
-      const lift = Math.cos((Math.min(distance / REACH, 1) * Math.PI) / 2);
+      return rect.left + rect.width / 2;
+    });
+    items.forEach((item, index) => {
+      const lift = Math.cos((Math.min(Math.abs(event.clientX - centers[index]) / REACH, 1) * Math.PI) / 2);
       item.style.setProperty("--size", `${(base * (1 + (PEAK - 1) * lift)).toFixed(1)}px`);
-    }
+    });
   });
   dock.addEventListener("pointerleave", () => {
     for (const item of $$(".dock-item", dock)) item.style.removeProperty("--size");
@@ -995,15 +1040,11 @@ stacked.addEventListener("change", () => {
 
 seatMenu();
 arrange();
-let coachSeen = false;
-try {
-  coachSeen = localStorage.getItem(COACH_KEY) === "1";
-} catch {}
-if (coach && menu && !coachSeen) {
-  coach.hidden = false;
-  menuToggle.classList.add("is-beckoning");
+// Visitors arrive to the AlwaysOn menu, open under its icon
+if (menu && !stacked.matches && !location.hash.slice(1)) {
+  menu.hidden = false;
+  menuToggle.setAttribute("aria-expanded", "true");
 }
-if (windows.readme) bringToFront(windows.readme);
 
 // The app menu, under the app's name in the menu bar
 
@@ -1070,7 +1111,7 @@ function notify({ title, body, onClick }) {
   const dismiss = () => {
     if (note.classList.contains("is-leaving")) return;
     note.classList.add("is-leaving");
-    setTimeout(() => note.remove(), reduceMotion ? 0 : 220);
+    setTimeout(() => note.remove(), 220);
   };
   note.addEventListener("click", () => {
     dismiss();
@@ -1109,6 +1150,7 @@ function unlock() {
   state.idle = 0;
   for (const part of [desk, $(".menubar"), notes]) if (part) part.inert = false;
   lockScreen.hidden = true;
+  lastTouched = Date.now();
   notify({
     title: "Welcome back",
     body:
@@ -1153,7 +1195,6 @@ function showTheme() {
   const light = isLight();
   $('meta[name="theme-color"]')?.setAttribute("content", light ? "#f5f5f7" : "#000000");
   $('meta[name="color-scheme"]')?.setAttribute("content", light ? "light" : "dark");
-  setText($("[data-theme-toggle]"), light ? "Use Dark Appearance" : "Use Light Appearance");
   // The app's screenshots come in both appearances
   for (const shot of $$('img[src*="/screenshots/"]')) {
     const name = shot.getAttribute("src").replace(/(-dark)?\.png$/, "");
@@ -1163,7 +1204,6 @@ function showTheme() {
   showSystem();
 }
 
-$("[data-theme-toggle]")?.addEventListener("click", () => setTheme(!isLight()));
 
 // The menu bar's right-hand side: Wi-Fi, the battery, and Control Center.
 // Each one changes something the app reacts to. Joining a network switches
@@ -1295,9 +1335,12 @@ const panelToggles = $$("[data-panel-toggle]");
 const panelFor = (toggle) => $(`[data-panel="${toggle.dataset.panelToggle}"]`);
 
 function setPanel(name) {
+  // Going from one panel straight to another skips the opening animation
+  const switching = Boolean(name) && panelToggles.some((toggle) => !panelFor(toggle).hidden);
   for (const toggle of panelToggles) {
     const open = toggle.dataset.panelToggle === name;
     const panel = panelFor(toggle);
+    panel.classList.toggle("is-instant", switching);
     if (open) panel.style.right = `${Math.max(8, window.innerWidth - toggle.getBoundingClientRect().right - 6)}px`;
     panel.hidden = !open;
     toggle.setAttribute("aria-expanded", String(open));
@@ -1442,9 +1485,6 @@ desk?.addEventListener("contextmenu", (event) => {
     { title: "New Folder", run: newFolder, disabled: $$(".icon[data-folder]").length >= MAX_FOLDERS },
     null,
     { title: "Clean Up", run: cleanUp },
-    { title: isLight() ? "Use Dark Appearance" : "Use Light Appearance", run: () => setTheme(!isLight()) },
-    null,
-    { title: "Lock Screen", run: lock },
   ]);
 });
 document.addEventListener("pointerdown", (event) => {
@@ -1748,6 +1788,186 @@ if (terminal) {
     }, { threshold: 0.4 });
     observer.observe(terminal);
   }
+}
+
+// The cheat code every desktop needs: up up down down left right left right B A
+
+const CHEAT = ["ArrowUp", "ArrowUp", "ArrowDown", "ArrowDown", "ArrowLeft", "ArrowRight", "ArrowLeft", "ArrowRight", "b", "a"];
+let cheatAt = 0;
+document.addEventListener("keydown", (event) => {
+  if (state.locked) return;
+  const key = event.key.length === 1 ? event.key.toLowerCase() : event.key;
+  cheatAt = key === CHEAT[cheatAt] ? cheatAt + 1 : key === CHEAT[0] ? 1 : 0;
+  if (cheatAt < CHEAT.length) return;
+  cheatAt = 0;
+  document.dispatchEvent(new CustomEvent("alwayson:party"));
+  notify({ title: "Cheat code accepted", body: "Status: Available, forever. AlwaysOn gets you there without the cheat." });
+});
+
+// Activity: online time per day for the last week. The days before today
+// are a believable week; today grows as the demo keeps you online.
+
+const KINDS = [
+  ["schedule", "Work hours"],
+  ["timer", "Timer"],
+  ["until", "Until"],
+  ["manual", "Manual"],
+  ["command", "Command"],
+  ["focus", "Focus"],
+];
+const weekdayFormat = new Intl.DateTimeFormat(undefined, { weekday: "short" });
+const longDayFormat = new Intl.DateTimeFormat(undefined, { weekday: "long" });
+// Six days before today, oldest first, in hours. Weekends are quiet.
+const pastWeek = (() => {
+  const weekday = { schedule: 7.3, until: 0.6 };
+  const shapes = [weekday, { schedule: 7.2, focus: 0.6 }, { schedule: 7.4, command: 0.7 }, { schedule: 7.1, until: 0.5 }, weekday];
+  return Array.from({ length: 6 }, (_, index) => {
+    const day = new Date(state.now - (6 - index) * 86400000);
+    const weekend = day.getDay() === 0 || day.getDay() === 6;
+    const hours = weekend ? (day.getDay() === 6 ? { timer: 0.6 } : {}) : shapes[index % shapes.length];
+    return { day, byKind: Object.fromEntries(Object.entries(hours).map(([kind, h]) => [kind, h * 3600])) };
+  });
+})();
+
+const activityUi = (() => {
+  const root = $("[data-activity]");
+  if (!root) return null;
+  return {
+    root,
+    win: root.closest("[data-window]"),
+    today: $("[data-act-today]", root),
+    week: $("[data-act-week]", root),
+    average: $("[data-act-average]", root),
+    chart: $("[data-act-chart]", root),
+    grid: $("[data-act-grid]", root),
+    bars: $("[data-act-bars]", root),
+    empty: $("[data-act-empty]", root),
+    legend: $("[data-act-legend]", root),
+    clear: $("[data-act-clear]", root),
+    sheet: $("[data-act-sheet]", root),
+  };
+})();
+let activityKey = "";
+let activityShape = "";
+
+function renderActivity() {
+  const ui = activityUi;
+  if (!ui || ui.win.hidden) return;
+  const days = [...pastWeek, { day: new Date(state.now), byKind: state.todayByKind, today: true }];
+  const totals = days.map((day) => Object.values(day.byKind).reduce((sum, seconds) => sum + seconds, 0));
+  // Redraw once a demo minute, which is every 3 real seconds
+  const key = totals.map((total) => Math.floor(total / 60)).join(",");
+  if (key === activityKey) return;
+  activityKey = key;
+
+  const week = totals.reduce((sum, total) => sum + total, 0);
+  const active = totals.filter(Boolean).length;
+  setText(ui.today, duration(totals[6]));
+  setText(ui.week, duration(week));
+  setText(ui.average, duration(active ? week / active : 0));
+
+  ui.chart.hidden = week === 0;
+  ui.legend.hidden = week === 0;
+  ui.empty.hidden = week > 0;
+  if (!week) return;
+
+  // The scale goes up in 5 hour steps, past the longest day
+  const top = Math.max(5, Math.ceil((Math.max(...totals) / 3600 + 0.5) / 5) * 5);
+
+  // Rebuild only when the chart's shape changes, so a bar being pointed at or
+  // focused keeps its place while today's numbers tick up
+  const present = KINDS.filter(([kind]) => days.some((day) => day.byKind[kind] > 0));
+  const partsOf = (day) => present.filter(([kind]) => day.byKind[kind] > 0);
+  const shape = `${top}|${days.map((day) => partsOf(day).map(([kind]) => kind).join("+")).join("/")}`;
+  if (shape !== activityShape) {
+    activityShape = shape;
+    ui.grid.replaceChildren(
+      ...Array.from({ length: top / 5 + 1 }, (_, index) => {
+        const line = document.createElement("i");
+        line.style.bottom = `${(index * 5 * 100) / top}%`;
+        line.dataset.h = `${index * 5}h`;
+        return line;
+      }),
+    );
+    ui.bars.replaceChildren(
+      ...days.map((day) => {
+        const column = document.createElement("div");
+        column.className = `act-day${day.today ? " is-today" : ""}`;
+        column.tabIndex = 0;
+        for (const [kind] of partsOf(day)) {
+          const segment = document.createElement("b");
+          segment.style.setProperty("--tint", `var(--k-${kind})`);
+          column.append(segment);
+        }
+        const label = document.createElement("span");
+        label.textContent = weekdayFormat.format(day.day);
+        const tip = document.createElement("div");
+        tip.className = "act-tip";
+        tip.setAttribute("aria-hidden", "true");
+        tip.append(document.createElement("strong"));
+        for (const [kind, title] of partsOf(day)) {
+          const row = document.createElement("span");
+          row.style.setProperty("--tint", `var(--k-${kind})`);
+          row.innerHTML = "<em></em><i></i>";
+          row.firstChild.textContent = title;
+          tip.append(row);
+        }
+        column.append(label, tip);
+        return column;
+      }),
+    );
+    ui.legend.replaceChildren(
+      ...present.map(([kind, title]) => {
+        const item = document.createElement("li");
+        item.style.setProperty("--tint", `var(--k-${kind})`);
+        item.textContent = title;
+        return item;
+      }),
+    );
+  }
+
+  [...ui.bars.children].forEach((column, index) => {
+    const day = days[index];
+    const parts = partsOf(day);
+    const name = day.today ? "Today" : longDayFormat.format(day.day);
+    column.setAttribute(
+      "aria-label",
+      `${name}: ${duration(totals[index])}${parts.length ? `, ${parts.map(([kind, title]) => `${title} ${duration(day.byKind[kind])}`).join(", ")}` : ""}`,
+    );
+    $$("b", column).forEach((segment, part) => {
+      segment.style.height = `${(day.byKind[parts[part][0]] / 3600 / top) * 100}%`;
+    });
+    const tip = $(".act-tip", column);
+    tip.style.setProperty("--top", `${(totals[index] / 3600 / top) * 100}%`);
+    setText($("strong", tip), `${name} · ${totals[index] ? duration(totals[index]) : "No sessions"}`);
+    $$("i", tip).forEach((cell, part) => setText(cell, duration(day.byKind[parts[part][0]])));
+  });
+}
+
+if (activityUi) {
+  const { clear, sheet } = activityUi;
+  const closeSheet = () => {
+    sheet.hidden = true;
+    clear.focus({ preventScroll: true });
+  };
+  clear.addEventListener("click", () => {
+    sheet.hidden = false;
+    $("[data-act-cancel]", sheet).focus({ preventScroll: true });
+  });
+  $("[data-act-cancel]", sheet).addEventListener("click", closeSheet);
+  $("[data-act-confirm]", sheet).addEventListener("click", () => {
+    for (const day of pastWeek) day.byKind = {};
+    state.todayByKind = {};
+    activityKey = "";
+    activityShape = "";
+    closeSheet();
+    renderActivity();
+  });
+  sheet.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    event.stopPropagation();
+    closeSheet();
+  });
 }
 
 // Start

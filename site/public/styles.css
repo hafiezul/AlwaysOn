@@ -54,6 +54,12 @@
   --edge: rgb(0 0 0 / 0.8); /* the hairline around floating surfaces */
   --shade: 1; /* how strong shadows are */
 
+  /* Motion: one curve for things arriving or leaving, one for things moving
+     across the screen, one for sheets and the Dock */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
   --bar: 32px;
   --dock: 76px; /* the Dock and the gap above it */
   --gutter: clamp(16px, 4vw, 40px);
@@ -202,7 +208,7 @@ kbd {
   background: var(--raised-2);
   font-weight: 600;
   text-decoration: none;
-  transition: transform 120ms ease, background-color 120ms ease;
+  transition: transform 120ms var(--ease-out), background-color 120ms ease;
 }
 
 .btn:active {
@@ -258,8 +264,7 @@ kbd {
   line-height: 1;
 }
 
-.menubar-app,
-.menubar-nav a {
+.menubar-app {
   display: inline-flex;
   align-items: center;
   height: 24px;
@@ -352,6 +357,11 @@ kbd {
   color: var(--yellow);
 }
 
+/* The cup is drawn in outline, so it takes the colour without filling in */
+.menubar-coffee:hover svg {
+  fill: none;
+}
+
 .menubar-stars-count {
   padding: 2px 6px;
   border-radius: 999px;
@@ -365,16 +375,7 @@ kbd {
   border-radius: 4px;
 }
 
-.menubar-nav {
-  display: flex;
-}
-
-.menubar-nav a {
-  color: rgb(var(--fg) / 0.88);
-}
-
-.menubar-app:hover,
-.menubar-nav a:hover {
+.menubar-app:hover {
   background: rgb(var(--ink) / 0.12);
 }
 
@@ -522,6 +523,30 @@ kbd {
   display: none;
 }
 
+/* Panels and the pause menu grow out of the control that opened them, the
+   way the AlwaysOn menu does. Moving from one panel to the next is instant. */
+.panel,
+.popover {
+  transform-origin: calc(100% - 20px) top;
+  transition: opacity 140ms ease, transform 140ms var(--ease-out);
+}
+
+.popover {
+  transform-origin: 22px top;
+}
+
+.panel.is-instant {
+  transition: none;
+}
+
+@starting-style {
+  .panel,
+  .popover {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
 .panel hr {
   height: 1px;
   margin: 8px 0;
@@ -618,7 +643,7 @@ kbd {
   border-radius: 50%;
   background: #fff;
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.3);
-  transition: transform 160ms ease;
+  transition: transform 160ms var(--ease-out);
 }
 
 .switch[aria-checked="true"] {
@@ -656,10 +681,15 @@ kbd {
   line-height: 1.25;
   text-align: left;
   cursor: default;
+  transition: transform 120ms var(--ease-out);
 }
 
 .tile:hover {
   background: rgb(var(--ink) / 0.13);
+}
+
+.tile:active {
+  transform: scale(0.97);
 }
 
 .tile-wide {
@@ -754,12 +784,10 @@ kbd {
   background-size: 28px 28px;
 }
 
+/* The grid stays underneath, so the field fades in over it */
 .field-canvas {
   display: block;
-}
-
-.desktop.is-3d::before {
-  content: none;
+  animation: fade-in 600ms ease;
 }
 
 /* Desktop icons */
@@ -818,7 +846,7 @@ kbd {
 
 .icon svg,
 .icon img {
-  transition: transform 160ms ease;
+  transition: transform 160ms var(--ease-out);
 }
 
 .icon:hover {
@@ -837,9 +865,12 @@ button.icon {
   cursor: default;
 }
 
-.icon:hover svg,
-.icon:hover img {
-  transform: translateY(-2px);
+/* A tap on a touch screen counts as a hover, and would leave the icon lifted */
+@media (hover: hover) and (pointer: fine) {
+  .icon:hover svg,
+  .icon:hover img {
+    transform: translateY(-2px);
+  }
 }
 
 .icon:active svg,
@@ -905,6 +936,8 @@ button.icon {
   font-family: var(--system);
   font-size: 13px;
   line-height: 1.4;
+  /* What's inside lays itself out by the window's width, not the screen's */
+  container: win / inline-size;
 }
 
 .window[hidden] {
@@ -916,7 +949,7 @@ button.icon {
 }
 
 .window.is-opening {
-  animation: window-in 200ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  animation: window-in 200ms var(--ease-out);
 }
 
 @keyframes window-in {
@@ -926,8 +959,14 @@ button.icon {
   }
 }
 
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
 .window.is-zoomed {
-  inset: calc(var(--bar) + 8px) 8px var(--dock) 112px !important;
+  inset: calc(var(--bar) + 8px) 8px var(--dock) 8px !important;
   width: auto !important;
   height: auto !important;
   max-width: none;
@@ -1069,7 +1108,7 @@ button.light:focus-visible::after {
 /* Read Me */
 
 .readme {
-  padding: clamp(28px, 3.6vw, 48px);
+  padding: clamp(18px, 6cqi, 48px);
   font-family: var(--text-font);
   font-size: 1rem;
   line-height: 1.55;
@@ -1080,6 +1119,10 @@ h1 {
   font-weight: 700;
   line-height: 0.95;
   letter-spacing: -0.035em;
+}
+
+.readme h1 {
+  font-size: clamp(3rem, 10.2cqi, 5.25rem);
 }
 
 h1:focus {
@@ -1160,16 +1203,6 @@ h1:focus {
   font-family: var(--system);
   font-size: 13px;
   text-align: left;
-  cursor: pointer;
-}
-
-.live:hover {
-  background: rgb(10 132 255 / 0.1);
-}
-
-.live:focus-visible {
-  outline: 2px solid var(--blue-text);
-  outline-offset: -2px;
 }
 
 .live strong {
@@ -1200,12 +1233,6 @@ h1:focus {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.live-open {
-  flex: none;
-  color: var(--blue-text);
-  font-weight: 500;
 }
 
 .touch-only,
@@ -1287,7 +1314,7 @@ h1:focus {
   -webkit-backdrop-filter: blur(24px) saturate(1.4);
   box-shadow: 0 0 0 0.5px var(--edge), 0 24px 60px rgb(0 0 0 / calc(0.5 * var(--shade)));
   transform-origin: top right;
-  transition: opacity 140ms ease, transform 140ms ease;
+  transition: opacity 140ms ease, transform 140ms var(--ease-out);
 }
 
 .ao-menu[hidden] {
@@ -1559,6 +1586,10 @@ h1:focus {
   background: rgb(var(--ink) / 0.13);
 }
 
+.chip:active {
+  background: rgb(var(--ink) / 0.2);
+}
+
 .chip.is-selected {
   border-color: var(--blue);
   background: rgb(10 132 255 / 0.2);
@@ -1581,7 +1612,7 @@ h1:focus {
   cursor: pointer;
 }
 
-.pulse-row:hover,
+button.pulse-row:hover,
 .mrow:not(.mrow-static):hover {
   background: var(--blue);
 }
@@ -1592,14 +1623,15 @@ h1:focus {
   color: rgb(var(--fg) / 0.82);
 }
 
-.pulse-row:hover svg,
+button.pulse-row:hover svg,
 .mrow:not(.mrow-static):hover svg,
 .mrow:not(.mrow-static):hover .mrow-hint,
-.pulse-row:hover .pulse-time {
+button.pulse-row:hover .pulse-time {
   color: var(--text-strong);
 }
 
-.mrow-static {
+.mrow-static,
+div.pulse-row {
   cursor: default;
 }
 
@@ -1633,7 +1665,7 @@ h1:focus {
 }
 
 .pulse-bars i.is-new {
-  animation: bar-in 300ms ease-out;
+  animation: bar-in 300ms var(--ease-out);
   transform-origin: bottom;
 }
 
@@ -1775,7 +1807,7 @@ h1:focus {
 }
 
 .pw-bars i.is-new {
-  animation: bar-in 300ms ease-out;
+  animation: bar-in 300ms var(--ease-out);
   transform-origin: bottom;
 }
 
@@ -1808,7 +1840,7 @@ h1:focus {
 }
 
 .pw-list li.is-new {
-  animation: row-in 360ms ease-out;
+  animation: row-in 360ms var(--ease-out);
 }
 
 @keyframes row-in {
@@ -2322,24 +2354,329 @@ h2 {
   margin-top: 22px;
 }
 
-/* Activity.png, as Preview would show it */
+/* Activity: online time per day for the last week, from the demo's own
+   history. It follows the app's Settings pane: tiles, a stacked bar per day
+   coloured by what started the session, and Clear History. */
 
-.preview {
-  padding: 16px;
-  background: var(--well);
+.activity {
+  --k-schedule: var(--blue);
+  --k-timer: var(--green);
+  --k-until: var(--orange);
+  --k-manual: #bf5af2;
+  --k-command: var(--cyan);
+  --k-focus: var(--indigo);
+  position: relative;
+  padding: 18px max(18px, calc((100cqi - 720px) / 2)) 22px;
 }
 
-.preview img {
-  width: 100%;
-  margin: 0 auto;
+.act-heading {
+  margin: 4px 4px 8px;
+  font-family: var(--system);
+  font-size: 13px;
+  font-weight: 700;
 }
 
-.preview p {
-  max-width: 34em;
-  margin: 14px auto 0;
-  color: var(--dim);
-  font-size: 12px;
+.act-card {
+  padding: 14px;
+  border-radius: 10px;
+  background: rgb(var(--ink) / 0.05);
+}
+
+.act-tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 26px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgb(var(--ink) / 0.08);
+}
+
+.act-tiles p {
+  display: grid;
+  margin: 0;
+}
+
+.act-tiles strong {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+
+.act-tiles span,
+.act-note,
+.act-privacy p {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.act-chart {
+  position: relative;
+  height: 196px;
+  margin: 14px 0 0;
+  padding: 0 34px 22px 0;
+}
+
+.act-grid {
+  position: absolute;
+  inset: 0 0 22px;
+}
+
+.act-grid i {
+  position: absolute;
+  right: 0;
+  left: 0;
+  border-top: 1px solid rgb(var(--ink) / 0.1);
+}
+
+.act-grid i::after {
+  content: attr(data-h);
+  position: absolute;
+  top: -7px;
+  right: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-style: normal;
+  line-height: 1;
+}
+
+.act-bars {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: clamp(6px, 3cqi, 18px);
+  height: 100%;
+}
+
+.act-day {
+  position: relative;
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-start;
+  height: 100%;
+  border-radius: 3px 3px 0 0;
+  outline: none;
+}
+
+.act-day b {
+  display: block;
+  flex: none;
+  min-height: 0;
+  background: var(--tint);
+}
+
+.act-day b:last-of-type {
+  border-radius: 3px 3px 0 0;
+}
+
+.act-day > span {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  left: 0;
+  padding-top: 5px;
+  color: var(--muted);
+  font-size: 11.5px;
   text-align: center;
+}
+
+.act-day.is-today > span {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Pointing at a day shows what made up its total */
+.act-tip {
+  position: absolute;
+  bottom: calc(var(--top) + 8px);
+  left: 50%;
+  z-index: 2;
+  width: max-content;
+  min-width: 132px;
+  padding: 7px 9px;
+  border: 1px solid rgb(var(--ink) / 0.12);
+  border-radius: 8px;
+  background: var(--surface-3);
+  box-shadow: 0 10px 28px rgb(0 0 0 / calc(0.45 * var(--shade)));
+  font-size: 11.5px;
+  line-height: 1.45;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateX(-50%) scale(0.97);
+  transform-origin: bottom center;
+  transition: opacity 125ms ease, transform 125ms var(--ease-out);
+}
+
+.act-tip strong {
+  display: block;
+  margin-bottom: 2px;
+}
+
+.act-tip span {
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+  color: var(--muted);
+}
+
+.act-tip span::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin: auto 0;
+  border-radius: 50%;
+  background: var(--tint);
+}
+
+.act-tip span em,
+.act-tip span i {
+  font-style: normal;
+}
+
+.act-tip span em {
+  flex: 1;
+}
+
+.act-day:hover .act-tip,
+.act-day:focus-visible .act-tip {
+  opacity: 1;
+  transform: translateX(-50%);
+}
+
+.act-day:focus-visible {
+  box-shadow: 0 0 0 2px var(--blue);
+}
+
+.act-day:first-child .act-tip {
+  left: 0;
+  transform: scale(0.97);
+}
+
+.act-day:first-child:hover .act-tip,
+.act-day:first-child:focus-visible .act-tip {
+  transform: none;
+}
+
+.act-day:last-child .act-tip {
+  right: 0;
+  left: auto;
+  transform: scale(0.97);
+}
+
+.act-day:last-child:hover .act-tip,
+.act-day:last-child:focus-visible .act-tip {
+  transform: none;
+}
+
+.act-empty {
+  margin: 16px 0 4px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.act-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+}
+
+.act-legend li::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--tint);
+}
+
+.act-note {
+  margin: 8px 4px 20px;
+}
+
+.act-privacy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.act-privacy p {
+  margin: 0;
+}
+
+.act-privacy .mbtn {
+  flex: none;
+  height: 26px;
+  font-weight: 500;
+}
+
+/* The confirmation drops from the title bar, as a macOS sheet does */
+.act-sheet {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  background: rgb(0 0 0 / 0.25);
+  transition: opacity 200ms ease, display 200ms allow-discrete;
+}
+
+.act-sheet[hidden] {
+  display: none;
+  opacity: 0;
+}
+
+.act-sheet > div {
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  width: min(280px, calc(100% - 32px));
+  padding: 18px 16px 16px;
+  border: 1px solid rgb(var(--ink) / 0.12);
+  border-top: 0;
+  border-radius: 0 0 12px 12px;
+  background: var(--surface-3);
+  box-shadow: 0 18px 44px rgb(0 0 0 / calc(0.5 * var(--shade)));
+  text-align: center;
+  transition: transform 300ms var(--ease-drawer);
+}
+
+.act-sheet[hidden] > div {
+  transform: translateY(-100%);
+}
+
+@starting-style {
+  .act-sheet {
+    opacity: 0;
+  }
+
+  .act-sheet > div {
+    transform: translateY(-100%);
+  }
+}
+
+.act-sheet img {
+  border-radius: 23%;
+}
+
+.act-sheet p {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.act-sheet .mbtn {
+  width: 100%;
+  height: 28px;
+}
+
+.mbtn.act-destructive {
+  color: var(--red);
 }
 
 /* Install steps, a real sequence */
@@ -2501,6 +2838,46 @@ h2 {
   }
   66% {
     transform: translateY(-10px);
+  }
+}
+
+/* Arriving: the Dock rises and the icons land one after another, once */
+@media (min-width: 901px) and (min-height: 601px) and (prefers-reduced-motion: no-preference) {
+  .dock {
+    animation: dock-in 500ms 80ms var(--ease-drawer) backwards;
+  }
+
+  .icon {
+    animation: icon-in 300ms var(--ease-out) backwards;
+  }
+
+  .icon:nth-child(1) {
+    animation-delay: 120ms;
+  }
+
+  .icon:nth-child(2) {
+    animation-delay: 160ms;
+  }
+
+  .icon:nth-child(3) {
+    animation-delay: 200ms;
+  }
+
+  .icon:nth-child(4) {
+    animation-delay: 240ms;
+  }
+}
+
+@keyframes dock-in {
+  from {
+    transform: translate(-50%, calc(100% + 12px));
+  }
+}
+
+@keyframes icon-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
   }
 }
 
@@ -2750,8 +3127,16 @@ a.mbtn {
   text-align: left;
   cursor: default;
   pointer-events: auto;
-  animation: note-in 380ms cubic-bezier(0.2, 0.9, 0.3, 1.1);
-  transition: opacity 200ms ease, transform 200ms ease;
+  transition: opacity 200ms ease, transform 400ms var(--ease-out);
+}
+
+/* A note arrives from the right edge and leaves the way it came. Transitions,
+   so one that is dismissed while still arriving turns round where it is. */
+@starting-style {
+  .note {
+    opacity: 0;
+    transform: translateX(calc(100% + 10px));
+  }
 }
 
 .note:hover {
@@ -2760,7 +3145,8 @@ a.mbtn {
 
 .note.is-leaving {
   opacity: 0;
-  transform: translateX(40px);
+  transform: translateX(calc(100% + 10px));
+  transition: opacity 200ms ease, transform 200ms var(--ease-out);
 }
 
 .note img {
@@ -2780,13 +3166,6 @@ a.mbtn {
 .note small {
   color: var(--muted);
   font-size: 12.5px;
-}
-
-@keyframes note-in {
-  from {
-    opacity: 0;
-    transform: translateX(60px);
-  }
 }
 
 /* Lock screen */
@@ -2809,8 +3188,13 @@ a.mbtn {
   animation: lock-in 300ms ease;
 }
 
+/* Unlocking fades out faster than locking fades in. Browsers that can't
+   transition display drop this and unlock at once. */
 .lock[hidden] {
   display: none;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease, display 200ms allow-discrete;
 }
 
 .lock p {
@@ -2860,6 +3244,105 @@ a.mbtn {
 @keyframes lock-in {
   from {
     opacity: 0;
+  }
+}
+
+/* Windows of any size. A zoomed window spreads out and a small one stacks,
+   whatever the size of the screen around it. */
+
+.pane {
+  padding-inline: max(28px, calc((100cqi - 1100px) / 2));
+}
+
+.until-card {
+  padding-inline: max(22px, calc((100cqi - 560px) / 2));
+}
+
+.installer .steps {
+  margin-inline: max(20px, calc((100cqi - 720px) / 2));
+}
+
+@container win (min-width: 1100px) {
+  .readme {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    align-items: start;
+    column-gap: clamp(48px, 6cqi, 112px);
+    padding-inline: max(48px, calc((100cqi - 1480px) / 2));
+  }
+
+  .readme h1 {
+    font-size: clamp(5.25rem, 6.2cqi, 6.5rem);
+  }
+
+  .readme-more h2:first-child {
+    margin-top: 12px;
+  }
+
+  .readme-footer {
+    grid-column: 1 / -1;
+  }
+}
+
+@container win (min-width: 900px) {
+  .pw-body {
+    grid-template-columns: minmax(0, 380px) minmax(0, 1fr);
+    grid-template-rows: auto auto auto 1fr auto;
+    column-gap: 16px;
+  }
+
+  .pw-head,
+  .pw-foot {
+    grid-column: 1 / -1;
+  }
+
+  .pw-list {
+    grid-column: 2;
+    grid-row: 2 / span 3;
+    align-content: start;
+  }
+}
+
+@container win (max-width: 640px) {
+  .methods,
+  .terminal-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .method-stage {
+    height: 120px;
+  }
+
+  .cli-notes {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+}
+
+@container win (max-width: 400px) {
+  .dmg-item {
+    width: 92px;
+  }
+
+  .dmg-item img,
+  .dmg-item svg {
+    width: 72px;
+    height: 72px;
+  }
+
+  .dmg-trail {
+    width: 44px;
+    margin-top: 24px;
+  }
+}
+
+@container win (max-width: 340px) {
+  .pw-tallies {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .pw-head {
+    flex-wrap: wrap;
   }
 }
 
@@ -2981,8 +3464,8 @@ a.mbtn {
 }
 
 @media (max-width: 700px) {
-  .menubar-nav,
-  .menubar-extra {
+  .menubar-extra,
+  .menubar-coffee span {
     display: none;
   }
 }
@@ -3045,9 +3528,9 @@ a.mbtn {
   }
 
   .btn,
+  .tile,
   .keycap,
   .pixel-cursor,
-  .ao-menu,
   .ring-fill,
   .stop,
   .menubar-dot,
@@ -3058,19 +3541,43 @@ a.mbtn {
   .pulse-bars i.is-new,
   .pw-bars i.is-new,
   .pw-list li.is-new,
-  .window.is-opening,
-  .note,
-  .lock,
   .is-flash,
   .dmg-target.is-filled svg {
     animation: none;
   }
 
-  .note,
   .dmg-app,
   .dmg-target svg,
   .dock-item svg,
   .dock-item img {
     transition: none;
+  }
+
+  .act-sheet > div,
+  .act-tip {
+    transition: none;
+  }
+
+  /* Things that arrive and leave still fade, but nothing travels */
+  .window.is-opening {
+    animation: fade-in 200ms ease;
+  }
+
+  .note,
+  .note.is-leaving {
+    transition: opacity 200ms ease;
+  }
+
+  .ao-menu[hidden],
+  .note.is-leaving {
+    transform: none;
+  }
+
+  @starting-style {
+    .panel,
+    .popover,
+    .note {
+      transform: none;
+    }
   }
 }
