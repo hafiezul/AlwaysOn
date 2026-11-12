@@ -40,7 +40,7 @@ struct ProfilesSettingsPane: View {
 
             wifiSwitching
 
-            Text("Per-profile settings: activity interval, activity method, auto-disable timer, work hours schedule, and Wi-Fi networks. Onboarding, permissions, notifications, and launch at login stay global.")
+            Text("Per-profile settings: activity interval and method, pacing, only-when-idle, auto-disable timer, target apps, prevent sleep, safety stops, work hours, and Wi-Fi networks. The hotkey, menu bar, permissions, notifications, and launch at login stay global.")
                 .font(.caption)
                 .foregroundColor(.secondary)
         }
@@ -156,6 +156,11 @@ struct ProfilesSettingsPane: View {
                 draftName = profile.name
             }
 
+            Button("Duplicate") {
+                appState.syncActiveProfileSettings()
+                appState.profileManager.duplicateProfile(profile.id)
+            }
+
             Button("Delete", role: .destructive) {
                 deleteProfile(profile)
             }
@@ -261,7 +266,8 @@ struct ProfilesSettingsPane: View {
             activityInterval: appState.activityInterval,
             activityMethodId: appState.activityMethod.rawValue,
             defaultTimerDurationId: appState.defaultTimerDuration.id,
-            workSchedule: appState.workScheduleManager.schedule
+            workSchedule: appState.workScheduleManager.schedule,
+            behavior: appState.currentProfileBehavior
         )
 
         appState.profileManager.addProfile(profile)

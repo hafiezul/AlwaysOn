@@ -18,6 +18,16 @@ extension AppState {
         activityMethod = profile.activityMethod
         defaultTimerDuration = profile.defaultTimerDuration
         workScheduleManager.schedule = profile.workSchedule
+        if let behavior = profile.behavior {
+            pulsePacing = behavior.pulsePacing
+            adaptivePostAfter = behavior.adaptivePostAfter
+            simulateOnlyWhenIdle = behavior.simulateOnlyWhenIdle
+            requireTargetApp = behavior.requireTargetApp
+            targetApps = Set(behavior.targetApps)
+            sleepPrevention = behavior.sleepPrevention
+            awayLimit = behavior.awayLimit
+            batteryStopThreshold = behavior.batteryStopThreshold
+        }
         quickTimerEndTime = nil
         quickTimerRemaining = 0
     }
@@ -52,6 +62,18 @@ extension AppState {
             .store(in: &cancellables)
     }
 
+    /// The eight per-profile behavior settings as they are right now
+    var currentProfileBehavior: ProfileBehavior {
+        ProfileBehavior(pulsePacingId: pulsePacing.rawValue,
+                        adaptivePostAfterSeconds: adaptivePostAfter.rawValue,
+                        simulateOnlyWhenIdle: simulateOnlyWhenIdle,
+                        requireTargetApp: requireTargetApp,
+                        targetApps: targetApps.sorted(),
+                        sleepPreventionId: sleepPrevention.rawValue,
+                        awayLimitHours: awayLimit.rawValue,
+                        batteryStopPercent: batteryStopThreshold.rawValue)
+    }
+
     func syncActiveProfileSettings() {
         guard !isApplyingProfile else { return }
         profileManager.updateProfileSettings(
@@ -59,7 +81,8 @@ extension AppState {
             activityInterval: activityInterval,
             activityMethod: activityMethod,
             defaultTimerDuration: defaultTimerDuration,
-            workSchedule: workScheduleManager.schedule
+            workSchedule: workScheduleManager.schedule,
+            behavior: currentProfileBehavior
         )
     }
 
