@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import json
+from datetime import datetime, timedelta, timezone
 import plistlib
 import shutil
 import os
@@ -24,7 +25,16 @@ class CommandHelperAcceptance(unittest.TestCase):
         self.helper = self.make_app(self.app, '2.3', '45')
         self.log = self.root / 'opens.jsonl'
         fake = self.root / 'open'
-        fake.write_text('#!/usr/bin/env python3\nimport json, os, sys\nwith open(os.environ["OPEN_LOG"], "a") as f: f.write(json.dumps(sys.argv[1:]) + "\\n")\nkey = "OPEN_FINISH_EXIT" if sys.argv[-1].startswith("alwayson://finish?") else "OPEN_EXIT"\nsys.exit(int(os.environ.get(key, "0")))\n')
+        fake.write_text(
+            '#!/usr/bin/env python3\n'
+            'import json, os, sys\n'
+            'with open(os.environ["OPEN_LOG"], "a") as f: f.write(json.dumps(sys.argv[1:]) + "\\n")\n'
+            'if os.environ.get("OPEN_STATUS"):\n'
+            '    path = os.path.join(os.environ["HOME"], "Library/Application Support/AlwaysOn/status.json")\n'
+            '    os.makedirs(os.path.dirname(path), exist_ok=True)\n'
+            '    with open(path, "w") as f: f.write(os.environ["OPEN_STATUS"])\n'
+            'key = "OPEN_FINISH_EXIT" if sys.argv[-1].startswith("alwayson://finish?") else "OPEN_EXIT"\n'
+            'sys.exit(int(os.environ.get(key, "0")))\n')
         fake.chmod(0o755)
         self.env = dict(os.environ, HOME=str(self.root), PATH=str(self.root) + os.pathsep + os.environ.get('PATH', ''), OPEN_LOG=str(self.log), ALWAYSON_URL_OPENER=str(fake))
 
@@ -94,7 +104,8 @@ class CommandHelperAcceptance(unittest.TestCase):
         self.assertEqual(os.readlink(link), '/unrelated/missing')
 
     def invoke(self, *args, **kwargs):
-        return subprocess.run([str(self.helper), *args], env=self.env, text=True, capture_output=True, **kwargs)
+        kwargs.setdefault('env', self.env)
+        return subprocess.run([str(self.helper), *args], text=True, capture_output=True, **kwargs)
 
     def events(self):
         events = [json.loads(line) for line in self.log.read_text().splitlines()] if self.log.exists() else []
@@ -120,6 +131,13 @@ class CommandHelperAcceptance(unittest.TestCase):
     def pair(self, events):
         self.assertEqual(len(events), 2)
         self.assertEqual(self.token(events[0], 'run'), self.token(events[1], 'finish'))
+
+    def status_json(self, **fields):
+        status = {'version': 1, 'pid': os.getpid(), 'state': 'active',
+                  'source': 'timer', 'endsAt': '2100-01-01T00:00:00Z', 'isSuspended': False,
+                  'hasAccessibilityPermission': True, 'profile': 'Work', 'profiles': ['Work', 'Deep Home']}
+        status.update(fields)
+        return json.dumps({key: value for key, value in status.items() if value is not None})
 
     def write_status(self, pid=None, **fields):
         status = {'version': 1, 'pid': os.getpid() if pid is None else pid, 'state': 'active',
@@ -259,12 +277,61 @@ class CommandHelperAcceptance(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout.splitlines(), ['* Work', '  Deep Home'])
         self.assertEqual(self.events(), [])
-        result = self.invoke('profile', 'deep home')
+        env = dict(self.env, OPEN_STATUS=self.status_json(profile='Deep Home'))
+        result = self.invoke('profile', 'deep home', env=env)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn('request', result.stdout)
+        self.assertTrue(result.stdout.startswith('AlwaysOn is active'), result.stdout)
         url = urlsplit(self.events()[-1][-1])
         self.assertEqual(url.netloc, 'profile')
         self.assertEqual(parse_qs(url.query), {'name': ['deep home']})
+
+    def iso(self, minutes):
+        return (datetime.now(timezone.utc) + timedelta(minutes=minutes)).strftime('%Y-%m-%dT%H:%M:%SZ')
+
+    def test_confirmed_requests_print_the_new_state(self):
+        cases = [
+            (dict(state='off', source=None, endsAt=None), ('start',), dict(state='active', source='manual', endsAt=None), 'AlwaysOn is active'),
+            (dict(), ('stop',), dict(state='off', source=None, endsAt=None), 'AlwaysOn is off'),
+            (dict(), ('toggle',), dict(state='paused', source='manual', endsAt=None), 'AlwaysOn is paused'),
+            (dict(state='off', source=None, endsAt=None), ('timer', '30'), dict(source='timer', endsAt=self.iso(30)), 'AlwaysOn is active (timer)'),
+            (dict(), ('pause', '15'), dict(state='paused', source='manual', endsAt=None, resumesAt=self.iso(15)), 'AlwaysOn is paused'),
+        ]
+        for before, args, after, expected in cases:
+            with self.subTest(args=args):
+                self.write_status(**before)
+                result = self.invoke(*args, env=dict(self.env, OPEN_STATUS=self.status_json(**after)))
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertTrue(result.stdout.startswith(expected), result.stdout)
+
+    def test_until_is_confirmed_by_its_end_time(self):
+        self.write_status(state='off', source=None, endsAt=None)
+        end = '2100-01-01T00:00:00Z'
+        result = self.invoke('until', end, env=dict(self.env, OPEN_STATUS=self.status_json(source='until', endsAt=end)))
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_unconfirmed_request_exits_3(self):
+        self.write_status(state='off', source=None, endsAt=None)
+        result = self.invoke('start')
+        self.assertEqual(result.returncode, 3)
+        self.assertIn("didn't confirm the start request", result.stderr)
+        self.assertIn('Current status: AlwaysOn is off.', result.stderr)
+        self.assertEqual(self.events()[-1], ["-a", str(self.app), 'alwayson://start'])
+
+    def test_unconfirmed_request_names_missing_permission(self):
+        self.write_status(state='off', source=None, endsAt=None, hasAccessibilityPermission=False)
+        result = self.invoke('timer', '30')
+        self.assertEqual(result.returncode, 3)
+        self.assertIn('Accessibility permission', result.stderr)
+
+    def test_wrong_end_time_is_not_confirmation(self):
+        self.write_status(state='off', source=None, endsAt=None)
+        result = self.invoke('timer', '30', env=dict(self.env, OPEN_STATUS=self.status_json(source='timer', endsAt=self.iso(90))))
+        self.assertEqual(result.returncode, 3)
+
+    def test_transport_failure_is_still_exit_1(self):
+        self.write_status()
+        result = self.invoke('stop', env=dict(self.env, OPEN_EXIT='9'))
+        self.assertEqual(result.returncode, 1)
 
     def test_profile_rejects_unknown_names_when_the_app_reports(self):
         self.write_status()
