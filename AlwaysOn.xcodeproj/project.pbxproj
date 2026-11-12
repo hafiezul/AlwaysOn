@@ -55,6 +55,10 @@
 		B10000000000000A /* SafetyStops.swift in Sources */ = {isa = PBXBuildFile; fileRef = B20000000000000A /* SafetyStops.swift */; };
 		F100000000000001 /* Telemetry.swift in Sources */ = {isa = PBXBuildFile; fileRef = F200000000000001 /* Telemetry.swift */; };
 		F100000000000002 /* Telemetry.swift in Sources */ = {isa = PBXBuildFile; fileRef = F200000000000002 /* Telemetry.swift */; };
+		AC00000000000001 /* Diagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD00000000000001 /* Diagnostics.swift */; };
+		AC00000000000002 /* Diagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD00000000000002 /* Diagnostics.swift */; };
+		AC00000000000003 /* AppState+Diagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD00000000000003 /* AppState+Diagnostics.swift */; };
+		AC00000000000004 /* DiagnosticsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD00000000000004 /* DiagnosticsTests.swift */; };
 		F100000000000003 /* TelemetryClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F200000000000003 /* TelemetryClient.swift */; };
 		F100000000000004 /* AppState+Telemetry.swift in Sources */ = {isa = PBXBuildFile; fileRef = F200000000000004 /* AppState+Telemetry.swift */; };
 		F100000000000005 /* TelemetryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F200000000000005 /* TelemetryTests.swift */; };
@@ -153,6 +157,10 @@
 		B200000000000009 /* SafetyStops.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SafetyStops.swift; sourceTree = "<group>"; };
 		F200000000000001 /* Telemetry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Telemetry.swift; sourceTree = "<group>"; };
 		F200000000000002 /* Telemetry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Telemetry.swift; path = ../AlwaysOn/Sources/Models/Telemetry.swift; sourceTree = "<group>"; };
+		AD00000000000001 /* Diagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Diagnostics.swift; sourceTree = "<group>"; };
+		AD00000000000002 /* Diagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Diagnostics.swift; path = ../AlwaysOn/Sources/Models/Diagnostics.swift; sourceTree = "<group>"; };
+		AD00000000000003 /* AppState+Diagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState+Diagnostics.swift"; sourceTree = "<group>"; };
+		AD00000000000004 /* DiagnosticsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiagnosticsTests.swift; sourceTree = "<group>"; };
 		F200000000000003 /* TelemetryClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetryClient.swift; sourceTree = "<group>"; };
 		F200000000000004 /* AppState+Telemetry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppState+Telemetry.swift"; sourceTree = "<group>"; };
 		F200000000000005 /* TelemetryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TelemetryTests.swift; sourceTree = "<group>"; };
@@ -290,6 +298,8 @@
 				B200000000000009 /* SafetyStops.swift */,
 				F200000000000001 /* Telemetry.swift */,
 				F200000000000004 /* AppState+Telemetry.swift */,
+				AD00000000000001 /* Diagnostics.swift */,
+				AD00000000000003 /* AppState+Diagnostics.swift */,
 				F200000000000006 /* MenuAsks.swift */,
 				B200000000000007 /* ActivityHistory.swift */,
 				B200000000000001 /* PowerPolicy.swift */,
@@ -419,6 +429,8 @@
 				B200000000000002 /* PowerPolicy.swift */,
 				2000000000000030 /* WorkScheduleTests.swift */,
 				F200000000000005 /* TelemetryTests.swift */,
+				AD00000000000002 /* Diagnostics.swift */,
+				AD00000000000004 /* DiagnosticsTests.swift */,
 				F200000000000008 /* MenuAsksTests.swift */,
 				2000000000000031 /* UpdateCheckerTests.swift */,
 				2000000000000032 /* ProfileManagerTests.swift */,
@@ -560,6 +572,8 @@
 				F100000000000001 /* Telemetry.swift in Sources */,
 				F100000000000003 /* TelemetryClient.swift in Sources */,
 				F100000000000004 /* AppState+Telemetry.swift in Sources */,
+				AC00000000000001 /* Diagnostics.swift in Sources */,
+				AC00000000000003 /* AppState+Diagnostics.swift in Sources */,
 				F100000000000006 /* MenuAsks.swift in Sources */,
 				B100000000000007 /* ActivityHistory.swift in Sources */,
 				B100000000000005 /* SystemEventMonitor.swift in Sources */,
@@ -616,6 +630,8 @@
 				B10000000000000A /* SafetyStops.swift in Sources */,
 				F100000000000002 /* Telemetry.swift in Sources */,
 				F100000000000005 /* TelemetryTests.swift in Sources */,
+				AC00000000000002 /* Diagnostics.swift in Sources */,
+				AC00000000000004 /* DiagnosticsTests.swift in Sources */,
 				F100000000000007 /* MenuAsks.swift in Sources */,
 				F100000000000008 /* MenuAsksTests.swift in Sources */,
 				B100000000000008 /* ActivityHistory.swift in Sources */,
