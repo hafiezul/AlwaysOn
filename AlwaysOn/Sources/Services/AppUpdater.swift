@@ -22,6 +22,9 @@ final class AppUpdater: NSObject, ObservableObject {
     private var controller: SPUStandardUpdaterController?
     private var cancellables: Set<AnyCancellable> = []
 
+    /// Our windows lowered to `.normal` for the current update session
+    private let loweredWindows = NSHashTable<NSWindow>.weakObjects()
+
     private var updater: SPUUpdater? { controller?.updater }
 
     private override init() {
@@ -64,9 +67,30 @@ final class AppUpdater: NSObject, ObservableObject {
     }
 
     func checkForUpdates() {
+        lowerFloatingWindows()
         // A menu bar app is never frontmost on its own; bring Sparkle's window forward
         NSApp.activate(ignoringOtherApps: true)
         controller?.checkForUpdates(nil)
+    }
+
+    // MARK: - Window levels
+
+    /// Settings and AlwaysOn's other windows float so they stay above other apps,
+    /// but Sparkle's update and progress windows are `.normal` and would open
+    /// behind them. Lower ours while an update session shows its UI.
+    /// (Sparkle's "up to date" and error alerts are modal, so they already show on top.)
+    private func lowerFloatingWindows() {
+        for window in NSApp.windows where window.level == .floating {
+            window.level = .normal
+            loweredWindows.add(window)
+        }
+    }
+
+    private func restoreFloatingWindows() {
+        for window in loweredWindows.allObjects {
+            window.level = .floating
+        }
+        loweredWindows.removeAllObjects()
     }
 }
 
@@ -80,7 +104,13 @@ extension AppUpdater: SPUStandardUserDriverDelegate {
     func standardUserDriverWillHandleShowingUpdate(_ handleShowingUpdate: Bool,
                                                    forUpdate update: SUAppcastItem,
                                                    state: SPUUserUpdateState) {
-        guard handleShowingUpdate, !state.userInitiated else { return }
+        guard handleShowingUpdate else { return }
+        lowerFloatingWindows()
+        guard !state.userInitiated else { return }
         NSApp.activate(ignoringOtherApps: true)
+    }
+
+    func standardUserDriverWillFinishUpdateSession() {
+        restoreFloatingWindows()
     }
 }
