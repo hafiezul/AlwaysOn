@@ -3,6 +3,8 @@ import SwiftUI
 /// About settings pane showing app information, version, and links
 struct AboutSettingsPane: View {
     @Environment(\.openURL) private var openURL
+    @EnvironmentObject var appState: AppState
+    @State private var copiedDiagnostics = false
     
     private var appVersion: String {
         Bundle.main.appVersion
@@ -56,11 +58,23 @@ struct AboutSettingsPane: View {
                 .buttonStyle(.link)
                 
                 Button {
-                    openURL(AppUpdateRepository.issuesURL)
+                    openURL(AppUpdateRepository.issuesURL.appending(path: "new").appending(queryItems: [URLQueryItem(name: "template", value: "bug_report.yml")]))
                 } label: {
                     Label("Report Issue", systemImage: "exclamationmark.bubble")
                 }
                 .buttonStyle(.link)
+                
+                Button {
+                    let pasteboard = NSPasteboard.general
+                    pasteboard.clearContents()
+                    pasteboard.setString(appState.diagnosticReport().text, forType: .string)
+                    copiedDiagnostics = true
+                } label: {
+                    Label(copiedDiagnostics ? "Copied" : "Copy Diagnostics",
+                          systemImage: copiedDiagnostics ? "checkmark" : "doc.on.clipboard")
+                }
+                .buttonStyle(.link)
+                .help("Copies version, settings, and recent input attempts to paste into an issue. No names, networks, apps, or calendar details.")
                 
                 Button {
                     openURL(AppUpdateRepository.releasesPageURL)
@@ -84,5 +98,6 @@ struct AboutSettingsPane: View {
 
 #Preview {
     AboutSettingsPane()
+        .environmentObject(AppState())
         .frame(width: 450, height: 350)
 }

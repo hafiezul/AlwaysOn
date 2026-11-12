@@ -45,6 +45,7 @@ struct SettingsView: View {
                 .environmentObject(appState)
         case .about:
             AboutSettingsPane()
+                .environmentObject(appState)
         }
     }
 }
