@@ -315,7 +315,7 @@ alwayson run -- make test
 
 `until HH:MM` must be later today. It never rolls over to tomorrow.
 
-These commands exit successfully once macOS delivers the request to the app. The app doesn't send back a confirmation.
+When AlwaysOn is running, each command waits up to two seconds for AlwaysOn to report the result. It then prints the new status and exits 0. If AlwaysOn got the request but didn't apply it (for example, without Accessibility permission, or `pause` with no running session), the command says why and exits 3. If AlwaysOn wasn't running, the command opens it, says the result can't be confirmed yet, and exits 0. Check with `alwayson status`.
 
 ### Check status
 
@@ -350,7 +350,7 @@ Ctrl-C goes straight to the command. The helper waits for the command to exit, t
 
 ### Limits
 
-- The app doesn't acknowledge URL requests. A delivered request doesn't confirm the order requests arrived in. Use `alwayson status` to check the result. `alwayson run` checks for you: if AlwaysOn was running and doesn't report the command session within two seconds, the helper says so and runs the command anyway.
+- Confirmation comes from the status file, not a reply from the app. A request that matches the state AlwaysOn was already in (for example, `start` while active) counts as confirmed.
 - If the helper exits without sending `finish` (after SIGKILL, for example), the session stops at its 24-hour safety end time.
 - Command sessions don't resume after AlwaysOn relaunches.
 - AlwaysOn prevents idle sleep during a command only when **Settings > General > Power > Prevent sleep** is on, or when its input keeps the Mac awake. Closing the lid always puts the Mac to sleep.
