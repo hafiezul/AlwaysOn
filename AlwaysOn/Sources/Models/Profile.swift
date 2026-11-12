@@ -9,6 +9,9 @@ struct Profile: Codable, Identifiable, Equatable {
     var workSchedule: WorkSchedule
     /// Wi-Fi network names (SSIDs) that switch to this profile when joined
     var wifiNetworks: [String] = []
+    /// Pacing, target apps, sleep prevention, and safety stops. Nil only for
+    /// a profile saved before these were per-profile, until migration fills it.
+    var behavior: ProfileBehavior? = nil
 
     var activityMethod: ActivityMethod {
         ActivityMethod(rawValue: activityMethodId) ?? .mouse
@@ -39,17 +42,18 @@ struct Profile: Codable, Identifiable, Equatable {
             activityInterval: interval,
             activityMethodId: activityMethodId,
             defaultTimerDurationId: defaultTimerDurationId,
-            workSchedule: workSchedule
+            workSchedule: workSchedule,
+            behavior: ProfileBehavior(legacyDefaults: defaults)
         )
     }
 }
 
 extension Profile {
     private enum CodingKeys: String, CodingKey {
-        case id, name, activityInterval, activityMethodId, defaultTimerDurationId, workSchedule, wifiNetworks
+        case id, name, activityInterval, activityMethodId, defaultTimerDurationId, workSchedule, wifiNetworks, behavior
     }
 
-    /// Profiles saved before Wi-Fi switching existed have no network list
+    /// Profiles saved by older versions have no network list and no behavior
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decode(UUID.self, forKey: .id)
@@ -59,6 +63,45 @@ extension Profile {
         defaultTimerDurationId = try container.decode(String.self, forKey: .defaultTimerDurationId)
         workSchedule = try container.decode(WorkSchedule.self, forKey: .workSchedule)
         wifiNetworks = try container.decodeIfPresent([String].self, forKey: .wifiNetworks) ?? []
+        behavior = try container.decodeIfPresent(ProfileBehavior.self, forKey: .behavior)
+    }
+}
+
+/// The settings that differ by place, saved with each profile. Stored as
+/// raw values, like the rest of Profile, so an unknown value falls back to
+/// its default instead of failing to decode.
+struct ProfileBehavior: Codable, Equatable {
+    var pulsePacingId: String
+    var adaptivePostAfterSeconds: Int
+    var simulateOnlyWhenIdle: Bool
+    var requireTargetApp: Bool
+    /// Selected target app bundle IDs, sorted so equal selections compare equal
+    var targetApps: [String]
+    var sleepPreventionId: String
+    var awayLimitHours: Int
+    var batteryStopPercent: Int
+
+    var pulsePacing: PulsePacing { PulsePacing(rawValue: pulsePacingId) ?? .fixed }
+    var adaptivePostAfter: AdaptivePostAfter { AdaptivePostAfter(rawValue: adaptivePostAfterSeconds) ?? .twoMinutes }
+    var sleepPrevention: SleepPrevention { SleepPrevention(rawValue: sleepPreventionId) ?? .off }
+    var awayLimit: AwayLimit { AwayLimit(rawValue: awayLimitHours) ?? .off }
+    var batteryStopThreshold: BatteryStopThreshold { BatteryStopThreshold(rawValue: batteryStopPercent) ?? .off }
+}
+
+extension ProfileBehavior {
+    /// The values in use before these settings were per-profile, read from
+    /// the keys AppState has always saved them under
+    init(legacyDefaults defaults: UserDefaults) {
+        self.init(
+            pulsePacingId: (PulsePacing(rawValue: defaults.string(forKey: "pulsePacing") ?? "") ?? .fixed).rawValue,
+            adaptivePostAfterSeconds: (AdaptivePostAfter(rawValue: defaults.integer(forKey: "adaptivePostAfterSeconds")) ?? .twoMinutes).rawValue,
+            simulateOnlyWhenIdle: defaults.bool(forKey: "simulateOnlyWhenIdle"),
+            requireTargetApp: defaults.bool(forKey: "requireTargetApp"),
+            targetApps: (defaults.stringArray(forKey: "targetApps") ?? []).sorted(),
+            sleepPreventionId: (SleepPrevention(rawValue: defaults.string(forKey: "sleepPrevention") ?? "") ?? .off).rawValue,
+            awayLimitHours: (AwayLimit(rawValue: defaults.integer(forKey: "awayLimitHours")) ?? .off).rawValue,
+            batteryStopPercent: (BatteryStopThreshold(rawValue: defaults.integer(forKey: "batteryStopThreshold")) ?? .off).rawValue
+        )
     }
 }
 

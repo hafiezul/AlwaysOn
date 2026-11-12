@@ -71,12 +71,33 @@ final class ProfileManager: ObservableObject {
         persist()
     }
 
+    /// Adds a copy of a profile under a new name. Wi-Fi networks stay with
+    /// the original, because a network belongs to one profile.
+    @discardableResult
+    func duplicateProfile(_ id: UUID) -> Profile? {
+        guard let source = profiles.first(where: { $0.id == id }) else { return nil }
+        let names = Set(profiles.map(\.name))
+        var name = "\(source.name) Copy"
+        var number = 2
+        while names.contains(name) {
+            name = "\(source.name) Copy \(number)"
+            number += 1
+        }
+        var copy = source
+        copy.id = UUID()
+        copy.name = name
+        copy.wifiNetworks = []
+        addProfile(copy)
+        return copy
+    }
+
     func updateProfileSettings(
         _ id: UUID,
         activityInterval: TimeInterval,
         activityMethod: ActivityMethod,
         defaultTimerDuration: QuickTimerDuration,
-        workSchedule: WorkSchedule
+        workSchedule: WorkSchedule,
+        behavior: ProfileBehavior? = nil
     ) {
         guard let index = profiles.firstIndex(where: { $0.id == id }) else { return }
 
@@ -85,6 +106,8 @@ final class ProfileManager: ObservableObject {
         candidate.activityMethodId = activityMethod.rawValue
         candidate.defaultTimerDurationId = defaultTimerDuration.id
         candidate.workSchedule = workSchedule
+        // Nil leaves the saved behavior as it is
+        if let behavior { candidate.behavior = behavior }
         guard candidate != profiles[index] else { return }
 
         profiles[index] = candidate
@@ -126,6 +149,19 @@ final class ProfileManager: ObservableObject {
         defaults.set(encodeProfiles([defaultProfile]), forKey: Keys.profiles)
         defaults.set(defaultProfile.id.uuidString, forKey: Keys.activeProfileId)
         defaults.set(true, forKey: Keys.profilesMigrated)
+    }
+
+    /// Gives every profile saved before pacing, target apps, sleep prevention,
+    /// and safety stops were per-profile the values in use now, so updating
+    /// changes nothing the user set
+    static func migrateBehaviorIfNeeded(defaults: UserDefaults = .standard) {
+        guard var profiles = loadProfiles(from: defaults),
+              profiles.contains(where: { $0.behavior == nil }) else { return }
+        let current = ProfileBehavior(legacyDefaults: defaults)
+        for index in profiles.indices where profiles[index].behavior == nil {
+            profiles[index].behavior = current
+        }
+        defaults.set(encodeProfiles(profiles), forKey: Keys.profiles)
     }
 
     static func loadProfiles(from defaults: UserDefaults) -> [Profile]? {
