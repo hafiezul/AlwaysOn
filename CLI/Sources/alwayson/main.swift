@@ -173,6 +173,7 @@ Usage: alwayson start|stop|toggle
        alwayson help|--help
 Prefer Settings > General > Command Line Tool to install or uninstall.
 Requests require the installed macOS app and Accessibility permission.
+Exit status 3 means AlwaysOn got the request but its status didn't show the result.
 """
 
 func userHome() -> URL {
@@ -194,21 +195,87 @@ func runningInstallation(_ directory: String? = nil) throws -> CLIInstallation {
     return CLIInstallation(appURL: owner.appURL, userHome: home,
                            directory: directory.map { URL(fileURLWithPath: $0) })
 }
+/// Polls the status file until `matches` holds or `timeout` passes.
+/// Returns the matching status, or nil with the last status seen in `latest`.
+func waitForStatus(timeout: TimeInterval = 2, latest: inout SessionStatus?,
+                   _ matches: (SessionStatus) -> Bool) -> SessionStatus? {
+    let deadline = Date().addingTimeInterval(timeout)
+    repeat {
+        latest = currentStatus()
+        if let status = latest, matches(status) { return status }
+        usleep(100_000)
+    } while Date() < deadline
+    return nil
+}
+
 /// After a `run` request, waits briefly for the app to report the command
 /// session. Only meaningful when the app was already running and reporting.
 func confirmCommandSession() {
-    let deadline = Date().addingTimeInterval(2)
     var latest: SessionStatus?
-    while Date() < deadline {
-        latest = currentStatus()
-        if latest?.state == .active, latest?.source == "command" { return }
-        usleep(100_000)
-    }
+    if waitForStatus(latest: &latest, { $0.state == .active && $0.source == "command" }) != nil { return }
     if latest?.hasAccessibilityPermission == false {
         diagnostic("AlwaysOn needs Accessibility permission, so it isn't keeping you online. The command runs anyway.")
     } else {
         diagnostic("AlwaysOn didn't confirm the session. The command runs anyway.")
     }
+}
+
+/// What the app's status must show once it has applied `action`
+func expectation(for action: String, query: [URLQueryItem], before: SessionStatus,
+                 sentAt: Date) -> (SessionStatus) -> Bool {
+    func value(_ name: String) -> String? { query.first { $0.name == name }?.value }
+    func near(_ date: Date?, _ target: Date, within seconds: TimeInterval) -> Bool {
+        guard let date else { return false }
+        return abs(date.timeIntervalSince(target)) <= seconds
+    }
+    switch action {
+    case "start": return { $0.state == .active }
+    case "stop": return { $0.state == .off }
+    case "toggle":
+        return before.state == .active ? { $0.state != .active } : { $0.state == .active }
+    case "timer":
+        let minutes = Double(value("minutes") ?? "") ?? 0
+        let target = sentAt.addingTimeInterval(minutes * 60)
+        return { $0.state == .active && $0.source == "timer" && near($0.endsAt, target, within: 5) }
+    case "pause":
+        guard let minutes = value("minutes").flatMap(Double.init) else { return { $0.state == .paused } }
+        let target = sentAt.addingTimeInterval(minutes * 60)
+        return { $0.state == .paused && near($0.resumesAt, target, within: 5) }
+    case "until":
+        let formatter = ISO8601DateFormatter()
+        guard let date = value("date").flatMap(formatter.date(from:)) else { return { _ in false } }
+        return { $0.state == .active && $0.source == "until" && near($0.endsAt, date, within: 1) }
+    case "profile":
+        let name = value("name") ?? ""
+        return { $0.profile.compare(name, options: .caseInsensitive) == .orderedSame }
+    default: return { _ in false }
+    }
+}
+
+/// Sends a control request and, when the app was already reporting its
+/// status, waits for the status to show the result.
+/// Returns 0 when confirmed or unconfirmable, 1 on transport failure,
+/// 3 when delivered but not confirmed.
+func sendAndConfirm(_ action: String, query: [URLQueryItem] = []) -> Int32 {
+    let before = currentStatus()
+    let sentAt = Date()
+    guard send(action, query: query) else { return 1 }
+    guard let before else {
+        print("Sent \(action) request to AlwaysOn. It wasn't running, so the result can't be confirmed yet. Check with `alwayson status`.")
+        return 0
+    }
+    var latest: SessionStatus?
+    if let status = waitForStatus(latest: &latest, expectation(for: action, query: query, before: before, sentAt: sentAt)) {
+        print(status.summaryLines.first ?? "AlwaysOn applied the \(action) request.")
+        return 0
+    }
+    if latest?.hasAccessibilityPermission == false {
+        diagnostic("AlwaysOn needs Accessibility permission, so it didn't apply the \(action) request.")
+    } else {
+        diagnostic("AlwaysOn didn't confirm the \(action) request.")
+    }
+    if let line = latest?.summaryLines.first { diagnostic("Current status: \(line)") }
+    return 3
 }
 
 enum CLIError: Error { case message(String) }
@@ -255,14 +322,14 @@ func main(_ args: [String]) throws -> Int32 {
             diagnostic("No profile named \"\(name)\". Profiles: \(status.profiles.joined(separator: ", "))")
             return 1
         }
-        guard send(action, query: [URLQueryItem(name: "name", value: name)]) else { return 1 }
+        return sendAndConfirm(action, query: [URLQueryItem(name: "name", value: name)])
     case "start", "stop", "toggle":
         guard rest.isEmpty else { throw CLIError.message(usage) }
-        guard send(action) else { return 1 }
+        return sendAndConfirm(action)
     case "timer":
         guard rest.count == 1, rest[0].range(of: #"^[0-9]+$"#, options: .regularExpression) != nil,
               let minutes = Int(rest[0]), (1...1440).contains(minutes) else { throw CLIError.message("timer requires integer minutes 1...1440") }
-        guard send(action, query: [URLQueryItem(name: "minutes", value: String(minutes))]) else { return 1 }
+        return sendAndConfirm(action, query: [URLQueryItem(name: "minutes", value: String(minutes))])
     case "pause":
         guard rest.count <= 1 else { throw CLIError.message(usage) }
         var query: [URLQueryItem] = []
@@ -271,10 +338,10 @@ func main(_ args: [String]) throws -> Int32 {
                   let minutes = Int(value), (1...1440).contains(minutes) else { throw CLIError.message("pause requires integer minutes 1...1440, or none") }
             query = [URLQueryItem(name: "minutes", value: String(minutes))]
         }
-        guard send(action, query: query) else { return 1 }
+        return sendAndConfirm(action, query: query)
     case "until":
         guard rest.count == 1, let date = parseDate(rest[0]), date.timeIntervalSince1970.isFinite, date > Date() else { throw CLIError.message("until requires a future local time today or ISO8601 datetime") }
-        guard send(action, query: [URLQueryItem(name: "date", value: ISO8601DateFormatter().string(from: date))]) else { return 1 }
+        return sendAndConfirm(action, query: [URLQueryItem(name: "date", value: ISO8601DateFormatter().string(from: date))])
     case "run":
         guard rest.count >= 2, rest[0] == "--" else { throw CLIError.message(usage) }
         let token = [URLQueryItem(name: "token", value: UUID().uuidString)]
@@ -289,8 +356,6 @@ func main(_ args: [String]) throws -> Int32 {
         return status
     default: throw CLIError.message(usage)
     }
-    print("Sent \(action) request to AlwaysOn; app acknowledgement is unavailable.")
-    return 0
 }
 do { exit(try main(Array(CommandLine.arguments.dropFirst()))) }
 catch CLIError.message(let message) { diagnostic(message); exit(2) }
