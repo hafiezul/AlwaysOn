@@ -211,7 +211,7 @@ jobs:
           4. If macOS says Apple could not verify the app is free of malware, open System Settings > Privacy & Security, scroll to Security, click Open Anyway for AlwaysOn, then confirm Open Anyway.
           5. Grant Accessibility permission when prompted.
 
-          This release is signed with AlwaysOn's own certificate rather than an Apple Developer ID, which is why macOS asks you to confirm the first launch.
+          This release is signed with AlwaysOn's own certificate rather than an Apple Developer ID, which is why macOS asks you to confirm the first launch. [Why?](${REPO_URL}#why-macos-asks-you-to-confirm-the-first-launch)
 
           DMG SHA-256:
 

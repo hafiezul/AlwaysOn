@@ -57,12 +57,14 @@ The workflow:
 
 1. Validates the version and, for Actions-tab runs, that the tag doesn't exist yet. The tag is created only when the release is published, so a failed run can be rerun.
 2. Fails early if a secret or variable is missing.
-3. Imports the certificate into a temporary keychain, checking it against `SIGNING_CERT_SHA1`.
+3. Imports the certificate into a temporary keychain, checking it against `SIGNING_CERT_SHA1` when that variable is set.
 4. Builds a universal Release app with `Scripts/build-app.sh` and signs it from the inside out: the CLI helper, Sparkle's helpers, Sparkle, then the app. It fails if the designated requirement isn't certificate-based.
 5. Packages the drag-install DMG with `Scripts/build-dmg.sh`. The installer window's art and geometry live in `Scripts/dmg/`: edit `layout.json` or `make-background.py`, then rerun `python3 Scripts/dmg/make-background.py --preview <file.png>` and commit the regenerated PNGs.
 6. Signs the DMG with the Sparkle EdDSA key and checks that the app carries the matching public key.
-7. Builds the release notes from GitHub's generated notes (merged PRs since the last tag) plus install instructions, and writes `appcast.xml` with the same notes as HTML.
+7. Builds the release notes from GitHub's generated notes (merged PRs since the last tag) plus install instructions. If no PRs were merged, for example when work was pushed straight to `main`, it lists the commit subjects since the last tag instead. It writes `appcast.xml` with the same notes as HTML.
 8. Publishes the release with the DMG and `appcast.xml`, and deletes the temporary keychain.
+
+Steps that reach the network (fetching Swift packages, generating the notes, publishing) retry on failure, and Swift packages are cached between runs. If a run fails after the release was created, rerun it: when the release already exists, the workflow only re-uploads the DMG and `appcast.xml`.
 
 ## Local builds
 
@@ -75,6 +77,8 @@ Add `SPARKLE_PUBLIC_ED_KEY=<public key>` to build an app that updates itself.
 
 Hardened runtime stays off: its library validation needs an Apple Team ID, which a self-signed certificate doesn't have.
 
-## Fully trusted distribution
+## Why not a Developer ID
 
-Skipping the **Open Anyway** step on first launch requires an Apple Developer ID certificate and notarization. Sparkle updates work the same way with either certificate. Switching to a Developer ID later resets Accessibility access once, like any certificate change.
+Skipping the **Open Anyway** step on first launch requires an Apple Developer ID certificate and notarization, which need a paid Apple Developer membership (US$99 a year). AlwaysOn is free, so releases use the self-signed certificate instead. That's a deliberate choice, not a gap. The README explains it to users in [Why macOS asks you to confirm the first launch](README.md#why-macos-asks-you-to-confirm-the-first-launch).
+
+If this is ever revisited: Sparkle updates work the same way with either certificate, but switching to a Developer ID resets Accessibility access for every user once, like any certificate change. Update the README section and the site's install note at the same time.
