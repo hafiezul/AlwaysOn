@@ -46,6 +46,12 @@ extension AppState {
             startWithQuickTimer(duration)
         case .pause(let minutes):
             pause(for: minutes.map { TimeInterval($0 * 60) })
+        case .profile(let name):
+            // An unknown name does nothing; names match without regard to case
+            guard let target = profileManager.profiles.first(where: {
+                $0.name.compare(name, options: .caseInsensitive) == .orderedSame
+            }) else { return }
+            switchProfile(target.id)
         }
     }
 }
