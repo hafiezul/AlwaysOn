@@ -124,3 +124,20 @@ final class ActivityGateTests: XCTestCase {
         XCTAssertEqual(log.count(of: .problem), 2)
     }
 }
+
+final class SimulatedInputTests: XCTestCase {
+    func testMethodsPickTheirInputWhenNothingPlays() {
+        XCTAssertEqual(ActivityMethod.mouse.input(lastWasMouse: false, mediaPlaying: false), .mouse)
+        XCTAssertEqual(ActivityMethod.keyboard.input(lastWasMouse: false, mediaPlaying: false), .keyboard)
+        XCTAssertEqual(ActivityMethod.alternating.input(lastWasMouse: true, mediaPlaying: false), .keyboard)
+        XCTAssertEqual(ActivityMethod.alternating.input(lastWasMouse: false, mediaPlaying: false), .mouse)
+    }
+
+    func testPlaybackAlwaysUsesKeyboard() {
+        for method in ActivityMethod.allCases {
+            for lastWasMouse in [false, true] {
+                XCTAssertEqual(method.input(lastWasMouse: lastWasMouse, mediaPlaying: true), .keyboard)
+            }
+        }
+    }
+}

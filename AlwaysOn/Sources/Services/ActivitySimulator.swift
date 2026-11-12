@@ -15,9 +15,6 @@ final class ActivitySimulator {
     /// Current activity method
     private var activityMethod: ActivityMethod = .mouse
     
-    /// Tracks the last movement direction to alternate between +1 and -1 pixel
-    private var moveDirection: CGFloat = 1
-    
     /// Tracks which method was used last (for alternating mode)
     private var lastMethodWasMouse = true
 
@@ -40,6 +37,10 @@ final class ActivitySimulator {
             app.bundleIdentifier.map(bundleIDs.contains) ?? false
         }
     }
+
+    /// Whether another app is playing video. While it is, ticks post
+    /// keyboard input so players don't reveal their controls. Injectable for tests.
+    var mediaPlayingProvider: () -> Bool = { PowerAssertionManager.otherProcessKeepsDisplayAwake() }
 
     /// Whether macOS still trusts the app to post input. Checked each tick in
     /// place of a separate polling timer, because a tick is the only moment
@@ -174,19 +175,13 @@ final class ActivitySimulator {
         let delay = nextDelay()
         let posted: Bool
 
-        switch activityMethod {
-        case .mouse:
-            posted = simulateMouseActivity()
-        case .keyboard:
-            posted = simulateKeyboardActivity()
-        case .alternating:
-            if lastMethodWasMouse {
-                posted = simulateKeyboardActivity()
-            } else {
-                posted = simulateMouseActivity()
-            }
-            lastMethodWasMouse.toggle()
+        // Keyboard-only never needs the playback check
+        let mediaPlaying = activityMethod != .keyboard && mediaPlayingProvider()
+        switch activityMethod.input(lastWasMouse: lastMethodWasMouse, mediaPlaying: mediaPlaying) {
+        case .mouse: posted = simulateMouseActivity()
+        case .keyboard: posted = simulateKeyboardActivity()
         }
+        if activityMethod == .alternating { lastMethodWasMouse.toggle() }
         
         if posted { inputTracker.recordSyntheticPost(at: now) }
         pulseLog.record(posted ? .posted : .inputCreationFailed)
@@ -197,37 +192,16 @@ final class ActivitySimulator {
         return delay
     }
     
-    /// Performs minimal mouse movement to simulate user activity
-    /// Moves the cursor by 1 pixel, then back, to avoid visible movement
+    /// Posts a mouse-moved event at the pointer's current position. It resets
+    /// the system idle timer without moving the pointer. Browsers still fire
+    /// mousemove for it, so ticks during video playback use the keyboard instead.
     private func simulateMouseActivity() -> Bool {
-        // Get current mouse location
-        let currentLocation = NSEvent.mouseLocation
-        
-        // Convert from bottom-left origin (AppKit) to top-left origin (CoreGraphics)
-        // using the screen the cursor is on; multi-display setups offset screen
-        // origins, so a plain height subtraction would teleport the cursor
-        guard let screen = NSScreen.screens.first(where: { $0.frame.contains(currentLocation) }) ?? NSScreen.main else { return false }
-        let cgPoint = CGPoint(x: currentLocation.x, y: screen.frame.maxY - currentLocation.y)
-        
-        // Calculate new position (move by 1 pixel)
-        let newPoint = CGPoint(x: cgPoint.x + moveDirection, y: cgPoint.y)
-        
-        // Create and post mouse move event
-        guard let moveEvent = CGEvent(mouseEventSource: nil,
-                                    mouseType: .mouseMoved,
-                                    mouseCursorPosition: newPoint,
-                                    mouseButton: .left),
-              let returnEvent = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved,
-                                        mouseCursorPosition: cgPoint, mouseButton: .left) else { return false }
-        moveEvent.post(tap: .cghidEventTap)
-        
-        // Move back to original position after a tiny delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [weak self] in
-            returnEvent.post(tap: .cghidEventTap)
-            
-            // Alternate direction for next time
-            self?.moveDirection *= -1
-        }
+        // A null-source event reports the pointer in global top-left
+        // coordinates, which is what a posted event expects on any display
+        guard let location = CGEvent(source: nil)?.location,
+              let event = CGEvent(mouseEventSource: nil, mouseType: .mouseMoved,
+                                  mouseCursorPosition: location, mouseButton: .left) else { return false }
+        event.post(tap: .cghidEventTap)
         return true
     }
     
