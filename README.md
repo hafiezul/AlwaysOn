@@ -119,6 +119,10 @@ AlwaysOn wakes the CPU only when something can change.
 
 It uses a macOS power assertion, which costs nothing while held. AlwaysOn releases it when the session pauses or stops, the Mac sleeps, or another user is switched in. While the screen is locked, only the Mac stays awake. Closing the lid still puts the Mac to sleep.
 
+### Target apps
+
+**Settings > General > Target Apps > Only while a target app is running** skips input while none of the apps you select is running. The list offers Microsoft Teams, Teams Classic, Slack, Zoom, and Discord. **Add App…** adds any other app on your Mac, and the minus button next to an app you added removes it. A chat app open in a browser tab counts as the browser, so add the browser or install the chat as its own app.
+
 ## The menu
 
 The menu opens with a status card. It shows whether AlwaysOn is keeping you online, the time left (or time elapsed, for a session with no end), what started the session, when it ends, and today's online time. A ring empties as a timed session runs out.

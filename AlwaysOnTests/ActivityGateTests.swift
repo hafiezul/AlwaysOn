@@ -198,6 +198,63 @@ final class ActivityGateTests: XCTestCase {
         XCTAssertEqual(log.history.last?.summary, "Input had no effect")
         XCTAssertEqual(log.count(of: .problem), 1)
     }
+
+    // MARK: - Custom target apps
+
+    /// Writes a minimal app bundle and returns its URL
+    private func makeApp(named fileName: String, info: [String: Any]) throws -> URL {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AlwaysOnTests-\(UUID().uuidString)", isDirectory: true)
+        addTeardownBlock { try? FileManager.default.removeItem(at: root) }
+        let app = root.appendingPathComponent(fileName, isDirectory: true)
+        let contents = app.appendingPathComponent("Contents", isDirectory: true)
+        try FileManager.default.createDirectory(at: contents, withIntermediateDirectories: true)
+        let data = try PropertyListSerialization.data(fromPropertyList: info, format: .xml, options: 0)
+        try data.write(to: contents.appendingPathComponent("Info.plist"))
+        return app
+    }
+
+    func testCustomAppReadsBundleIDAndPrefersDisplayName() throws {
+        let url = try makeApp(named: "Chat.app", info: ["CFBundleIdentifier": "com.example.chat",
+                                                        "CFBundleDisplayName": "Example Chat",
+                                                        "CFBundleName": "chat"])
+        XCTAssertEqual(TargetApp.custom(fromAppAt: url), TargetApp(bundleID: "com.example.chat", name: "Example Chat"))
+    }
+
+    func testCustomAppFallsBackToBundleNameThenFileName() throws {
+        let named = try makeApp(named: "A.app", info: ["CFBundleIdentifier": "com.example.a", "CFBundleName": "Alpha"])
+        XCTAssertEqual(TargetApp.custom(fromAppAt: named)?.name, "Alpha")
+        let unnamed = try makeApp(named: "Beta Chat.app", info: ["CFBundleIdentifier": "com.example.b",
+                                                                 "CFBundleDisplayName": "  "])
+        XCTAssertEqual(TargetApp.custom(fromAppAt: unnamed)?.name, "Beta Chat")
+    }
+
+    func testCustomAppRejectsNonAppsAndMissingBundleID() throws {
+        let noID = try makeApp(named: "NoID.app", info: ["CFBundleName": "NoID"])
+        XCTAssertNil(TargetApp.custom(fromAppAt: noID))
+        let emptyID = try makeApp(named: "Empty.app", info: ["CFBundleIdentifier": ""])
+        XCTAssertNil(TargetApp.custom(fromAppAt: emptyID))
+        let notApp = try makeApp(named: "Folder", info: ["CFBundleIdentifier": "com.example.folder"])
+        XCTAssertNil(TargetApp.custom(fromAppAt: notApp))
+        XCTAssertNil(TargetApp.custom(fromAppAt: URL(fileURLWithPath: "/nonexistent/Missing.app")))
+    }
+
+    func testAddingSkipsDuplicatesCatalogAppsAndAlwaysOn() {
+        let chat = TargetApp(bundleID: "com.example.chat", name: "Example Chat")
+        let added = TargetApp.adding(chat, to: [])
+        XCTAssertEqual(added, [chat])
+        XCTAssertEqual(TargetApp.adding(TargetApp(bundleID: "com.example.chat", name: "Renamed"), to: added), added)
+        XCTAssertEqual(TargetApp.adding(TargetApp.catalog[0], to: added), added)
+        XCTAssertEqual(TargetApp.adding(TargetApp(bundleID: TargetApp.ownBundleID, name: "AlwaysOn"), to: added), added)
+        let other = TargetApp(bundleID: "com.example.other", name: "Other")
+        XCTAssertEqual(TargetApp.adding(other, to: added), [chat, other])
+    }
+
+    func testTargetAppsSurviveEncoding() throws {
+        let apps = [TargetApp(bundleID: "com.example.chat", name: "Example Chat")]
+        let data = try JSONEncoder().encode(apps)
+        XCTAssertEqual(try JSONDecoder().decode([TargetApp].self, from: data), apps)
+    }
 }
 
 final class SimulatedInputTests: XCTestCase {

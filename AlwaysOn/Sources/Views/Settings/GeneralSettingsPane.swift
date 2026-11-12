@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// General settings pane with launch at login, activity interval, activity method, and permission status
 struct GeneralSettingsPane: View {
@@ -11,6 +12,7 @@ struct GeneralSettingsPane: View {
     @State private var cliVersion: String?
     @State private var cliCanUninstall = false
     @State private var cliError: String?
+    @State private var targetAppError: String?
 
     // Activity interval options in seconds
     private let intervalOptions: [(label: String, value: TimeInterval)] = [
@@ -263,21 +265,41 @@ struct GeneralSettingsPane: View {
                 Toggle("Only while a target app is running", isOn: $appState.requireTargetApp)
 
                 if appState.requireTargetApp {
-                    ForEach(TargetApp.catalog) { app in
-                        Toggle(isOn: targetAppBinding(app)) {
-                            HStack {
-                                Text(app.name)
-                                if !TargetApp.isInstalled(app) {
-                                    Text("(not installed)")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
+                    ForEach(TargetApp.catalog + appState.customTargetApps) { app in
+                        HStack {
+                            Toggle(isOn: targetAppBinding(app)) {
+                                HStack {
+                                    Text(app.name)
+                                    if !TargetApp.isInstalled(app) {
+                                        Text("(not installed)")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
                                 }
+                            }
+                            if appState.customTargetApps.contains(app) {
+                                Button {
+                                    appState.removeCustomTargetApp(app)
+                                } label: {
+                                    Image(systemName: "minus.circle")
+                                }
+                                .buttonStyle(.borderless)
+                                .help("Remove \(app.name) from the list")
+                                .accessibilityLabel("Remove \(app.name)")
                             }
                         }
                     }
+
+                    Button("Add App…") { chooseTargetApp() }
+
+                    if let targetAppError {
+                        Text(targetAppError)
+                            .font(.caption)
+                            .foregroundColor(.orange)
+                    }
                 }
 
-                Text("Skips simulated input while none of the selected apps are running. The session stays active and resumes simulating as soon as one starts.")
+                Text("Skips simulated input while none of the selected apps are running. The session stays active and resumes simulating as soon as one starts. Use Add App… for an app that isn't listed.")
                     .font(.caption)
                     .foregroundColor(.secondary)
             } header: {
@@ -444,6 +466,19 @@ struct GeneralSettingsPane: View {
             cliError = error.localizedDescription
         }
         refreshCLIInstallation()
+    }
+
+    /// Lets the user pick any app on the Mac as a target app
+    private func chooseTargetApp() {
+        let panel = NSOpenPanel()
+        panel.title = "Choose an App"
+        panel.prompt = "Add"
+        panel.allowedContentTypes = [.application]
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.directoryURL = URL(fileURLWithPath: "/Applications")
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        targetAppError = appState.addTargetApp(at: url) ? nil : "AlwaysOn couldn't use that app. Choose another."
     }
 
     private func targetAppBinding(_ app: TargetApp) -> Binding<Bool> {

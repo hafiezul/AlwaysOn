@@ -46,7 +46,7 @@ struct ActivityGate: Equatable {
 }
 
 /// A chat or meeting app that AlwaysOn can watch before simulating activity
-struct TargetApp: Identifiable, Equatable {
+struct TargetApp: Identifiable, Equatable, Codable {
     let bundleID: String
     let name: String
 
@@ -65,6 +65,30 @@ struct TargetApp: Identifiable, Equatable {
         TargetApp(bundleID: "us.zoom.xos", name: "Zoom"),
         TargetApp(bundleID: "com.hnc.Discord", name: "Discord")
     ]
+
+    /// AlwaysOn itself can't be a target: it is always running
+    static let ownBundleID = "com.alwayson.app"
+
+    /// The bundle ID and name of the app at `url`, read from its Info.plist;
+    /// nil when `url` isn't an app bundle with a bundle ID
+    static func custom(fromAppAt url: URL) -> TargetApp? {
+        guard url.pathExtension == "app",
+              let data = try? Data(contentsOf: url.appendingPathComponent("Contents/Info.plist")),
+              let info = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any],
+              let bundleID = info["CFBundleIdentifier"] as? String, !bundleID.isEmpty else { return nil }
+        let names = [info["CFBundleDisplayName"] as? String, info["CFBundleName"] as? String]
+            .compactMap { $0?.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        return TargetApp(bundleID: bundleID, name: names.first ?? url.deletingPathExtension().lastPathComponent)
+    }
+
+    /// `custom` with `app` added, unless it is AlwaysOn, in the catalog, or already there
+    static func adding(_ app: TargetApp, to custom: [TargetApp]) -> [TargetApp] {
+        guard app.bundleID != ownBundleID,
+              !catalog.contains(where: { $0.bundleID == app.bundleID }),
+              !custom.contains(where: { $0.bundleID == app.bundleID }) else { return custom }
+        return custom + [app]
+    }
 }
 
 
