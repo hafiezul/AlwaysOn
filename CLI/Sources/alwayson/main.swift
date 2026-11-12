@@ -163,6 +163,8 @@ let usage = """
 Usage: alwayson start|stop|toggle
        alwayson timer MINUTES           (1...1440)
        alwayson pause [MINUTES]         (1...1440; omit to pause until resumed)
+       alwayson resume
+       alwayson add MINUTES             (1...1440; adds to the current session)
        alwayson until HH:MM|ISO8601      (future; HH:MM is today locally)
        alwayson run -- COMMAND [args...]
        alwayson status [--json]
@@ -248,6 +250,13 @@ func expectation(for action: String, query: [URLQueryItem], before: SessionStatu
     case "profile":
         let name = value("name") ?? ""
         return { $0.profile.compare(name, options: .caseInsensitive) == .orderedSame }
+    case "resume": return { $0.state == .active }
+    case "add":
+        let minutes = Double(value("minutes") ?? "") ?? 0
+        // Matches AppState.addTime: the later of the current end and now, plus the minutes
+        let base = max(before.endsAt ?? sentAt, sentAt)
+        let target = base.addingTimeInterval(minutes * 60)
+        return { $0.state != .off && near($0.endsAt, target, within: 5) }
     default: return { _ in false }
     }
 }
@@ -339,6 +348,13 @@ func main(_ args: [String]) throws -> Int32 {
             query = [URLQueryItem(name: "minutes", value: String(minutes))]
         }
         return sendAndConfirm(action, query: query)
+    case "resume":
+        guard rest.isEmpty else { throw CLIError.message(usage) }
+        return sendAndConfirm(action)
+    case "add":
+        guard rest.count == 1, rest[0].range(of: #"^[0-9]+$"#, options: .regularExpression) != nil,
+              let minutes = Int(rest[0]), (1...1440).contains(minutes) else { throw CLIError.message("add requires integer minutes 1...1440") }
+        return sendAndConfirm(action, query: [URLQueryItem(name: "minutes", value: String(minutes))])
     case "until":
         guard rest.count == 1, let date = parseDate(rest[0]), date.timeIntervalSince1970.isFinite, date > Date() else { throw CLIError.message("until requires a future local time today or ISO8601 datetime") }
         return sendAndConfirm(action, query: [URLQueryItem(name: "date", value: ISO8601DateFormatter().string(from: date))])
