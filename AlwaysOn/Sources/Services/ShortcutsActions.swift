@@ -132,6 +132,43 @@ struct PauseForIntent: AppIntent {
     }
 }
 
+struct ResumeSessionIntent: AppIntent {
+    static let title: LocalizedStringResource = "Resume Session"
+    static let description = IntentDescription("Resumes a paused AlwaysOn session. Does nothing if the session is running or there is none.")
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ReturnsValue<Bool> & ProvidesDialog {
+        let state = try runningAppState()
+        guard !state.isActive, state.hasActiveOrPausedSession else {
+            return .result(value: state.isActive, dialog: IntentDialog(stringLiteral: state.statusSummary))
+        }
+        try requirePermission(state)
+        state.applyURLCommand(.resume)
+        return .result(value: state.isActive, dialog: IntentDialog(stringLiteral: state.statusSummary))
+    }
+}
+
+struct AddTimeIntent: AppIntent {
+    static let title: LocalizedStringResource = "Add Time"
+    static let description = IntentDescription("Adds minutes to the current AlwaysOn session. A session with no end gets one.")
+
+    @Parameter(title: "Minutes", inclusiveRange: (1, 1440))
+    var minutes: Int
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("Add \(\.$minutes) minutes")
+    }
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let state = try runningAppState()
+        guard state.hasActiveOrPausedSession else { return .result(dialog: "AlwaysOn isn't running.") }
+        state.applyURLCommand(.addTime(minutes: minutes))
+        guard let end = state.sessionDeadline else { return .result(dialog: IntentDialog(stringLiteral: state.statusSummary)) }
+        return .result(dialog: "AlwaysOn now ends at \(end.formatted(date: .omitted, time: .shortened)).")
+    }
+}
+
 struct GetStatusIntent: AppIntent {
     static let title: LocalizedStringResource = "Get Status"
     static let description = IntentDescription("Returns whether AlwaysOn is keeping you online right now.")

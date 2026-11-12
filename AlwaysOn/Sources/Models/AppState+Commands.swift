@@ -46,6 +46,12 @@ extension AppState {
             startWithQuickTimer(duration)
         case .pause(let minutes):
             pause(for: minutes.map { TimeInterval($0 * 60) })
+        case .resume:
+            // toggle() checks permission and the end time; only call it to resume
+            guard !isActive, hasActiveOrPausedSession else { return }
+            toggle()
+        case .addTime(let minutes):
+            addTime(TimeInterval(minutes * 60))
         case .profile(let name):
             // An unknown name does nothing; names match without regard to case
             guard let target = profileManager.profiles.first(where: {

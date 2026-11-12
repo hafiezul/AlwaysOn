@@ -12,6 +12,10 @@ enum URLCommand: Equatable {
     case timer(minutes: Int?)
     /// Pause a running session; nil minutes pauses until resumed
     case pause(minutes: Int?)
+    /// Resume a paused session; does nothing when running or stopped
+    case resume
+    /// Add minutes to the current session, running or paused
+    case addTime(minutes: Int)
     /// Switch to the profile with this name, which stops the current session
     case profile(name: String)
 }
@@ -20,9 +24,11 @@ struct URLCommandParser {
     static let scheme = "alwayson"
     /// Accepted pause durations, in minutes
     static let pauseMinutesRange = 1...1440
+    /// Accepted add-time durations, in minutes
+    static let addMinutesRange = 1...1440
 
     /// Parses alwayson://start, alwayson://stop, alwayson://toggle,
-    /// alwayson://timer?minutes=30, alwayson://pause?minutes=15, and alwayson://profile?name=Work.
+    /// alwayson://timer?minutes=30, alwayson://pause?minutes=15, alwayson://resume, alwayson://add?minutes=15, and alwayson://profile?name=Work.
     /// Returns nil for anything else.
     static func command(from url: URL) -> URLCommand? {
         guard url.scheme?.lowercased() == scheme else { return nil }
@@ -67,6 +73,14 @@ struct URLCommandParser {
             guard items.count == 1, let value = items.first?.value, let minutes = Int(value),
                   pauseMinutesRange.contains(minutes) else { return nil }
             return .pause(minutes: minutes)
+        case "resume":
+            return .resume
+        case "add":
+            let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?.filter { $0.name.lowercased() == "minutes" } ?? []
+            guard items.count == 1, let value = items.first?.value, let minutes = Int(value),
+                  addMinutesRange.contains(minutes) else { return nil }
+            return .addTime(minutes: minutes)
         case "profile":
             let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?
                 .queryItems?.filter { $0.name.lowercased() == "name" } ?? []
