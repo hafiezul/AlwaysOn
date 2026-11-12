@@ -165,6 +165,8 @@ Usage: alwayson start|stop|toggle
        alwayson pause [MINUTES]         (1...1440; omit to pause until resumed)
        alwayson until HH:MM|ISO8601      (future; HH:MM is today locally)
        alwayson run -- COMMAND [args...]
+       alwayson status [--json]
+       alwayson profile [NAME]          (omit NAME to list profiles)
        alwayson install [--directory PATH]
        alwayson uninstall [--directory PATH]
        alwayson version|--version
@@ -173,14 +175,42 @@ Prefer Settings > General > Command Line Tool to install or uninstall.
 Requests require the installed macOS app and Accessibility permission.
 """
 
+func userHome() -> URL {
+    ProcessInfo.processInfo.environment["HOME"].map { URL(fileURLWithPath: $0) }
+        ?? FileManager.default.homeDirectoryForCurrentUser
+}
+
+/// The running app's status, or nil when it isn't running or doesn't report one
+func currentStatus() -> SessionStatus? {
+    SessionStatus.read(from: SessionStatus.fileURL(userHome: userHome()))
+}
+
+let notRunningMessage = "AlwaysOn isn't running, or it is a version that doesn't report its status."
+
 func runningInstallation(_ directory: String? = nil) throws -> CLIInstallation {
     guard let invoked = executable(CommandLine.arguments[0]) else { throw CLIInstallation.Failure.invalidApp }
     let owner = try CLIInstallation.owningApp(executableURL: URL(fileURLWithPath: invoked))
-    let home = ProcessInfo.processInfo.environment["HOME"].map { URL(fileURLWithPath: $0) }
-        ?? FileManager.default.homeDirectoryForCurrentUser
+    let home = userHome()
     return CLIInstallation(appURL: owner.appURL, userHome: home,
                            directory: directory.map { URL(fileURLWithPath: $0) })
 }
+/// After a `run` request, waits briefly for the app to report the command
+/// session. Only meaningful when the app was already running and reporting.
+func confirmCommandSession() {
+    let deadline = Date().addingTimeInterval(2)
+    var latest: SessionStatus?
+    while Date() < deadline {
+        latest = currentStatus()
+        if latest?.state == .active, latest?.source == "command" { return }
+        usleep(100_000)
+    }
+    if latest?.hasAccessibilityPermission == false {
+        diagnostic("AlwaysOn needs Accessibility permission, so it isn't keeping you online. The command runs anyway.")
+    } else {
+        diagnostic("AlwaysOn didn't confirm the session. The command runs anyway.")
+    }
+}
+
 enum CLIError: Error { case message(String) }
 func main(_ args: [String]) throws -> Int32 {
     guard let action = args.first else { throw CLIError.message(usage) }
@@ -201,6 +231,31 @@ func main(_ args: [String]) throws -> Int32 {
         if action == "install" { try installation.install() } else { try installation.uninstall() }
         print("\(action == "install" ? "Installed" : "Uninstalled") \(installation.linkURL.path)")
         return 0
+    case "status":
+        guard rest.isEmpty || rest == ["--json"] else { throw CLIError.message(usage) }
+        guard let status = currentStatus() else { diagnostic(notRunningMessage); return 1 }
+        if rest.isEmpty {
+            status.summaryLines.forEach { print($0) }
+        } else {
+            print(String(decoding: try status.encoded(), as: UTF8.self))
+        }
+        return 0
+    case "profile":
+        guard rest.count <= 1 else { throw CLIError.message(usage) }
+        let status = currentStatus()
+        guard let requested = rest.first else {
+            guard let status else { diagnostic(notRunningMessage); return 1 }
+            for name in status.profiles { print(name == status.profile ? "* \(name)" : "  \(name)") }
+            return 0
+        }
+        let name = requested.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { throw CLIError.message("profile requires a profile name") }
+        // With a running app the name can be checked; without one the request is sent as is
+        if let status, status.profileName(matching: name) == nil {
+            diagnostic("No profile named \"\(name)\". Profiles: \(status.profiles.joined(separator: ", "))")
+            return 1
+        }
+        guard send(action, query: [URLQueryItem(name: "name", value: name)]) else { return 1 }
     case "start", "stop", "toggle":
         guard rest.isEmpty else { throw CLIError.message(usage) }
         guard send(action) else { return 1 }
@@ -223,7 +278,10 @@ func main(_ args: [String]) throws -> Int32 {
     case "run":
         guard rest.count >= 2, rest[0] == "--" else { throw CLIError.message(usage) }
         let token = [URLQueryItem(name: "token", value: UUID().uuidString)]
+        // A status from before the request means the app can confirm it
+        let reportsStatus = currentStatus() != nil
         guard send("run", query: token) else { return 1 }
+        if reportsStatus { confirmCommandSession() }
         let previous = [SIGINT, SIGTERM, SIGHUP].map { ($0, signal($0, forwardSignal)) }
         let status = spawnAndWait(Array(rest.dropFirst()), forwarding: true)
         _ = send("finish", query: token)
