@@ -1,476 +1,296 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="is-loading">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>AlwaysOn for macOS</title>
-  <meta name="description" content="A free, open-source menu bar app for macOS that keeps you shown as active in Teams, Slack, Zoom, and other workplace apps.">
-  <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#000000">
+  <meta name="description" content="A free, open-source menu bar app for macOS that keeps your status Available in Microsoft Teams, Slack, Zoom, and Discord.">
+  <meta name="theme-color" content="#f3f2ec">
   <meta property="og:title" content="AlwaysOn for macOS">
   <meta property="og:description" content="Step away. Stay green. A menu bar app that keeps your Teams, Slack, and Zoom status Available.">
   <meta property="og:type" content="website">
-  <script>try{if(localStorage.getItem("alwayson-theme")==="light")document.documentElement.dataset.theme="light"}catch{}</script>
   <link rel="icon" type="image/png" href="/images/icon-64.png">
   <link rel="apple-touch-icon" href="/images/icon-256.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Funnel+Display:wght@500..800&family=Funnel+Sans:wght@400..700&family=Inter:opsz,wght@14..32,400..700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Mona+Sans:ital,wdth,wght@0,75..125,300..900;1,75..125,300..900&display=swap">
   <link rel="stylesheet" href="/styles.css">
-  <script src="/main.js" defer></script>
+  <script type="module" src="/main.js"></script>
 </head>
-<body data-desktop>
-  <a class="skip" href="#readme-title">Skip to content</a>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
 
-  <!-- The page is a Mac: this menu bar, a desktop of icons, and windows -->
-  <header class="menubar">
-    <button class="menubar-app" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="app-menu" data-app-menu-toggle>
-      <img src="/images/icon-64.png" width="18" height="18" alt="">
-      <span>AlwaysOn</span>
-    </button>
-    <div class="dropdown" id="app-menu" role="menu" aria-label="AlwaysOn" hidden data-app-menu>
-      <button class="desk-only" type="button" role="menuitem" data-open="about">About AlwaysOn</button>
-      <button type="button" role="menuitem" data-check-updates>Check for Updates…</button>
+  <!-- Loader: the status dot goes from Away to Available, then two bands wipe it away -->
+  <div class="loader" data-loader aria-hidden="true">
+    <div class="loader-panel">
+      <div class="loader-status"><span class="dot"></span><span class="loader-word" data-away>Away</span><span class="loader-word" data-available>Available</span></div>
+      <div class="loader-count"><span data-count>00</span><em>%</em></div>
     </div>
-    <span class="menubar-spacer"></span>
-    <a class="menubar-stars" href="https://github.com/hafiezul/AlwaysOn" aria-label="Star AlwaysOn on GitHub" data-outbound="github">
-      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 1.6l1.9 4 4.4.6-3.2 3 .8 4.3L8 11.4l-3.9 2.1.8-4.3-3.2-3 4.4-.6z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
-      <span>Star</span><span class="menubar-stars-count" data-stars hidden></span>
+    <div class="loader-band loader-band--green"></div>
+    <div class="loader-band loader-band--ink"></div>
+  </div>
+
+  <header class="topbar" data-topbar>
+    <a class="wordmark" href="#top" aria-label="AlwaysOn, back to top" data-scroll-to>
+      <span class="wordmark-a">Always</span>
+      <span class="wordmark-b">ON</span>
     </a>
-    <a class="menubar-stars menubar-coffee" href="https://buymeacoffee.com/hafiezul" aria-label="Buy me a coffee" data-outbound="coffee">
-      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3 6h8v4.5a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3zM11 7h1.2a1.8 1.8 0 0 1 0 3.6H11M5.5 1.8v2M8.5 1.8v2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      <span>Buy me a coffee</span>
-    </a>
-    <button class="menubar-icon" type="button" aria-label="AlwaysOn menu" aria-expanded="false" aria-controls="ao-menu" data-menu-toggle>
-      <svg viewBox="0 0 20 20" width="17" height="17" aria-hidden="true"><circle cx="10" cy="10" r="7.3" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="8.2" r="2.4" fill="currentColor"/><path d="M5.6 14.6c1-1.9 2.6-2.8 4.4-2.8s3.4.9 4.4 2.8" fill="currentColor"/><circle class="menubar-dot" cx="15.3" cy="4.7" r="2.3"/></svg>
-    </button>
-    <button class="menubar-icon menubar-extra" type="button" aria-label="Wi-Fi" aria-expanded="false" aria-controls="panel-wifi" data-panel-toggle="wifi">
-      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M2.5 9a14 14 0 0 1 19 0M5.8 12.4a9.2 9.2 0 0 1 12.4 0M9.1 15.8a4.4 4.4 0 0 1 5.8 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="19" r="1.5" fill="currentColor"/></svg>
-    </button>
-    <button class="menubar-icon menubar-extra" type="button" aria-label="Battery" aria-expanded="false" aria-controls="panel-battery" data-panel-toggle="battery">
-      <svg class="battery" viewBox="0 0 28 14" width="25" height="13" aria-hidden="true"><rect x="1" y="1" width="22" height="12" rx="3.5" fill="none" stroke="currentColor" stroke-width="1.3" opacity=".6"/><rect class="battery-level" x="3" y="3" width="15" height="8" rx="2" fill="currentColor" data-battery-level/><path d="M25 5v4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" opacity=".6"/></svg>
-    </button>
-    <button class="menubar-icon" type="button" aria-label="Control Center" aria-expanded="false" aria-controls="panel-control" data-panel-toggle="control">
-      <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><rect x="2" y="3.2" width="16" height="5.6" rx="2.8" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="13.6" cy="6" r="1.5" fill="currentColor"/><rect x="2" y="11.2" width="16" height="5.6" rx="2.8" fill="currentColor"/><circle class="cc-knob" cx="6.4" cy="14" r="1.5"/></svg>
-    </button>
-
-    <div class="panel" id="panel-wifi" role="group" aria-label="Wi-Fi" hidden data-panel="wifi">
-      <div class="panel-head"><strong>Wi-Fi</strong><button class="switch" type="button" role="switch" aria-checked="true" aria-label="Wi-Fi" data-sys="wifi"></button></div>
-      <hr>
-      <p class="panel-label">Known Networks</p>
-      <div data-networks></div>
-      <hr>
-      <p class="panel-note">AlwaysOn can switch profiles when you join a network. Each network belongs to one profile.</p>
-    </div>
-
-    <div class="panel" id="panel-battery" role="group" aria-label="Battery" hidden data-panel="battery">
-      <div class="panel-head"><strong>Battery</strong><span data-battery-text>82%</span></div>
-      <p class="panel-label" data-battery-source>Power Source: Battery</p>
-      <hr>
-      <div class="panel-head"><span>Low Power Mode</span><button class="switch" type="button" role="switch" aria-checked="false" aria-label="Low Power Mode" data-sys="lowPower"></button></div>
-      <hr>
-      <p class="panel-note">In Low Power Mode, AlwaysOn sends input half as often.</p>
-    </div>
-
-    <div class="panel panel-control" id="panel-control" role="group" aria-label="Control Center" hidden data-panel="control">
-      <button class="tile" type="button" aria-pressed="false" data-sys="focus">
-        <i><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M11.6 3.2a7.2 7.2 0 1 0 5.2 10.2 5.9 5.9 0 0 1-5.2-10.2z" fill="currentColor"/></svg></i>
-        <span><strong>Focus</strong><small data-tile-focus>Off</small></span>
-      </button>
-      <button class="tile" type="button" aria-pressed="true" data-sys="dark">
-        <i><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><circle cx="10" cy="10" r="7.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 2.8a7.2 7.2 0 0 1 0 14.4z" fill="currentColor"/></svg></i>
-        <span><strong>Dark Mode</strong><small data-tile-dark>On</small></span>
-      </button>
-      <button class="tile tile-wide" type="button" data-lock>
-        <i><svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><rect x="4.2" y="9" width="11.6" height="8" rx="2" fill="currentColor"/><path d="M6.8 9V6.6a3.2 3.2 0 0 1 6.4 0V9" fill="none" stroke="currentColor" stroke-width="1.7"/></svg></i>
-        <span><strong>Lock Screen</strong><small>AlwaysOn waits while it's locked</small></span>
+    <a class="topbar-mark" href="#top" aria-hidden="true" tabindex="-1" data-scroll-to><span class="dot dot--pulse"></span></a>
+    <div class="topbar-actions">
+      <a class="pill pill--signal" href="/download/dmg" data-outbound="download" data-magnetic>
+        <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 2v8m0 0L4.5 6.5M8 10l3.5-3.5M3 13h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span>Download</span>
+      </a>
+      <button class="menu-btn" type="button" aria-expanded="false" aria-controls="menu" data-menu-toggle data-magnetic>
+        <span class="sr-only">Menu</span>
+        <span class="menu-btn-lines" aria-hidden="true"><i></i><i></i></span>
       </button>
     </div>
-    <span class="menubar-clock" data-clock>Mon 1:37 PM</span>
   </header>
 
-  <main class="desktop" id="main" data-hero>
-<nav class="icons" aria-label="Desktop"></nav>
+  <nav class="menu" id="menu" aria-label="Site" data-menu hidden>
+    <div class="menu-inner">
+      <ol class="menu-links">
+        <li><a href="#manifesto" data-scroll-to data-preview="/images/menu-dark-2x.webp"><span class="menu-num">01</span>Why</a></li>
+        <li><a href="#reel" data-scroll-to data-preview="/images/pulse-log-dark-2x.webp"><span class="menu-num">02</span>The app</a></li>
+        <li><a href="#input" data-scroll-to data-preview="/images/keep-online-until-dark-2x.webp"><span class="menu-num">03</span>How it works</a></li>
+        <li><a href="#features" data-scroll-to data-preview="/images/settings-activity-dark-2x.webp"><span class="menu-num">04</span>Features</a></li>
+        <li><a href="#download" data-scroll-to data-preview="/images/menu-dark-2x.webp"><span class="menu-num">05</span>Download</a></li>
+      </ol>
+      <figure class="menu-preview" aria-hidden="true"><img alt="" data-menu-preview src="/images/menu-dark-2x.webp"></figure>
+      <div class="menu-foot">
+        <a href="https://github.com/hafiezul/AlwaysOn" data-outbound="github">GitHub</a>
+        <a href="https://buymeacoffee.com/hafiezul" data-outbound="coffee">Buy me a coffee</a>
+      </div>
+    </div>
+  </nav>
 
-    <!-- The Dock holds the apps. Windows minimize into it. -->
-<nav class="dock" aria-label="Dock" data-dock>
-      <a class="dock-item" href="#readme" data-open="readme">
-        <svg viewBox="0 0 48 48" aria-hidden="true"><rect x="3" y="3" width="42" height="42" rx="10" fill="#f5f5f7"/><path d="M13 15h22M13 22h22M13 29h22M13 36h13" stroke="#8e8e93" stroke-width="2.6" stroke-linecap="round"/></svg>
-        <span class="dock-label">Read Me</span>
-      </a>
-      <a class="dock-item" href="#pulse" data-open="pulse">
-        <svg viewBox="0 0 48 48" aria-hidden="true"><rect x="3" y="3" width="42" height="42" rx="10" fill="#1c1c1e" stroke="#3a3a3c"/><g class="icon-bars" stroke-width="3.2" stroke-linecap="round" data-icon-bars><path class="posted" d="M11 34V14"/><path class="posted" d="M16.2 34V16"/><path class="skipped" d="M21.4 34V27"/><path class="skipped" d="M26.6 34V27"/><path class="paused" d="M31.8 34V27"/><path class="posted" d="M37 34V16"/></g></svg>
-        <span class="dock-label">Pulse Log</span>
-      </a>
-      <a class="dock-item" href="#until" data-open="until">
-        <svg viewBox="0 0 48 48" aria-hidden="true"><rect x="3" y="4" width="42" height="40" rx="9" fill="#f5f5f7"/><path d="M3 13a9 9 0 0 1 9-9h24a9 9 0 0 1 9 9v2H3z" fill="#0a84ff"/><circle cx="24" cy="30" r="9" fill="none" stroke="#1c1c1e" stroke-width="2.6"/><path d="M24 25v5l3.5 2" fill="none" stroke="#1c1c1e" stroke-width="2.6" stroke-linecap="round"/></svg>
-        <span class="dock-label">Keep Online Until</span>
-      </a>
-      <a class="dock-item" href="#activity" data-open="activity">
-        <svg viewBox="0 0 48 48" aria-hidden="true"><rect x="3" y="3" width="42" height="42" rx="10" fill="#1c1c1e" stroke="#3a3a3c"/><path d="M12 36V27M19 36V20M26 36V24M33 36V14" stroke="#0a84ff" stroke-width="4.4" stroke-linecap="round"/><path d="M10 40h28" stroke="#636366" stroke-width="1.6" stroke-linecap="round"/></svg>
-        <span class="dock-label">Activity</span>
-      </a>
-      <a class="dock-item" href="#settings" data-open="settings">
-        <svg viewBox="0 0 48 48" aria-hidden="true"><rect x="3" y="3" width="42" height="42" rx="10" fill="#3a3a3c"/><circle cx="24" cy="24" r="12" fill="none" stroke="#d1d1d6" stroke-width="5" stroke-dasharray="4.7 4.7"/><circle cx="24" cy="24" r="9" fill="none" stroke="#d1d1d6" stroke-width="3.5"/><circle cx="24" cy="24" r="3" fill="#d1d1d6"/></svg>
-        <span class="dock-label">Settings</span>
-      </a>
-      <a class="dock-item" href="#terminal" data-open="terminal">
-        <svg viewBox="0 0 48 48" aria-hidden="true"><rect x="3" y="5" width="42" height="38" rx="8" fill="#0b0b0c" stroke="#48484a"/><path d="M11 17l6 5-6 5M21 29h10" fill="none" stroke="#f5f5f7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span class="dock-label">Terminal</span>
-      </a>
-      <a class="dock-item" href="#install" data-open="install" data-dock-download>
-        <svg viewBox="0 0 48 48" aria-hidden="true"><rect x="3" y="3" width="42" height="42" rx="10" fill="#0a84ff"/><path d="M24 12v17m0 0-7-7m7 7 7-7M14 36h20" fill="none" stroke="#fff" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span class="dock-label">Install AlwaysOn</span>
-      </a>
-      <span class="dock-sep" aria-hidden="true"></span>
-      <span class="dock-minimized" data-dock-minimized></span>
-    </nav>
+  <main id="main">
+    <!-- Hero ---------------------------------------------------------- -->
+    <section class="hero" id="top" data-theme="paper">
+      <canvas class="hero-contours" data-contours aria-hidden="true"></canvas>
+      <div class="hero-stage" data-stage aria-hidden="true">
+        <div class="presence-fallback"><span class="presence-fallback-badge"></span></div>
+      </div>
 
-    <section class="window" id="win-readme" data-window="readme" aria-labelledby="readme-title" tabindex="-1" hidden>
-      <header class="titlebar" data-drag>
-        <span class="lights"><button class="light close" type="button" data-close aria-label="Close Read Me"></button><button class="light min" type="button" data-min aria-label="Minimize Read Me"></button><button class="light zoom" type="button" data-zoom aria-label="Zoom Read Me"></button></span>
-        <span class="titlebar-title">Read Me</span>
-      </header>
-      <div class="window-body readme">
-        <div class="readme-hero">
-        <h1 id="readme-title" tabindex="-1">Step away<span class="stop stop-away"><span class="sr-only">.</span></span><br>Stay green<span class="stop" data-headline-dot><span class="sr-only">.</span></span></h1>
-        <p class="lede">AlwaysOn is a menu bar app for macOS that keeps you shown as active in Teams, Slack, Zoom, and other workplace apps. Every 45 seconds it moves the cursor one pixel and back, or taps Shift.</p>
-        <div class="actions">
-          <a class="btn btn-primary" href="/download/dmg" data-download>
-            <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M10 3v9.5m0 0-3.8-3.8M10 12.5l3.8-3.8M4 16.5h12" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Download for macOS
-          </a>
+      <h1 class="hero-title">
+        <span class="line"><span class="serif" data-hero-line>step away.</span></span>
+        <span class="line"><span class="wide" data-hero-line>Stay green.</span></span>
+      </h1>
+
+      <aside class="status-card" data-status-card>
+        <div class="status-card-head">Next input</div>
+        <div class="status-card-body">
+          <div class="status-card-time" data-countdown>0:45</div>
+          <div class="status-card-row"><span class="dot"></span><span data-status-text>Available</span></div>
         </div>
-        <p class="meta">Free and open source. Needs macOS 13 or later.<span data-version></span></p>
+        <div class="status-card-foot">Inputs sent: <span data-pulse-count>0</span><br><span class="muted">The demo runs 10 times faster</span></div>
+      </aside>
 
-        <div class="demo">
-          <div class="live desk-only">
-            <span class="live-dot" aria-hidden="true"></span>
-            <strong data-live-title>Active</strong>
-            <span class="live-latest" data-live-latest>Input posted</span>
-          </div>
-          <p><span class="desk-only">AlwaysOn is running on this page, 20 times faster than real time.</span><span class="stack-only">The menu below is a working copy of AlwaysOn, running 20 times faster than real time.</span> <span class="mouse-only">Move your mouse and the next attempt is skipped. Keep still and it's posted.</span><span class="touch-only">Touch the page and the next attempt is skipped. Leave it alone and it's posted.</span><span class="desk-only"> Its menu is the icon at the top right, and each feature has a window in the Dock.</span></p>
-        </div>
-        <div class="menu-slot" data-menu-slot></div>
-        </div>
+      <p class="hero-meta">
+        <span>A menu bar app for macOS 13 or later</span>
+        <span>Free and open source</span>
+      </p>
 
-        <div class="readme-more">
-        <h2 id="features-title">What it does</h2>
-        <ul class="checks stacked">
-          <li>Waits until you've been idle, and skips input while you're using the Mac</li>
-          <li>Pauses while the Mac sleeps or locks, and backs off in Low Power Mode</li>
-          <li>Keeps you online until a time or a calendar event, or while a command runs</li>
-          <li>Work hours with per-day times, a daily break, and days off</li>
-          <li>Focus filters and Wi-Fi networks that switch profiles</li>
-          <li>Safety stops when you're away too long or the battery runs low</li>
-        </ul>
+      <a class="hero-scroll" href="#manifesto" data-scroll-to>
+        <span>Scroll</span><i aria-hidden="true"></i>
+      </a>
+    </section>
 
-        <h2 id="install-title">Go get the coffee</h2>
-        <p class="lede">It takes a minute to set up: download it, drag it into Applications, and allow Accessibility.</p>
-        <div class="actions">
-          <a class="btn btn-primary" href="/download/dmg" data-download>
-            <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><path d="M10 3v9.5m0 0-3.8-3.8M10 12.5l3.8-3.8M4 16.5h12" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Download for macOS
-          </a>
-          <a class="text-link stack-only" href="#install" data-open="install">See the install steps</a>
-        </div>
-        <ul class="checks">
-          <li>Usage statistics are off unless you turn them on</li>
-          <li>Signed updates from GitHub Releases</li>
-          <li>Accessibility access carries over between updates</li>
-        </ul>
+    <!-- Manifesto -------------------------------------------------------- -->
+    <section class="manifesto" id="manifesto" data-theme="ink">
+      <div class="eyebrow eyebrow--center">
+        <span class="dot"></span>
+        <span>Why AlwaysOn</span>
+      </div>
+      <p class="manifesto-text" data-manifesto>
+        Your status turns <em>yellow</em> when the Mac sits idle. AlwaysOn sends a small input every 45 seconds, so it stays <em>green</em> while you get coffee.
+      </p>
+    </section>
+
+    <!-- Horizontal reel -------------------------------------------------- -->
+    <section class="reel" id="reel" data-theme="ink" aria-label="The app">
+      <div class="reel-track" data-reel-track>
+        <div class="reel-intro">
+          <div class="eyebrow">The app</div>
+          <h2 class="display"><span class="wide">Runs from</span><br><span class="serif accent">the menu bar</span></h2>
+          <p>AlwaysOn has no Dock icon and no window to keep open. The menu shows the time left in a session and a strip of recent inputs.</p>
         </div>
 
-        <footer class="readme-footer">
-          <p>AlwaysOn is open source under the MIT License. This page counts visits anonymously, without cookies.</p>
-          <nav aria-label="Footer">
-            <a href="https://github.com/hafiezul/AlwaysOn/releases" data-outbound="releases">Releases</a>
-            <a href="https://github.com/hafiezul/AlwaysOn/issues" data-outbound="issues">Report an issue</a>
-          </nav>
-        </footer>
+        <figure class="shot shot--a" data-shot>
+          <figcaption><span>01</span>The menu during a timed session</figcaption>
+          <div class="shot-frame"><img src="/images/menu-dark-2x.webp" width="576" height="704" alt="The AlwaysOn menu during a timed session, with 1:13:00 left, Pause and Stop buttons, and Add time chips" loading="lazy" decoding="async"></div>
+        </figure>
+
+        <figure class="shot shot--b" data-shot>
+          <figcaption><span>02</span>Pulse Log</figcaption>
+          <div class="shot-frame"><img src="/images/pulse-log-dark-2x.webp" width="1160" height="1424" alt="The Pulse Log window listing recent input attempts" loading="lazy" decoding="async"></div>
+        </figure>
+
+        <blockquote class="reel-quote">
+          <p>Sends input every <em>45 seconds</em> by default. With adaptive pacing, it waits until you've been idle for 1, 2, or 4 minutes.</p>
+          <span class="reel-big" aria-hidden="true">45s</span>
+        </blockquote>
+
+        <figure class="shot shot--c" data-shot>
+          <figcaption><span>03</span>Keep Online Until</figcaption>
+          <div class="shot-frame"><img src="/images/keep-online-until-dark-2x.webp" width="960" height="1144" alt="The Keep Online Until window, choosing an end time or a calendar event" loading="lazy" decoding="async"></div>
+        </figure>
+
+        <figure class="shot shot--d" data-shot>
+          <figcaption><span>04</span>Settings &gt; Activity</figcaption>
+          <div class="shot-frame"><img src="/images/settings-activity-dark-2x.webp" width="1200" height="1184" alt="Settings, Activity pane, showing daily online time for the last week" loading="lazy" decoding="async"></div>
+        </figure>
+
+        <blockquote class="reel-quote reel-quote--end">
+          <p>Pauses while the Mac sleeps, locks, or switches users, then sends an input <em>as soon as you're back.</em></p>
+        </blockquote>
       </div>
     </section>
 
-    <section class="window" id="win-pulse" data-window="pulse" aria-labelledby="pulse-title" tabindex="-1" hidden>
-      <header class="titlebar" data-drag>
-        <span class="lights"><button class="light close" type="button" data-close aria-label="Close Pulse Log"></button><button class="light min" type="button" data-min aria-label="Minimize Pulse Log"></button><button class="light zoom" type="button" data-zoom aria-label="Zoom Pulse Log"></button></span>
-        <span class="titlebar-title">Pulse Log</span>
-      </header>
-      <div class="window-body pw-body">
-        <div class="pw-head">
-          <div><h2 id="pulse-title">Pulse Log</h2><p>Each time AlwaysOn tries to send input. It can't see your Teams or Slack status.</p></div>
-          <button class="mbtn" type="button" data-log-clear>Clear Log</button>
-        </div>
-        <div class="pw-tallies" data-log-tallies></div>
-        <div class="pw-timeline">
-          <p>Last 60 attempts</p>
-          <div class="pw-bars" data-log-bars></div>
-          <p class="pw-range"><span data-log-first></span><span data-log-latest></span></p>
-        </div>
-        <ol class="pw-list" data-log-list></ol>
-        <p class="pw-foot">Kept in memory only and cleared when AlwaysOn quits.</p>
+    <!-- Two inputs ------------------------------------------------------- -->
+    <section class="inputs" id="input" data-theme="ink">
+      <div class="section-head">
+        <div class="eyebrow">How it works</div>
+        <p class="section-lede">Many workplace apps set your status from the Mac's idle time. Each input from AlwaysOn resets that time to zero.</p>
+      </div>
+      <div class="split">
+        <article class="split-card" data-split>
+          <h3 class="split-title"><span class="wide">Mouse</span><span class="wide">Event</span></h3>
+          <div class="split-visual split-visual--mouse" aria-hidden="true">
+            <svg viewBox="0 0 24 24" class="cursor"><path d="M5 3l14 8-6.2 1.4L10 19z" fill="currentColor" stroke="var(--ink)" stroke-width="1.2" stroke-linejoin="round"/></svg>
+            <span class="ring"></span><span class="ring"></span>
+          </div>
+          <p>Sends a mouse event at the pointer's current position. The pointer doesn't move.</p>
+        </article>
+        <article class="split-card" data-split>
+          <h3 class="split-title"><span class="wide">Shift</span><span class="wide">Key</span></h3>
+          <div class="split-visual split-visual--key" aria-hidden="true">
+            <span class="mini-key">shift</span>
+          </div>
+          <p>Presses and releases Shift. While another app plays video, AlwaysOn sends Shift instead of mouse input, so the player doesn't show its controls.</p>
+        </article>
+      </div>
+      <p class="inputs-note">You can also alternate between the two. With <em>adaptive pacing</em>, AlwaysOn sends nothing while you're typing.</p>
+    </section>
+
+    <!-- Works with ------------------------------------------------------- -->
+    <section class="apps" data-theme="paper" aria-labelledby="apps-title">
+      <div class="section-head section-head--row">
+        <h2 class="display" id="apps-title"><span class="wide">Works</span> <span class="serif accent-ink">with</span></h2>
+        <p class="section-lede">Turn on target apps, and AlwaysOn sends input only while one of them is running.</p>
+      </div>
+      <ul class="app-grid">
+        <li class="app-card" tabindex="0"><span class="app-name">Microsoft Teams</span><span class="app-status"><span class="dot"></span><b data-off>Away</b><b data-on>Available</b></span><span class="app-index">01</span></li>
+        <li class="app-card" tabindex="0"><span class="app-name">Slack</span><span class="app-status"><span class="dot"></span><b data-off>Away</b><b data-on>Active</b></span><span class="app-index">02</span></li>
+        <li class="app-card" tabindex="0"><span class="app-name">Zoom</span><span class="app-status"><span class="dot"></span><b data-off>Away</b><b data-on>Available</b></span><span class="app-index">03</span></li>
+        <li class="app-card" tabindex="0"><span class="app-name">Discord</span><span class="app-status"><span class="dot"></span><b data-off>Idle</b><b data-on>Online</b></span><span class="app-index">04</span></li>
+        <li class="app-card" tabindex="0"><span class="app-name">Teams Classic</span><span class="app-status"><span class="dot"></span><b data-off>Away</b><b data-on>Available</b></span><span class="app-index">05</span></li>
+        <li class="app-card app-card--add" tabindex="0"><span class="app-name">Add App...</span><span class="app-status"><span class="dot"></span><b data-off>Any app</b><b data-on>on your Mac</b></span><span class="app-index">+</span></li>
+      </ul>
+    </section>
+
+    <!-- Features: stacked cards ----------------------------------------- -->
+    <section class="features" id="features" data-theme="ink" aria-labelledby="features-title">
+      <div class="section-head">
+        <div class="eyebrow">Features</div>
+        <h2 class="display" id="features-title"><span class="wide">Starts and stops</span><br><span class="serif accent">on its own</span></h2>
+      </div>
+      <div class="stack">
+        <article class="stack-card" data-stack>
+          <span class="stack-num">01</span>
+          <h3 class="wide">Adaptive pacing</h3>
+          <p>Sends input only after the Mac has been idle for 1, 2, or 4 minutes. While you type, it sends nothing and wakes about once every couple of minutes.</p>
+          <div class="stack-art stack-art--bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        </article>
+        <article class="stack-card" data-stack>
+          <span class="stack-num">02</span>
+          <h3 class="wide">Work hours</h3>
+          <p>Set hours for each day, a daily break, and days off. Sessions start and stop on that schedule.</p>
+          <div class="stack-art stack-art--week" aria-hidden="true"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span class="off">S</span><span class="off">S</span></div>
+        </article>
+        <article class="stack-card" data-stack>
+          <span class="stack-num">03</span>
+          <h3 class="wide">Profiles</h3>
+          <p>Each profile has its own pacing, target apps, sleep prevention, and safety stops. AlwaysOn can switch profiles when you join a Wi-Fi network.</p>
+          <div class="stack-art stack-art--chips" aria-hidden="true"><span class="on">Office</span><span>Home</span><span>Cafe</span></div>
+        </article>
+        <article class="stack-card" data-stack>
+          <span class="stack-num">04</span>
+          <h3 class="wide">Keep online until</h3>
+          <p>Keep online until a set time, until a calendar event ends, or while a macOS Focus is on.</p>
+          <div class="stack-art stack-art--clock" aria-hidden="true"><span>17:30</span></div>
+        </article>
+        <article class="stack-card" data-stack>
+          <span class="stack-num">05</span>
+          <h3 class="wide">Saves energy</h3>
+          <p>Pauses while the Mac sleeps or the screen is locked. In Low Power Mode, or when the Mac runs hot, it doubles the interval, up to 2 minutes.</p>
+          <div class="stack-art stack-art--battery" aria-hidden="true"><i></i></div>
+        </article>
+        <article class="stack-card" data-stack>
+          <span class="stack-num">06</span>
+          <h3 class="wide">Safety stops</h3>
+          <p>Stops on its own after you've been away too long or when the battery runs low.</p>
+          <div class="stack-art stack-art--stop" aria-hidden="true"><span class="dot"></span></div>
+        </article>
       </div>
     </section>
 
-    <section class="window" id="win-settings" data-window="settings" aria-labelledby="settings-title" tabindex="-1" hidden>
-      <header class="titlebar" data-drag>
-        <span class="lights"><button class="light close" type="button" data-close aria-label="Close Settings"></button><button class="light min" type="button" data-min aria-label="Minimize Settings"></button><button class="light zoom" type="button" data-zoom aria-label="Zoom Settings"></button></span>
-        <span class="titlebar-title">Settings</span>
-      </header>
-      <div class="window-body pane">
-        <h2 id="settings-title">One tiny input. You pick which.</h2>
-        <p class="pane-lede">Many workplace apps set your status from how long the Mac has been idle. Each input from AlwaysOn resets that clock. Pick one, and the menu at the top right starts sending it.</p>
-        <div class="methods" role="radiogroup" aria-label="Input the demo sends">
-          <button class="method" type="button" role="radio" aria-checked="false" data-method="mouse">
-            <span class="method-stage" aria-hidden="true">
-              <svg class="pixel-cursor" data-nudge-cursor viewBox="0 0 11 17" shape-rendering="crispEdges"><rect x="0" y="0" width="1" height="1" fill="#000"/><rect x="0" y="1" width="2" height="1" fill="#000"/><rect x="0" y="2" width="1" height="1" fill="#000"/><rect x="1" y="2" width="1" height="1" fill="#fff"/><rect x="2" y="2" width="1" height="1" fill="#000"/><rect x="0" y="3" width="1" height="1" fill="#000"/><rect x="1" y="3" width="2" height="1" fill="#fff"/><rect x="3" y="3" width="1" height="1" fill="#000"/><rect x="0" y="4" width="1" height="1" fill="#000"/><rect x="1" y="4" width="3" height="1" fill="#fff"/><rect x="4" y="4" width="1" height="1" fill="#000"/><rect x="0" y="5" width="1" height="1" fill="#000"/><rect x="1" y="5" width="4" height="1" fill="#fff"/><rect x="5" y="5" width="1" height="1" fill="#000"/><rect x="0" y="6" width="1" height="1" fill="#000"/><rect x="1" y="6" width="5" height="1" fill="#fff"/><rect x="6" y="6" width="1" height="1" fill="#000"/><rect x="0" y="7" width="1" height="1" fill="#000"/><rect x="1" y="7" width="6" height="1" fill="#fff"/><rect x="7" y="7" width="1" height="1" fill="#000"/><rect x="0" y="8" width="1" height="1" fill="#000"/><rect x="1" y="8" width="7" height="1" fill="#fff"/><rect x="8" y="8" width="1" height="1" fill="#000"/><rect x="0" y="9" width="1" height="1" fill="#000"/><rect x="1" y="9" width="8" height="1" fill="#fff"/><rect x="9" y="9" width="1" height="1" fill="#000"/><rect x="0" y="10" width="1" height="1" fill="#000"/><rect x="1" y="10" width="5" height="1" fill="#fff"/><rect x="6" y="10" width="5" height="1" fill="#000"/><rect x="0" y="11" width="1" height="1" fill="#000"/><rect x="1" y="11" width="2" height="1" fill="#fff"/><rect x="3" y="11" width="1" height="1" fill="#000"/><rect x="4" y="11" width="2" height="1" fill="#fff"/><rect x="6" y="11" width="1" height="1" fill="#000"/><rect x="0" y="12" width="1" height="1" fill="#000"/><rect x="1" y="12" width="1" height="1" fill="#fff"/><rect x="2" y="12" width="1" height="1" fill="#000"/><rect x="4" y="12" width="1" height="1" fill="#000"/><rect x="5" y="12" width="2" height="1" fill="#fff"/><rect x="7" y="12" width="1" height="1" fill="#000"/><rect x="0" y="13" width="2" height="1" fill="#000"/><rect x="4" y="13" width="1" height="1" fill="#000"/><rect x="5" y="13" width="2" height="1" fill="#fff"/><rect x="7" y="13" width="1" height="1" fill="#000"/><rect x="0" y="14" width="1" height="1" fill="#000"/><rect x="5" y="14" width="1" height="1" fill="#000"/><rect x="6" y="14" width="2" height="1" fill="#fff"/><rect x="8" y="14" width="1" height="1" fill="#000"/><rect x="5" y="15" width="1" height="1" fill="#000"/><rect x="6" y="15" width="2" height="1" fill="#fff"/><rect x="8" y="15" width="1" height="1" fill="#000"/><rect x="6" y="16" width="2" height="1" fill="#000"/></svg>
-            </span>
-            <strong>Mouse</strong>
-            <span class="method-note">Moves the pointer one pixel, then straight back.</span>
-          </button>
-          <button class="method" type="button" role="radio" aria-checked="false" data-method="keyboard">
-            <span class="method-stage" aria-hidden="true">
-              <span class="keycap" data-nudge-key><span>⇧</span><span>shift</span></span>
-            </span>
-            <strong>Keyboard</strong>
-            <span class="method-note">Presses and releases Shift, which types nothing.</span>
-          </button>
-          <button class="method" type="button" role="radio" aria-checked="true" data-method="alternate">
-            <span class="method-stage method-stage-both" aria-hidden="true">
-              <svg class="pixel-cursor small" data-nudge-cursor viewBox="0 0 11 17" shape-rendering="crispEdges"><rect x="0" y="0" width="1" height="1" fill="#000"/><rect x="0" y="1" width="2" height="1" fill="#000"/><rect x="0" y="2" width="1" height="1" fill="#000"/><rect x="1" y="2" width="1" height="1" fill="#fff"/><rect x="2" y="2" width="1" height="1" fill="#000"/><rect x="0" y="3" width="1" height="1" fill="#000"/><rect x="1" y="3" width="2" height="1" fill="#fff"/><rect x="3" y="3" width="1" height="1" fill="#000"/><rect x="0" y="4" width="1" height="1" fill="#000"/><rect x="1" y="4" width="3" height="1" fill="#fff"/><rect x="4" y="4" width="1" height="1" fill="#000"/><rect x="0" y="5" width="1" height="1" fill="#000"/><rect x="1" y="5" width="4" height="1" fill="#fff"/><rect x="5" y="5" width="1" height="1" fill="#000"/><rect x="0" y="6" width="1" height="1" fill="#000"/><rect x="1" y="6" width="5" height="1" fill="#fff"/><rect x="6" y="6" width="1" height="1" fill="#000"/><rect x="0" y="7" width="1" height="1" fill="#000"/><rect x="1" y="7" width="6" height="1" fill="#fff"/><rect x="7" y="7" width="1" height="1" fill="#000"/><rect x="0" y="8" width="1" height="1" fill="#000"/><rect x="1" y="8" width="7" height="1" fill="#fff"/><rect x="8" y="8" width="1" height="1" fill="#000"/><rect x="0" y="9" width="1" height="1" fill="#000"/><rect x="1" y="9" width="8" height="1" fill="#fff"/><rect x="9" y="9" width="1" height="1" fill="#000"/><rect x="0" y="10" width="1" height="1" fill="#000"/><rect x="1" y="10" width="5" height="1" fill="#fff"/><rect x="6" y="10" width="5" height="1" fill="#000"/><rect x="0" y="11" width="1" height="1" fill="#000"/><rect x="1" y="11" width="2" height="1" fill="#fff"/><rect x="3" y="11" width="1" height="1" fill="#000"/><rect x="4" y="11" width="2" height="1" fill="#fff"/><rect x="6" y="11" width="1" height="1" fill="#000"/><rect x="0" y="12" width="1" height="1" fill="#000"/><rect x="1" y="12" width="1" height="1" fill="#fff"/><rect x="2" y="12" width="1" height="1" fill="#000"/><rect x="4" y="12" width="1" height="1" fill="#000"/><rect x="5" y="12" width="2" height="1" fill="#fff"/><rect x="7" y="12" width="1" height="1" fill="#000"/><rect x="0" y="13" width="2" height="1" fill="#000"/><rect x="4" y="13" width="1" height="1" fill="#000"/><rect x="5" y="13" width="2" height="1" fill="#fff"/><rect x="7" y="13" width="1" height="1" fill="#000"/><rect x="0" y="14" width="1" height="1" fill="#000"/><rect x="5" y="14" width="1" height="1" fill="#000"/><rect x="6" y="14" width="2" height="1" fill="#fff"/><rect x="8" y="14" width="1" height="1" fill="#000"/><rect x="5" y="15" width="1" height="1" fill="#000"/><rect x="6" y="15" width="2" height="1" fill="#fff"/><rect x="8" y="15" width="1" height="1" fill="#000"/><rect x="6" y="16" width="2" height="1" fill="#000"/></svg>
-              <span class="keycap small" data-nudge-key><span>⇧</span><span>shift</span></span>
-            </span>
-            <strong>Alternating</strong>
-            <span class="method-note">Mouse, then Shift, then mouse again.</span>
-          </button>
-        </div>
+    <!-- CLI -------------------------------------------------------------- -->
+    <section class="cli" data-theme="ink" aria-labelledby="cli-title">
+      <div class="cli-copy">
+        <div class="eyebrow">Command line</div>
+        <h2 class="display" id="cli-title"><span class="wide">Stay online</span><br><span class="serif accent">while it runs</span></h2>
+        <p><code>alwayson run</code> keeps you online while a command runs and ends the session when the command exits. Output goes straight to your terminal, and the helper exits with the command's exit status.</p>
+      </div>
+      <div class="term" data-term>
+        <div class="term-bar" aria-hidden="true"><i></i><i></i><i></i><span>zsh</span></div>
+        <pre class="term-body" aria-label="Example: alwayson run -- make test"><code data-term-body></code></pre>
       </div>
     </section>
 
-    <section class="window" id="win-until" data-window="until" aria-labelledby="until-title" tabindex="-1" hidden>
-      <header class="titlebar" data-drag>
-        <span class="lights"><button class="light close" type="button" data-close aria-label="Close Keep Online Until"></button><button class="light min" type="button" data-min aria-label="Minimize Keep Online Until"></button><button class="light zoom" type="button" data-zoom aria-label="Zoom Keep Online Until"></button></span>
-        <span class="titlebar-title">Keep Online Until</span>
-      </header>
-      <div class="window-body until-card" data-until>
-        <h3 id="until-title">Keep Online Until</h3>
-        <p class="until-sub">Starts now and stops at the time you choose, even if you pause in between.</p>
-        <div class="segmented" role="tablist" aria-label="Stop at">
-          <button type="button" role="tab" aria-selected="true" aria-controls="until-time" id="tab-time" data-until-tab="time">Time</button>
-          <button type="button" role="tab" aria-selected="false" aria-controls="until-calendar" id="tab-calendar" data-until-tab="calendar">Calendar Event</button>
-        </div>
-
-        <div class="until-panel" id="until-time" role="tabpanel" aria-labelledby="tab-time">
-          <div class="until-time">
-            <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
-            <div><strong data-until-end>2:39 PM</strong><span data-until-rel>Today, in 1h</span></div>
-          </div>
-          <p class="until-label">Quick picks</p>
-          <div class="chip-row wide" data-until-picks>
-            <button type="button" class="chip" data-add="15">+15m</button>
-            <button type="button" class="chip" data-add="30">+30m</button>
-            <button type="button" class="chip is-selected" data-add="60">+1h</button>
-            <button type="button" class="chip" data-add="120">+2h</button>
-            <button type="button" class="chip" data-add="240">+4h</button>
-          </div>
-          <label class="until-label" for="until-label-input">Label</label>
-          <input class="until-input" id="until-label-input" type="text" placeholder="Optional, e.g. Standup or Deploy" maxlength="40" data-until-label>
-        </div>
-
-        <div class="until-panel" id="until-calendar" role="tabpanel" aria-labelledby="tab-calendar" hidden>
-          <p class="until-label">Next 24 hours</p>
-          <div class="events" role="radiogroup" aria-label="Calendar events" data-until-events></div>
-          <p class="until-note">AlwaysOn only reads events. It never changes your calendar.</p>
-        </div>
-
-        <div class="until-actions">
-          <span class="until-done" data-until-done role="status">Start one, and the menu at the top right picks it up.</span>
-          <button type="button" class="mbtn mbtn-accent" data-until-start>Keep Online Until 2:39 PM</button>
-        </div>
+    <!-- Download --------------------------------------------------------- -->
+    <section class="cta" id="download" data-theme="ink" aria-labelledby="cta-title">
+      <div class="marquee" aria-hidden="true">
+        <div class="marquee-band marquee-band--signal"><div class="marquee-row" data-marquee="1"></div></div>
+        <div class="marquee-band marquee-band--paper"><div class="marquee-row" data-marquee="-1"></div></div>
       </div>
-    </section>
-
-    <section class="window" id="win-terminal" data-window="terminal" aria-labelledby="terminal-title" tabindex="-1" hidden>
-      <header class="titlebar" data-drag>
-        <span class="lights"><button class="light close" type="button" data-close aria-label="Close Terminal"></button><button class="light min" type="button" data-min aria-label="Minimize Terminal"></button><button class="light zoom" type="button" data-zoom aria-label="Zoom Terminal"></button></span>
-        <span class="titlebar-title" id="terminal-title">~/project</span>
-      </header>
-      <div class="window-body terminal-body">
-        <pre class="terminal" data-terminal aria-label="Example alwayson commands and their output"><code data-terminal-code></code></pre>
-        <div class="cli-notes">
-          <h2>Keep online while the build runs.</h2>
-          <ul class="checks stacked">
-            <li><strong>It ships inside the app.</strong> Run <code>alwayson install</code> once to link it into <code>~/.local/bin</code>.</li>
-            <li><strong>It follows your command.</strong> With <code>run</code>, the session ends when the command exits, even after Ctrl-C.</li>
-            <li><strong>It works with your launcher.</strong> Shortcuts, Siri, and <code>alwayson://</code> links for Raycast and Alfred.</li>
-          </ul>
-          <div class="actions">
-            <a class="btn btn-primary btn-small" href="https://github.com/hafiezul/AlwaysOn#keep-online-while-a-command-runs">Read the CLI guide</a>
-            <a class="text-link" href="https://github.com/hafiezul/AlwaysOn/tree/main/CLI">Browse the source</a>
-          </div>
+      <div class="cta-body">
+        <h2 class="cta-title" id="cta-title"><span class="serif">it's free.</span><span class="wide">Get AlwaysOn</span></h2>
+        <a class="cta-button" href="/download/dmg" data-outbound="download" data-magnetic>
+          <span class="cta-button-label">Download for Mac</span>
+          <span class="cta-button-meta" data-version>A DMG from GitHub Releases</span>
+        </a>
+        <div class="cta-links">
+          <a href="https://github.com/hafiezul/AlwaysOn" data-outbound="github">Star on GitHub <span data-stars></span></a>
+          <a href="https://buymeacoffee.com/hafiezul" data-outbound="coffee">Buy me a coffee</a>
         </div>
-      </div>
-    </section>
-
-    <section class="window" id="win-activity" data-window="activity" aria-labelledby="activity-title" tabindex="-1" hidden>
-      <header class="titlebar" data-drag>
-        <span class="lights"><button class="light close" type="button" data-close aria-label="Close Activity"></button><button class="light min" type="button" data-min aria-label="Minimize Activity"></button><button class="light zoom" type="button" data-zoom aria-label="Zoom Activity"></button></span>
-        <span class="titlebar-title" id="activity-title">Activity</span>
-      </header>
-      <div class="window-body activity" data-activity>
-        <h3 class="act-heading">Online Time</h3>
-        <div class="act-card">
-          <div class="act-tiles">
-            <p><strong data-act-today></strong><span>Today</span></p>
-            <p><strong data-act-week></strong><span>Last 7 days</span></p>
-            <p><strong data-act-average></strong><span>Daily average</span></p>
-          </div>
-          <div class="act-chart" data-act-chart>
-            <div class="act-grid" aria-hidden="true" data-act-grid></div>
-            <div class="act-bars" data-act-bars></div>
-          </div>
-          <p class="act-empty" data-act-empty hidden>No sessions in the last 7 days. Online time appears here once you keep online.</p>
-          <ul class="act-legend" data-act-legend></ul>
-        </div>
-        <p class="act-note">Counts time a session was active while the Mac was awake. Time paused for sleep or a locked screen isn't counted.</p>
-        <h3 class="act-heading">Privacy</h3>
-        <div class="act-card act-privacy">
-          <p>History stays on this Mac and keeps the last 30 days.</p>
-          <button class="mbtn" type="button" data-act-clear>Clear History…</button>
-        </div>
-        <div class="act-sheet" role="alertdialog" aria-labelledby="act-sheet-title" aria-describedby="act-sheet-body" hidden data-act-sheet>
-          <div>
-            <img src="/images/icon-64.png" width="48" height="48" alt="">
-            <strong id="act-sheet-title">Clear all activity history?</strong>
-            <p id="act-sheet-body">This removes every recorded day. A running session keeps counting from now.</p>
-            <button class="mbtn act-destructive" type="button" data-act-confirm>Clear History</button>
-            <button class="mbtn" type="button" data-act-cancel>Cancel</button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="window" id="win-install" data-window="install" aria-labelledby="install-window-title" tabindex="-1" hidden>
-      <header class="titlebar" data-drag>
-        <span class="lights"><button class="light close" type="button" data-close aria-label="Close AlwaysOn installer"></button><button class="light min" type="button" data-min aria-label="Minimize AlwaysOn installer"></button><button class="light zoom" type="button" data-zoom aria-label="Zoom AlwaysOn installer"></button></span>
-        <span class="titlebar-title">AlwaysOn</span>
-      </header>
-      <div class="window-body installer" data-installer>
-        <div class="dmg" data-dmg>
-          <h2 id="install-window-title">Install AlwaysOn</h2>
-          <p class="dmg-hint"><span class="mouse-only">Drag AlwaysOn into Applications to download it.</span><span class="touch-only">Press Download, then drag AlwaysOn into Applications.</span></p>
-          <div class="dmg-row">
-            <div class="dmg-item dmg-app" data-dmg-app>
-              <img src="/images/icon-256.png" width="96" height="96" alt="" draggable="false">
-              <span>AlwaysOn</span>
-            </div>
-            <svg class="dmg-trail" viewBox="0 0 120 24" aria-hidden="true"><g fill="rgb(255 255 255 / 0.55)"><circle cx="8" cy="12" r="2.4"/><circle cx="26" cy="12" r="2.4"/><circle cx="44" cy="12" r="2.4"/><circle cx="62" cy="12" r="2.4"/></g><path d="M84 3l12 9-12 9" fill="none" stroke="#30d158" stroke-width="4.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            <div class="dmg-item dmg-target" data-dmg-target>
-              <svg viewBox="0 0 96 96" width="96" height="96" aria-hidden="true"><path d="M8 24a6 6 0 0 1 6-6h24l8 8h36a6 6 0 0 1 6 6v44a6 6 0 0 1-6 6H14a6 6 0 0 1-6-6z" fill="#1d7ee0"/><path d="M8 36h80v40a6 6 0 0 1-6 6H14a6 6 0 0 1-6-6z" fill="#47a8ff"/><path d="M38 72l10-22 10 22M42 64h12" fill="none" stroke="rgb(255 255 255 / 0.8)" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-              <span>Applications</span>
-            </div>
-          </div>
-        </div>
-        <div class="installer-bar">
-          <p class="installer-status" role="status" data-install-status>AlwaysOn is free. It needs macOS 13 or later.</p>
-          <a class="mbtn mbtn-accent" href="/download/dmg" data-download><span data-install-button>Download</span></a>
-        </div>
-        <ol class="steps">
-          <li><strong>Download it and drag it to Applications.</strong> Open the DMG and drag AlwaysOn.app into Applications.</li>
-          <li><strong>Open it once.</strong> If macOS says it couldn't verify the app, go to System Settings &gt; Privacy &amp; Security and click Open Anyway.</li>
-          <li><strong>Allow Accessibility.</strong> Notifications, Location, and Calendar are optional.</li>
-          <li><strong>Start a session.</strong> Click the icon in the menu bar, or press <kbd>⌥⌘K</kbd>.</li>
+        <ol class="install-steps" aria-label="Install steps">
+          <li><span>01</span>Open the DMG and drag AlwaysOn to Applications.</li>
+          <li><span>02</span>If macOS says it can't verify the app, open System Settings &gt; Privacy &amp; Security and click Open Anyway.</li>
+          <li><span>03</span>Allow Accessibility when AlwaysOn asks. It needs this to send input.</li>
         </ol>
       </div>
     </section>
-
-    <section class="window" id="win-about" data-window="about" aria-labelledby="about-title" tabindex="-1" hidden>
-      <header class="titlebar" data-drag>
-        <span class="lights"><button class="light close" type="button" data-close aria-label="Close About AlwaysOn"></button><button class="light min" type="button" data-min aria-label="Minimize About AlwaysOn"></button><span class="light zoom"></span></span>
-      </header>
-      <div class="window-body about">
-        <img src="/images/icon-256.png" width="96" height="96" alt="">
-        <h2 id="about-title">AlwaysOn</h2>
-        <p class="about-version" data-about-version>For macOS 13 or later</p>
-        <p>Keeps you shown as active in Teams, Slack, Zoom, and other workplace apps.</p>
-        <p class="about-legal">Free and open source under the MIT License.</p>
-      </div>
-    </section>
-
-    <p class="coach" data-coach hidden><strong>AlwaysOn is running up here.</strong> Click it to open the menu.</p>
-
-    <div class="ao-menu" id="ao-menu" data-menu data-phase="active" aria-label="AlwaysOn menu, a working demo" hidden>
-      <div class="status-card">
-        <svg class="ring" viewBox="0 0 52 52" aria-hidden="true">
-          <circle class="ring-track" cx="26" cy="26" r="22"/>
-          <circle class="ring-fill" cx="26" cy="26" r="22" data-ring/>
-          <g class="ring-icon ring-icon-active" transform="translate(16 16)"><path d="M6.2 5.2a6.5 6.5 0 0 0 0 9.6M13.8 5.2a6.5 6.5 0 0 1 0 9.6M3.6 2.6a10.2 10.2 0 0 0 0 14.8M16.4 2.6a10.2 10.2 0 0 1 0 14.8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="10" cy="10" r="1.9" fill="currentColor"/></g>
-          <g class="ring-icon ring-icon-paused" transform="translate(16 16)"><rect x="5" y="4" width="3.4" height="12" rx="1" fill="currentColor"/><rect x="11.6" y="4" width="3.4" height="12" rx="1" fill="currentColor"/></g>
-          <g class="ring-icon ring-icon-off" transform="translate(16 16)"><path d="M10 3v6.5M5.6 5.8a6.4 6.4 0 1 0 8.8 0" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></g>
-        </svg>
-        <div class="status-text">
-          <p class="status-top"><strong data-title>Active</strong><span data-today>3h online today</span></p>
-          <p class="status-clock" data-clock-line><span data-countdown>1:13:00</span> <small data-countdown-unit>left</small></p>
-          <p class="status-detail" data-detail>Via Quick Timer · ends 2:51 PM</p>
-        </div>
-      </div>
-
-      <div class="controls">
-        <button class="mbtn mbtn-primary" type="button" data-primary>
-          <svg class="icon-pause" viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><rect x="3" y="2" width="3.4" height="12" rx="1" fill="currentColor"/><rect x="9.6" y="2" width="3.4" height="12" rx="1" fill="currentColor"/></svg>
-          <svg class="icon-play" viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><path d="M4 2.5v11l9.5-5.5z" fill="currentColor"/></svg>
-          <span data-primary-label>Pause</span>
-        </button>
-        <div class="pause-for" data-pause-for>
-          <button class="mbtn mbtn-icon" type="button" aria-label="Pause for a set time" aria-haspopup="menu" aria-expanded="false" data-pause-for-toggle>
-            <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><circle cx="10" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 11V7.5M8 2.5h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-          </button>
-          <div class="popover" role="menu" hidden data-pause-for-menu>
-            <p>Pause, then resume on its own</p>
-            <button type="button" role="menuitem" data-pause-minutes="15">Pause for 15 minutes</button>
-            <button type="button" role="menuitem" data-pause-minutes="30">Pause for 30 minutes</button>
-            <button type="button" role="menuitem" data-pause-minutes="60">Pause for 1 hour</button>
-            <button type="button" role="menuitem" data-pause-minutes="120">Pause for 2 hours</button>
-          </div>
-        </div>
-        <button class="mbtn mbtn-icon" type="button" aria-label="Stop Session" data-stop>
-          <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><rect x="2.5" y="2.5" width="11" height="11" rx="2" fill="currentColor"/></svg>
-        </button>
-      </div>
-
-      <div class="chips">
-        <p data-chips-heading>Add time</p>
-        <div class="chip-row" data-chips></div>
-      </div>
-
-      <hr>
-      <div class="pulse-row" role="img" aria-label="Recent input attempts">
-        <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M1.5 10h3.5l2-5 3 10 2.5-7 1.5 2h4.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <span class="pulse-bars" data-pulse-bars></span>
-        <span class="pulse-time" data-pulse-time></span>
-      </div>
-      <hr>
-      <div class="mrow mrow-static">
-        <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><circle cx="7.5" cy="7" r="2.6" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="13.5" cy="7.5" r="2.2" fill="none" stroke="currentColor" stroke-width="1.3"/><path d="M2.5 16c.8-2.6 2.7-4 5-4s4.2 1.4 5 4M12 12.2c2.1-.4 4.3.8 5.2 3.6" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>
-        <span>Profile</span><span class="mrow-hint" data-profile>Work ›</span>
-      </div>
-      <hr>
-      <button class="mrow" type="button" data-quit>
-        <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true"><path d="M10 3v6.5M5.6 5.8a6.4 6.4 0 1 0 8.8 0" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-        <span>Quit AlwaysOn</span><span class="mrow-hint">⌘Q</span>
-      </button>
-    </div>
   </main>
 
-  <div class="notes" aria-live="polite" data-notes></div>
-
-  <div class="dropdown context" role="menu" aria-label="Desktop" hidden data-context></div>
-
-  <div class="lock" data-lock-screen hidden>
-    <p class="lock-date" data-lock-date></p>
-    <p class="lock-time" data-lock-time></p>
-    <p class="lock-note"><strong>AlwaysOn pauses while the Mac is locked.</strong> Each attempt it holds back shows up in the Pulse Log.</p>
-    <button class="lock-open" type="button" data-unlock>Click or press any key to unlock</button>
-  </div>
+  <footer class="footer" data-theme="ink">
+    <div class="footer-cols">
+      <div>
+        <div class="eyebrow">AlwaysOn</div>
+        <p>A menu bar app that keeps your Teams, Slack, and Zoom status Available. MIT licensed.</p>
+      </div>
+      <ul>
+        <li><a href="#reel" data-scroll-to>The app</a></li>
+        <li><a href="#features" data-scroll-to>Features</a></li>
+        <li><a href="/download/dmg" data-outbound="download">Download</a></li>
+      </ul>
+      <ul>
+        <li><a href="https://github.com/hafiezul/AlwaysOn" data-outbound="github">GitHub</a></li>
+        <li><a href="https://github.com/hafiezul/AlwaysOn/releases" data-outbound="github">Releases</a></li>
+      </ul>
+    </div>
+    <div class="footer-mark" aria-hidden="true" data-footer-mark><span class="serif">Always</span><span class="wide">ON</span></div>
+  </footer>
 </body>
 </html>

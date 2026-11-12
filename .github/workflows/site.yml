@@ -6,7 +6,6 @@ on:
       - main
     paths:
       - 'site/**'
-      - 'screenshots/**'
       - 'AlwaysOn/Resources/Assets.xcassets/AppIcon.appiconset/**'
       - '.github/workflows/site.yml'
   workflow_dispatch:

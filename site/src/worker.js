@@ -1,6 +1,6 @@
 // Serves the landing page from static assets and adds a few routes:
 //
-//   /download      sends browsers to the page's installer window, which starts
+//   /download      sends browsers to the page's download section, which starts
 //                  the download and shows the install steps. Anything else
 //                  (curl, scripts) is redirected straight to the DMG.
 //   /download/dmg  redirects to the latest release's DMG.
