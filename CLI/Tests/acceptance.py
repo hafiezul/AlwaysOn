@@ -121,6 +121,21 @@ class CommandHelperAcceptance(unittest.TestCase):
         self.assertEqual(len(events), 2)
         self.assertEqual(self.token(events[0], 'run'), self.token(events[1], 'finish'))
 
+    def write_status(self, pid=None, **fields):
+        status = {'version': 1, 'pid': os.getpid() if pid is None else pid, 'state': 'active',
+                  'source': 'timer', 'endsAt': '2100-01-01T00:00:00Z', 'isSuspended': False,
+                  'hasAccessibilityPermission': True, 'profile': 'Work', 'profiles': ['Work', 'Deep Home']}
+        status.update(fields)
+        path = self.root / 'Library/Application Support/AlwaysOn/status.json'
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({key: value for key, value in status.items() if value is not None}))
+        return path
+
+    def dead_pid(self):
+        proc = subprocess.Popen([sys.executable, '-c', 'pass'])
+        proc.wait()
+        return proc.pid
+
     def test_public_requests(self):
         for args, expected in [(('start',), 'alwayson://start'),
                                (('stop',), 'alwayson://stop'),
@@ -143,7 +158,9 @@ class CommandHelperAcceptance(unittest.TestCase):
                      ('timer', '0'), ('timer', '1441'), ('timer', '1.5'),
                      ('timer', '+1'), ('until', '00:00'), ('until', '25:00'),
                      ('pause', '0'), ('pause', '1441'), ('pause', '1.5'), ('pause', '5', '6'),
-                     ('until', '2000-01-01T00:00:00Z'), ('until', 'nope')]:
+                     ('until', '2000-01-01T00:00:00Z'), ('until', 'nope'),
+                     ('status', 'extra'), ('status', '--json', 'extra'),
+                     ('profile', 'a', 'b'), ('profile', ' ')]:
             self.assertNotEqual(self.invoke(*args).returncode, 0, args)
         self.assertEqual(self.events(), [])
         self.assertEqual(self.invoke('help').returncode, 0)
@@ -199,6 +216,83 @@ class CommandHelperAcceptance(unittest.TestCase):
 
     def test_help(self):
         self.assertEqual(self.invoke('--help').returncode, 0)
+
+    def test_status_reports_the_running_app(self):
+        self.write_status()
+        result = self.invoke('status')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        lines = result.stdout.splitlines()
+        self.assertTrue(lines[0].startswith('AlwaysOn is active (timer) until '), lines)
+        self.assertIn('Profile: Work', lines)
+        result = self.invoke('status', '--json')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        status = json.loads(result.stdout)
+        self.assertEqual(status['state'], 'active')
+        self.assertEqual(status['source'], 'timer')
+        self.assertEqual(status['endsAt'], '2100-01-01T00:00:00Z')
+        self.assertEqual(status['profiles'], ['Work', 'Deep Home'])
+        self.assertEqual(self.events(), [])
+
+    def test_status_wording_for_other_states(self):
+        self.write_status(state='paused', source='manual', endsAt=None, resumesAt='2100-01-01T00:00:00Z',
+                          hasAccessibilityPermission=False)
+        lines = self.invoke('status').stdout.splitlines()
+        self.assertTrue(lines[0].startswith('AlwaysOn is paused (manual), resuming at '), lines)
+        self.assertIn('Accessibility permission is missing.', lines)
+        self.write_status(state='off', source=None, endsAt=None)
+        self.assertEqual(self.invoke('status').stdout.splitlines()[0], 'AlwaysOn is off.')
+
+    def test_status_ignores_missing_stale_and_foreign_files(self):
+        for prepare in [lambda: None,
+                        lambda: self.write_status(pid=self.dead_pid()),
+                        lambda: self.write_status(version=2),
+                        lambda: self.write_status().write_text('not json')]:
+            prepare()
+            result = self.invoke('status')
+            self.assertEqual(result.returncode, 1)
+            self.assertEqual(result.stdout, '')
+            self.assertIn("isn't running", result.stderr)
+
+    def test_profile_lists_and_switches(self):
+        self.write_status()
+        result = self.invoke('profile')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.splitlines(), ['* Work', '  Deep Home'])
+        self.assertEqual(self.events(), [])
+        result = self.invoke('profile', 'deep home')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn('request', result.stdout)
+        url = urlsplit(self.events()[-1][-1])
+        self.assertEqual(url.netloc, 'profile')
+        self.assertEqual(parse_qs(url.query), {'name': ['deep home']})
+
+    def test_profile_rejects_unknown_names_when_the_app_reports(self):
+        self.write_status()
+        result = self.invoke('profile', 'Nope')
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('No profile named', result.stderr)
+        self.assertEqual(self.events(), [])
+
+    def test_profile_without_a_running_app(self):
+        self.assertEqual(self.invoke('profile').returncode, 1)
+        result = self.invoke('profile', 'Work')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.events()[-1], ["-a", str(self.app), 'alwayson://profile?name=Work'])
+
+    def test_run_warns_when_the_session_is_not_confirmed(self):
+        self.write_status(state='off', source=None, endsAt=None, hasAccessibilityPermission=False)
+        result = self.invoke('run', '--', sys.executable, '-c', 'print("ran")')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, 'ran\n')
+        self.assertIn('Accessibility permission', result.stderr)
+        self.pair(self.events())
+
+    def test_run_is_quiet_when_the_session_is_confirmed(self):
+        self.write_status(source='command')
+        result = self.invoke('run', '--', sys.executable, '-c', 'print("ran")')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stderr, '')
+        self.pair(self.events())
 
     def test_arguments_output_and_success(self):
         args = ['space here', "quote'\"", '$(touch nope); * | &']
