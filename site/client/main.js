@@ -29,6 +29,9 @@ const PULSE_REAL_SECONDS = 45;
 
 let lenis = null;
 
+// One random ID per page load, so a visit's events share a PostHog session
+const visit = uuidv7();
+
 main();
 
 async function main() {
@@ -701,9 +704,8 @@ async function loadLatest() {
 }
 
 // Visit counts: the same anonymous events as the classic page. src/worker.js
-// explains what is sent on; nothing is stored in the browser.
-
-const visit = uuidv7();
+// explains what is sent on; nothing is stored in the browser. `visit` is
+// declared near the top, because main() sends the first event right away.
 
 function track(event, name) {
   try {

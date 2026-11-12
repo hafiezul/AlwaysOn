@@ -118,19 +118,27 @@ struct TelemetryCapture: Encodable {
     /// Properties on every event. `$process_person_profile` keeps PostHog from
     /// building a person profile, and `$geoip_disable` from looking up a location.
     static func baseProperties(appVersion: String, osVersion: OperatingSystemVersion) -> TelemetryProperties {
-        #if arch(arm64)
-        let architecture = "arm64"
-        #else
-        let architecture = "x86_64"
-        #endif
-        return [
+        [
             "$lib": .string("alwayson-macos"),
             "$process_person_profile": .bool(false),
             "$geoip_disable": .bool(true),
             "app_version": .string(appVersion),
-            "os_version": .string("\(osVersion.majorVersion).\(osVersion.minorVersion)"),
+            "os_version": .string(TelemetryCapture.osVersion(osVersion)),
             "arch": .string(architecture)
         ]
+    }
+
+    /// macOS major and minor version only, such as "15.2"
+    static func osVersion(_ version: OperatingSystemVersion) -> String {
+        "\(version.majorVersion).\(version.minorVersion)"
+    }
+
+    static var architecture: String {
+        #if arch(arm64)
+        return "arm64"
+        #else
+        return "x86_64"
+        #endif
     }
 
     func jsonData(prettyPrinted: Bool = false) throws -> Data {
@@ -138,5 +146,20 @@ struct TelemetryCapture: Encodable {
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = prettyPrinted ? [.prettyPrinted, .sortedKeys] : [.sortedKeys]
         return try encoder.encode(self)
+    }
+}
+
+/// What every update check adds to the feed URL, statistics on or off, so the
+/// site can count installs: the AlwaysOn version, the macOS version (major
+/// and minor), and the chip. No ID is made or stored for it. The site turns
+/// each check into an `update_check` event with the same daily-changing
+/// visitor hash its page uses, and PostHog never sees the address.
+enum UpdateCheckCount {
+    static func feedParameters(appVersion: String, osVersion: OperatingSystemVersion) -> [[String: String]] {
+        [
+            ["key": "v", "value": appVersion],
+            ["key": "os", "value": TelemetryCapture.osVersion(osVersion)],
+            ["key": "arch", "value": TelemetryCapture.architecture]
+        ]
     }
 }

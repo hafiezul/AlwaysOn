@@ -23,7 +23,7 @@
     <key>LSUIElement</key>
     <true/>
     <key>SUFeedURL</key>
-    <string>https://github.com/hafiezul/AlwaysOn/releases/latest/download/appcast.xml</string>
+    <string>https://alwayson.hafiezulzikry.com/appcast.xml</string>
     <key>SUPublicEDKey</key>
     <string>$(SPARKLE_PUBLIC_ED_KEY)</string>
     <key>SUEnableAutomaticChecks</key>

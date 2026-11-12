@@ -378,7 +378,7 @@ A build outside the app bundle supports `help` and `version` but refuses to inst
 - AlwaysOn needs Accessibility permission to send keyboard and mouse input.
 - Calendar access is optional. AlwaysOn asks for it only when you allow it in the setup window or load events in the **Keep Online Until…** window.
 - Location access is optional. AlwaysOn asks for it only to read Wi-Fi network names for profile switching.
-- AlwaysOn checks [GitHub Releases](../../releases/latest) for updates once a day and offers to install them. In **Settings > Updates** you can check now, turn off the daily check, or have updates download and install on their own.
+- AlwaysOn checks [GitHub Releases](../../releases/latest) for updates once a day and offers to install them. The check goes through the AlwaysOn site, which counts it (see [Usage statistics](#usage-statistics)) and passes it on to GitHub. In **Settings > Updates** you can check now, turn off the daily check, or have updates download and install on their own.
 - AlwaysOn installs an update only if its EdDSA signature matches the key built into the app.
 - AlwaysOn signs releases with its own certificate, not an Apple Developer ID, so macOS asks you to confirm the first launch. See [Why macOS asks you to confirm the first launch](#why-macos-asks-you-to-confirm-the-first-launch).
 - AlwaysOn collects no data unless you turn on usage statistics. See [Usage statistics](#usage-statistics).
@@ -407,6 +407,10 @@ Every event also carries your AlwaysOn version, your macOS version (major and mi
 AlwaysOn never sends your name, profile names, Wi-Fi network names, calendar events, which apps you run or target, schedule times, your hotkey, or anything you type. Events ask PostHog not to look up a location or build a person profile, and PostHog discards the sender's IP address instead of storing it with events. To see the exact next summary, expand **Show the next daily summary** under the switch in Settings.
 
 Turning statistics off stops sending and deletes the random ID and the counts kept on your Mac. If you turn them on again, AlwaysOn starts with a new, unlinked ID. Builds you make yourself in the Debug configuration print events to the console instead of sending them.
+
+### Update checks
+
+Separately from usage statistics, the AlwaysOn site counts update checks, so it's possible to know roughly how many copies are in use and which versions they run. Each check, about once a day, tells the site three things: your AlwaysOn version, your macOS version (major and minor only), and whether the Mac uses Apple silicon or Intel. AlwaysOn makes no ID for this and stores nothing for it. The site passes the check to PostHog as an `update_check` event, labelled with a hash of your address and the check's user agent that changes every day, plus the country Cloudflare reports. PostHog never receives your address, and one day's checks can't be linked to the next. To stop these counts, turn off **Check for updates automatically** in **Settings > Updates**; checks you start yourself are still counted. Versions before 1.16.0 read updates from GitHub directly and aren't counted.
 
 After two weeks and ten sessions, the menu asks once whether you'd like to star AlwaysOn on GitHub. It never asks again, whichever you choose.
 

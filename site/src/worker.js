@@ -7,6 +7,8 @@
 //   /latest.json   reports the latest version and the repo's star count.
 //   /e             takes the page's anonymous visit counts and passes them to
 //                  PostHog. See "Visit counts" below.
+//   /appcast.xml   the app's update feed: counts the check, then redirects
+//                  to the appcast on GitHub. See "Update checks" below.
 //
 // The release comes from its Sparkle appcast, which has a stable URL and no
 // API rate limit. The star count comes from the GitHub API, which does have
@@ -43,6 +45,8 @@ export default {
     }
 
     if (url.pathname === "/e") return collect(request, env, ctx);
+
+    if (url.pathname === "/appcast.xml") return updateCheck(request, env, ctx);
 
     return env.ASSETS.fetch(request);
   },
@@ -164,8 +168,7 @@ async function collect(request, env, ctx) {
 async function capture(request, env, event, properties = {}, pageURL = null) {
   const url = new URL(request.url);
   const userAgent = request.headers.get("user-agent") ?? "";
-  const local = url.hostname === "localhost" || url.hostname === "127.0.0.1";
-  if (!env.POSTHOG_KEY || local || !userAgent || BOTS.test(userAgent)) return;
+  if (!env.POSTHOG_KEY || isLocal(url) || !userAgent || BOTS.test(userAgent)) return;
 
   // The page's own address, kept to this site and stripped of its fragment
   let page = new URL(url.origin);
@@ -181,32 +184,85 @@ async function capture(request, env, event, properties = {}, pageURL = null) {
     if (value) campaign[name] = value.slice(0, 100);
   }
 
-  const body = {
-    api_key: env.POSTHOG_KEY,
-    event,
-    distinct_id: await visitorID(request, env, userAgent),
-    timestamp: new Date().toISOString(),
-    properties: {
-      $lib: "alwayson-site",
-      $process_person_profile: false,
-      $geoip_disable: true,
-      $current_url: page.href,
-      $host: page.host,
-      $pathname: page.pathname,
-      $geoip_country_code: request.cf?.country,
-      ...describeBrowser(userAgent),
-      ...campaign,
-      ...properties,
-    },
-  };
+  await sendToPostHog(env, event, await visitorID(request, env, userAgent), {
+    $lib: "alwayson-site",
+    $current_url: page.href,
+    $host: page.host,
+    $pathname: page.pathname,
+    $geoip_country_code: request.cf?.country,
+    ...describeBrowser(userAgent),
+    ...campaign,
+    ...properties,
+  });
+}
 
+// Every event asks PostHog to build no person profile and look up no location
+async function sendToPostHog(env, event, distinctID, properties) {
   try {
     await fetch(`${env.POSTHOG_HOST ?? "https://us.i.posthog.com"}/capture/`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        api_key: env.POSTHOG_KEY,
+        event,
+        distinct_id: distinctID,
+        timestamp: new Date().toISOString(),
+        properties: { $process_person_profile: false, $geoip_disable: true, ...properties },
+      }),
     });
   } catch {}
+}
+
+function isLocal(url) {
+  return url.hostname === "localhost" || url.hostname === "127.0.0.1";
+}
+
+// Update checks
+//
+// Release builds read their Sparkle feed from here, so installs can be counted
+// whether or not usage statistics are on. Sparkle checks about once a day,
+// and only while automatic checks are on (or when the user checks by hand).
+// The app adds three things to the feed URL: its version, the macOS version
+// (major and minor), and the chip. Nothing else, and no ID: each check becomes
+// an `update_check` event under the same daily-changing hash the page uses, so
+// PostHog never sees the address and can't follow an install from one day to
+// the next. Every request is redirected to the appcast on GitHub, counted or
+// not, so updates never depend on PostHog.
+
+const APP_VERSION = /^\d+\.\d+\.\d+$/;
+const OS_VERSION = /^\d{1,2}\.\d{1,2}$/;
+const ARCHITECTURES = new Set(["arm64", "x86_64"]);
+
+function updateCheck(request, env, ctx) {
+  const url = new URL(request.url);
+  const version = url.searchParams.get("v") ?? "";
+  const os = url.searchParams.get("os") ?? "";
+  const arch = url.searchParams.get("arch") ?? "";
+  const userAgent = request.headers.get("user-agent") ?? "";
+
+  const counts =
+    request.method === "GET" &&
+    env.POSTHOG_KEY &&
+    !isLocal(url) &&
+    userAgent &&
+    APP_VERSION.test(version) &&
+    OS_VERSION.test(os) &&
+    ARCHITECTURES.has(arch);
+  if (counts) {
+    ctx.waitUntil(
+      visitorID(request, env, userAgent).then((id) =>
+        sendToPostHog(env, "update_check", id, {
+          $lib: "alwayson-updater",
+          $geoip_country_code: request.cf?.country,
+          app_version: version,
+          os_version: os,
+          arch,
+        }),
+      ),
+    );
+  }
+
+  return new Response(null, { status: 302, headers: { location: APPCAST_URL, "cache-control": "no-store" } });
 }
 
 // The same visitor gets the same ID until midnight UTC, then a new one.

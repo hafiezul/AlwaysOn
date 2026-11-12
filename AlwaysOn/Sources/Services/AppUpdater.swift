@@ -5,7 +5,9 @@ import Sparkle
 /// Sparkle-backed automatic updates.
 ///
 /// Release builds carry an EdDSA public key (`SUPublicEDKey`) and read the
-/// appcast attached to the latest GitHub release. Sparkle installs an update only
+/// appcast attached to the latest GitHub release, through the AlwaysOn site
+/// (`SUFeedURL`), which counts the check and redirects to GitHub. Each check
+/// carries only `UpdateCheckCount.feedParameters`. Sparkle installs an update only
 /// when its EdDSA signature checks out and the new app is signed by the same
 /// certificate as the running one, so Accessibility access carries over.
 ///
@@ -34,7 +36,7 @@ final class AppUpdater: NSObject, ObservableObject {
 
         let controller = SPUStandardUpdaterController(
             startingUpdater: true,
-            updaterDelegate: nil,
+            updaterDelegate: self,
             userDriverDelegate: self
         )
         self.controller = controller
@@ -67,6 +69,15 @@ final class AppUpdater: NSObject, ObservableObject {
         // A menu bar app is never frontmost on its own; bring Sparkle's window forward
         NSApp.activate(ignoringOtherApps: true)
         controller?.checkForUpdates(nil)
+    }
+}
+
+// MARK: - SPUUpdaterDelegate
+
+extension AppUpdater: SPUUpdaterDelegate {
+    func feedParameters(for updater: SPUUpdater, sendingSystemProfile sendingProfile: Bool) -> [[String: String]] {
+        UpdateCheckCount.feedParameters(appVersion: Bundle.main.appVersion,
+                                        osVersion: ProcessInfo.processInfo.operatingSystemVersion)
     }
 }
 

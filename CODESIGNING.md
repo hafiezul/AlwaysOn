@@ -15,7 +15,7 @@ The certificate does not make Gatekeeper trust the app. The first launch still n
 
 ## How updates work
 
-1. The app reads `https://github.com/hafiezul/AlwaysOn/releases/latest/download/appcast.xml`, the appcast attached to the latest release.
+1. The app reads `https://alwayson.hafiezulzikry.com/appcast.xml` (`SUFeedURL`). The site's Worker counts the check and redirects to `https://github.com/hafiezul/AlwaysOn/releases/latest/download/appcast.xml`, the appcast attached to the latest release. The redirect doesn't depend on PostHog, but it does need the site to be up; see [site/README.md](site/README.md).
 2. If the appcast lists a higher build number (`sparkle:version`, the commit count), Sparkle offers the update.
 3. Sparkle downloads the DMG, checks its EdDSA signature against `SUPublicEDKey` in the running app, and checks that the new app has the same code signing requirement. Then it replaces the app and relaunches it.
 
