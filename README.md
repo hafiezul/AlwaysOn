@@ -425,6 +425,10 @@ Check that Accessibility permission is on and that AlwaysOn shows an active sess
 
 If the Pulse Log shows **Input had no effect**, macOS is dropping AlwaysOn's input even though the permission looks on. Remove AlwaysOn from **System Settings > Privacy & Security > Accessibility**, add `/Applications/AlwaysOn.app` again, turn it on, and relaunch AlwaysOn.
 
+### Report a problem
+
+Open **Settings > About** and click **Copy Diagnostics**. Then click **Report Issue** and paste it into the Diagnostics field. The report has your AlwaysOn and macOS versions, your settings as on/off choices, and AlwaysOn's last 30 input attempts with how long ago each happened. It never includes profile names, Wi-Fi networks, target apps, calendar events, schedule times, or your hotkey. Nothing is sent until you paste it yourself.
+
 ## License
 
 MIT License. See [LICENSE](LICENSE).
