@@ -53,4 +53,13 @@ final class URLCommandTests: XCTestCase {
             XCTAssertNil(parse("alwayson://until\(query)"))
         }
     }
+
+    func testProfileRequiresOneNonEmptyName() {
+        XCTAssertEqual(parse("alwayson://profile?name=Work"), .profile(name: "Work"))
+        XCTAssertEqual(parse("alwayson://profile?NAME=Deep%20Work"), .profile(name: "Deep Work"))
+        XCTAssertEqual(parse("alwayson://profile?name=%20Home%20"), .profile(name: "Home"))
+        for query in ["", "?name", "?name=", "?name=%20", "?name=A&name=B", "?profile=Work"] {
+            XCTAssertNil(parse("alwayson://profile\(query)"), query)
+        }
+    }
 }

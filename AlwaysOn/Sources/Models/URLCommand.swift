@@ -12,6 +12,8 @@ enum URLCommand: Equatable {
     case timer(minutes: Int?)
     /// Pause a running session; nil minutes pauses until resumed
     case pause(minutes: Int?)
+    /// Switch to the profile with this name, which stops the current session
+    case profile(name: String)
 }
 
 struct URLCommandParser {
@@ -20,7 +22,7 @@ struct URLCommandParser {
     static let pauseMinutesRange = 1...1440
 
     /// Parses alwayson://start, alwayson://stop, alwayson://toggle,
-    /// alwayson://timer?minutes=30, and alwayson://pause?minutes=15.
+    /// alwayson://timer?minutes=30, alwayson://pause?minutes=15, and alwayson://profile?name=Work.
     /// Returns nil for anything else.
     static func command(from url: URL) -> URLCommand? {
         guard url.scheme?.lowercased() == scheme else { return nil }
@@ -65,6 +67,13 @@ struct URLCommandParser {
             guard items.count == 1, let value = items.first?.value, let minutes = Int(value),
                   pauseMinutesRange.contains(minutes) else { return nil }
             return .pause(minutes: minutes)
+        case "profile":
+            let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?
+                .queryItems?.filter { $0.name.lowercased() == "name" } ?? []
+            guard items.count == 1,
+                  let name = items.first?.value?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !name.isEmpty else { return nil }
+            return .profile(name: name)
         default:
             return nil
         }
