@@ -194,6 +194,7 @@ extension PulseLog.Outcome {
         case .userActive: return "hand.raised"
         case .noTarget: return "app.dashed"
         case .inputCreationFailed: return "xmark.octagon"
+        case .inputNotRegistered: return "exclamationmark.triangle"
         case .systemPaused: return "moon.zzz"
         case .permissionMissing: return "lock.slash"
         case .stoppedAway: return "figure.walk"
@@ -207,7 +208,7 @@ extension PulseLog.Outcome {
         case .userActive, .stoppedAway, .stoppedLowBattery: return .orange
         case .noTarget: return .secondary
         case .systemPaused: return .indigo
-        case .inputCreationFailed, .permissionMissing: return .red
+        case .inputCreationFailed, .inputNotRegistered, .permissionMissing: return .red
         }
     }
 
@@ -217,7 +218,7 @@ extension PulseLog.Outcome {
         case .posted: return "Posted"
         case .userActive, .noTarget: return "Skipped"
         case .systemPaused: return "Paused"
-        case .inputCreationFailed: return "Failed"
+        case .inputCreationFailed, .inputNotRegistered: return "Failed"
         case .permissionMissing, .stoppedAway, .stoppedLowBattery: return "Stopped"
         }
     }

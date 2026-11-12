@@ -109,7 +109,7 @@ final class ActivityGateTests: XCTestCase {
 
     func testEveryOutcomeHasACategoryAndExplanation() {
         let all: [PulseLog.Outcome] = [.posted, .userActive, .noTarget, .inputCreationFailed,
-                                       .systemPaused, .permissionMissing, .stoppedAway, .stoppedLowBattery]
+                                       .inputNotRegistered, .systemPaused, .permissionMissing, .stoppedAway, .stoppedLowBattery]
         XCTAssertEqual(Set(all.map(\.category)), Set(PulseLog.Category.allCases))
         XCTAssertTrue(all.allSatisfy { !$0.explanation.isEmpty })
     }
@@ -122,6 +122,81 @@ final class ActivityGateTests: XCTestCase {
         XCTAssertEqual(log.count(of: .skipped), 2)
         XCTAssertEqual(log.count(of: .paused), 1)
         XCTAssertEqual(log.count(of: .problem), 2)
+    }
+
+    // MARK: - Post verification
+
+    private let postTime = Date(timeIntervalSince1970: 10_000)
+
+    func testNothingToConfirmWithoutAPost() {
+        var verifier = PostVerifier()
+        XCTAssertFalse(verifier.hasPendingPost)
+        XCTAssertTrue(verifier.confirm(idleSeconds: 9_999, now: postTime))
+    }
+
+    func testPostThatResetIdleTimeIsConfirmed() {
+        var verifier = PostVerifier()
+        verifier.recordPost(at: postTime)
+        XCTAssertTrue(verifier.hasPendingPost)
+        // 45 s later the idle time is just under 45 s: our post was the last input
+        XCTAssertTrue(verifier.confirm(idleSeconds: 44.95, now: postTime.addingTimeInterval(45)))
+        XCTAssertFalse(verifier.hasPendingPost)
+    }
+
+    func testUserInputAfterThePostAlsoConfirms() {
+        var verifier = PostVerifier()
+        verifier.recordPost(at: postTime)
+        XCTAssertTrue(verifier.confirm(idleSeconds: 3, now: postTime.addingTimeInterval(45)))
+    }
+
+    func testPostThatLeftNoTraceIsReported() {
+        var verifier = PostVerifier()
+        verifier.recordPost(at: postTime)
+        // The user was last active 10 s before the post, and nothing has arrived since
+        XCTAssertFalse(verifier.confirm(idleSeconds: 55, now: postTime.addingTimeInterval(45)))
+        XCTAssertFalse(verifier.hasPendingPost)
+    }
+
+    func testMarginAllowsSmallOvershoot() {
+        var verifier = PostVerifier()
+        verifier.recordPost(at: postTime)
+        XCTAssertTrue(verifier.confirm(idleSeconds: 45 + PostVerifier.margin, now: postTime.addingTimeInterval(45)))
+        verifier.recordPost(at: postTime)
+        XCTAssertFalse(verifier.confirm(idleSeconds: 45 + PostVerifier.margin + 0.1, now: postTime.addingTimeInterval(45)))
+    }
+
+    func testRepeatedFailureIsCaughtByTheSecondTick() {
+        var verifier = PostVerifier()
+        // The user touched the Mac 1 s before the first post, which hides one failure
+        verifier.recordPost(at: postTime)
+        XCTAssertTrue(verifier.confirm(idleSeconds: 46, now: postTime.addingTimeInterval(45)))
+        verifier.recordPost(at: postTime.addingTimeInterval(45))
+        XCTAssertFalse(verifier.confirm(idleSeconds: 91, now: postTime.addingTimeInterval(90)))
+    }
+
+    func testBadReadingsAndBackwardClockProveNothing() {
+        var verifier = PostVerifier()
+        verifier.recordPost(at: postTime)
+        XCTAssertTrue(verifier.confirm(idleSeconds: .infinity, now: postTime.addingTimeInterval(45)))
+        verifier.recordPost(at: postTime)
+        XCTAssertTrue(verifier.confirm(idleSeconds: -1, now: postTime.addingTimeInterval(45)))
+        verifier.recordPost(at: postTime)
+        XCTAssertTrue(verifier.confirm(idleSeconds: 500, now: postTime.addingTimeInterval(-30)))
+    }
+
+    func testResetDropsThePendingPost() {
+        var verifier = PostVerifier()
+        verifier.recordPost(at: postTime)
+        verifier.reset()
+        XCTAssertFalse(verifier.hasPendingPost)
+        XCTAssertTrue(verifier.confirm(idleSeconds: 9_999, now: postTime.addingTimeInterval(45)))
+    }
+
+    func testUnregisteredInputIsAProblem() {
+        let log = PulseLog()
+        log.record(.inputNotRegistered)
+        XCTAssertEqual(log.history.last?.summary, "Input had no effect")
+        XCTAssertEqual(log.count(of: .problem), 1)
     }
 }
 

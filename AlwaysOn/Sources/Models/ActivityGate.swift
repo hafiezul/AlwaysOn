@@ -68,9 +68,43 @@ struct TargetApp: Identifiable, Equatable {
 }
 
 
+/// Checks, one tick later, that input AlwaysOn posted reached macOS. A post
+/// that registers resets the system idle time, so the idle time measured
+/// afterwards can never be longer than the time since that post. Value type
+/// so the rule is testable without timers or input events.
+struct PostVerifier: Equatable {
+    /// Slack for the return event 50 ms after the post and for clock rounding
+    static let margin: TimeInterval = 2
+
+    private(set) var pendingPost: Date?
+
+    var hasPendingPost: Bool { pendingPost != nil }
+
+    mutating func recordPost(at date: Date) {
+        pendingPost = date
+    }
+
+    mutating func reset() {
+        pendingPost = nil
+    }
+
+    /// Consumes the pending post. Returns false when the idle time shows that
+    /// no input, AlwaysOn's or the user's, arrived since the post.
+    mutating func confirm(idleSeconds: TimeInterval, now: Date) -> Bool {
+        guard let post = pendingPost else { return true }
+        pendingPost = nil
+        let elapsed = now.timeIntervalSince(post)
+        // A clock that moved backwards or a bad reading proves nothing
+        guard idleSeconds.isFinite, idleSeconds >= 0, elapsed >= 0 else { return true }
+        return idleSeconds <= elapsed + Self.margin
+    }
+}
+
 final class PulseLog: ObservableObject {
     enum Outcome: Hashable {
         case posted, userActive, noTarget, inputCreationFailed
+        /// The input was created and posted, but the idle time never reset
+        case inputNotRegistered
         /// Simulation stopped because the Mac slept, locked, or switched users
         case systemPaused
         /// A tick found Accessibility permission revoked
@@ -90,6 +124,7 @@ final class PulseLog: ObservableObject {
             case .userActive: return "Skipped: user active"
             case .noTarget: return "Skipped: no target app"
             case .inputCreationFailed: return "Input creation failed"
+            case .inputNotRegistered: return "Input had no effect"
             case .systemPaused: return "Paused: Mac asleep, locked, or switched user"
             case .permissionMissing: return "Stopped: Accessibility permission missing"
             case .stoppedAway: return "Stopped: away limit reached"
@@ -135,7 +170,7 @@ extension PulseLog.Outcome {
         case .posted: return .posted
         case .userActive, .noTarget: return .skipped
         case .systemPaused: return .paused
-        case .inputCreationFailed, .permissionMissing, .stoppedAway, .stoppedLowBattery: return .problem
+        case .inputCreationFailed, .inputNotRegistered, .permissionMissing, .stoppedAway, .stoppedLowBattery: return .problem
         }
     }
 
@@ -146,6 +181,7 @@ extension PulseLog.Outcome {
         case .userActive: return "You used the Mac recently, so no input was needed yet."
         case .noTarget: return "None of your target apps were running."
         case .inputCreationFailed: return "macOS didn't create the input event."
+        case .inputNotRegistered: return "macOS accepted the input, but the idle time didn't reset. If this repeats, remove AlwaysOn from Accessibility in System Settings, add it again, and relaunch."
         case .systemPaused: return "Waiting until the Mac is awake, unlocked, and back on your session."
         case .permissionMissing: return "Accessibility permission was turned off, so the session stopped."
         case .stoppedAway: return "You were away longer than your away limit, so the session stopped."
