@@ -269,6 +269,7 @@ AlwaysOn registers the `alwayson://` URL scheme, so launchers like Raycast and A
 - `alwayson://timer?minutes=30` keeps you online for 30 minutes. Leave out `minutes` to use the profile's default.
 - `alwayson://pause?minutes=15` pauses a running session and resumes it after 15 minutes (1 to 1440). Leave out `minutes` to pause until you resume.
 - `alwayson://until?date=2026-11-09T17:30:00Z` keeps you online until an ISO 8601 date and time in the future.
+- `alwayson://profile?name=Work` switches to the profile with that name, which stops the current session. Names match without regard to case, and an unknown name does nothing.
 
 ## Keep online while a command runs
 
@@ -299,12 +300,22 @@ alwayson toggle
 alwayson timer 30        # whole minutes, 1 to 1440
 alwayson pause [15]      # optional whole minutes, 1 to 1440
 alwayson until 17:30     # or an ISO 8601 date and time
+alwayson status          # add --json for scripts
+alwayson profile [NAME]  # switch profile, or list profiles with no name
 alwayson run -- make test
 ```
 
 `until HH:MM` must be later today. It never rolls over to tomorrow.
 
 These commands exit successfully once macOS delivers the request to the app. The app doesn't send back a confirmation.
+
+### Check status
+
+`alwayson status` prints whether AlwaysOn is active, paused, or off, what started the session, when it ends, and the active profile. `alwayson status --json` prints the same as one JSON object with the fields `state`, `source`, `endsAt`, `resumesAt`, `isSuspended`, `hasAccessibilityPermission`, `profile`, and `profiles`. Both exit with status 1 when AlwaysOn isn't running.
+
+AlwaysOn keeps this status in `~/Library/Application Support/AlwaysOn/status.json`. It rewrites the file when something changes and deletes it on quit. The file stays on your Mac.
+
+`alwayson profile` lists your profiles and marks the active one. `alwayson profile NAME` switches to that profile, which stops the current session.
 
 ### Run a command
 
@@ -331,7 +342,7 @@ Ctrl-C goes straight to the command. The helper waits for the command to exit, t
 
 ### Limits
 
-- The app doesn't acknowledge URL requests. A delivered request doesn't confirm that permission is granted, that the session started, or the order requests arrived in.
+- The app doesn't acknowledge URL requests. A delivered request doesn't confirm the order requests arrived in. Use `alwayson status` to check the result. `alwayson run` checks for you: if AlwaysOn was running and doesn't report the command session within two seconds, the helper says so and runs the command anyway.
 - If the helper exits without sending `finish` (after SIGKILL, for example), the session stops at its 24-hour safety end time.
 - Command sessions don't resume after AlwaysOn relaunches.
 - AlwaysOn prevents idle sleep during a command only when **Settings > General > Power > Prevent sleep** is on, or when its input keeps the Mac awake. Closing the lid always puts the Mac to sleep.
