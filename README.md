@@ -13,7 +13,7 @@ AlwaysOn is a macOS menu bar app that keeps you shown as active in Microsoft Tea
   </picture>
 </p>
 
-If you find this app useful, consider supporting its development:
+AlwaysOn is free. If it saves you some hassle, you can say thanks with a coffee:
 
 <a href="https://buymeacoffee.com/hafiezul" target="_blank"><img src="https://img.shields.io/badge/Buy%20Me%20A%20Coffee-ffdd00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me A Coffee"></a>
 
@@ -54,7 +54,7 @@ If you find this app useful, consider supporting its development:
 1. Download the latest DMG from the [Releases page](../../releases/latest).
 2. Open the DMG and drag `AlwaysOn.app` to Applications.
 3. Launch AlwaysOn from Applications.
-4. If macOS says Apple could not verify the app is free of malware, open **System Settings > Privacy & Security**, scroll to **Security**, click **Open Anyway** for AlwaysOn, then confirm **Open Anyway**.
+4. If macOS says Apple could not verify the app is free of malware, open **System Settings > Privacy & Security**, scroll to **Security**, click **Open Anyway** for AlwaysOn, then confirm **Open Anyway**. [Why?](#why-macos-asks-you-to-confirm-the-first-launch)
 5. The setup window lists every permission AlwaysOn uses. Allow **Accessibility**, which is required. The others are optional: **Notifications**, **Location** (for Wi-Fi profile switching), and **Calendar** (for keeping online until a meeting ends). You can change them later in **Settings > General > Permissions**.
 
 From then on, AlwaysOn updates itself (see [Permissions and updates](#permissions-and-updates)). AlwaysOn signs every release with the same certificate, so Accessibility access carries over to each new version.
@@ -373,8 +373,18 @@ A build outside the app bundle supports `help` and `version` but refuses to inst
 - Location access is optional. AlwaysOn asks for it only to read Wi-Fi network names for profile switching.
 - AlwaysOn checks [GitHub Releases](../../releases/latest) for updates once a day and offers to install them. In **Settings > Updates** you can check now, turn off the daily check, or have updates download and install on their own.
 - AlwaysOn installs an update only if its EdDSA signature matches the key built into the app.
-- AlwaysOn signs releases with its own self-signed certificate, not an Apple Developer ID. macOS asks you to confirm the first launch. Because the certificate stays the same, Accessibility access survives updates. See [CODESIGNING.md](CODESIGNING.md).
+- AlwaysOn signs releases with its own certificate, not an Apple Developer ID, so macOS asks you to confirm the first launch. See [Why macOS asks you to confirm the first launch](#why-macos-asks-you-to-confirm-the-first-launch).
 - AlwaysOn collects no data unless you turn on usage statistics. See [Usage statistics](#usage-statistics).
+
+### Why macOS asks you to confirm the first launch
+
+AlwaysOn is free and open source. Apple only notarizes apps from paid Apple Developer members (US$99 a year), so AlwaysOn signs its releases with its own certificate instead.
+
+- macOS can't tell who made the app, so the first launch needs **Open Anyway**. Updates after that install without asking.
+- Every release is signed with the same certificate, so Accessibility access carries over from one version to the next.
+- Every release is built from this repository by a public GitHub Actions workflow, and you can read the code that goes into it.
+
+[CODESIGNING.md](CODESIGNING.md) has the technical details.
 
 ## Usage statistics
 
@@ -397,7 +407,7 @@ After two weeks and ten sessions, the menu asks once whether you'd like to star 
 
 ### macOS says the app could not be verified
 
-Launch AlwaysOn once. Then open **System Settings > Privacy & Security**, scroll to **Security**, click **Open Anyway** for AlwaysOn, and confirm **Open Anyway**. macOS remembers this choice for later launches.
+Launch AlwaysOn once. Then open **System Settings > Privacy & Security**, scroll to **Security**, click **Open Anyway** for AlwaysOn, and confirm **Open Anyway**. macOS remembers this choice for later launches. This happens because AlwaysOn isn't notarized by Apple; see [why](#why-macos-asks-you-to-confirm-the-first-launch).
 
 ### Accessibility permission isn't working
 
