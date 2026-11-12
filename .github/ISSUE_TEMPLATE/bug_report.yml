@@ -1,0 +1,36 @@
+name: Bug report
+description: Something in AlwaysOn doesn't work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. In AlwaysOn, open **Settings > About** and click **Copy Diagnostics**, then paste below. It holds your version, settings, and recent input attempts. It never includes profile names, Wi-Fi networks, apps, or calendar details.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you expected, and what you saw instead. For example, "Teams showed me as Away after 5 minutes."
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Start a session with ...
+        2. ...
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: Paste from Settings > About > Copy Diagnostics.
+      render: markdown
+    validations:
+      required: true
+  - type: checkboxes
+    id: tried
+    attributes:
+      label: Already tried
+      options:
+        - label: Removed AlwaysOn from System Settings > Privacy & Security > Accessibility, added it again, and relaunched
