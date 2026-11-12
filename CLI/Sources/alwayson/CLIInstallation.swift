@@ -117,3 +117,85 @@ public struct CLIInstallation {
         }
     }
 }
+
+// MARK: - Session status
+
+/// What the app is doing right now. The app rewrites this file whenever its
+/// state changes and deletes it when it quits; `alwayson status` reads it.
+/// The process ID lets a reader ignore a file left behind by a crash.
+public struct SessionStatus: Codable, Equatable {
+    public enum State: String, Codable {
+        case active, paused, off
+    }
+
+    public static let currentVersion = 1
+
+    public var version: Int
+    public var pid: Int32
+    public var state: State
+    /// manual, schedule, timer, until, command, or focus; nil when off
+    public var source: String?
+    public var endsAt: Date?
+    /// When a timed pause resumes on its own
+    public var resumesAt: Date?
+    /// Sleep, a locked screen, or a switched-out user is holding input back
+    public var isSuspended: Bool
+    public var hasAccessibilityPermission: Bool
+    public var profile: String
+    public var profiles: [String]
+
+    public static func fileURL(userHome: URL = FileManager.default.homeDirectoryForCurrentUser) -> URL {
+        userHome.appendingPathComponent("Library/Application Support/AlwaysOn/status.json")
+    }
+
+    /// The status at `url`, or nil when there is none, it can't be read, it
+    /// is from another format version, or the app that wrote it has exited
+    public static func read(from url: URL) -> SessionStatus? {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        guard let data = try? Data(contentsOf: url),
+              let status = try? decoder.decode(SessionStatus.self, from: data),
+              status.version == currentVersion, status.pid > 0,
+              // Signal 0 only checks that the process exists
+              kill(status.pid, 0) == 0 || errno == EPERM else { return nil }
+        return status
+    }
+
+    public func encoded() throws -> Data {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.sortedKeys]
+        return try encoder.encode(self)
+    }
+
+    public func write(to url: URL) throws {
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(),
+                                                withIntermediateDirectories: true)
+        try encoded().write(to: url, options: .atomic)
+    }
+
+    /// The profile whose name matches `name`, ignoring case
+    public func profileName(matching name: String) -> String? {
+        profiles.first { $0.compare(name, options: .caseInsensitive) == .orderedSame }
+    }
+
+    /// Plain-text lines for `alwayson status`
+    public var summaryLines: [String] {
+        let clock = DateFormatter()
+        clock.dateFormat = "yyyy-MM-dd HH:mm"
+        var first: String
+        switch state {
+        case .active: first = "AlwaysOn is active"
+        case .paused: first = "AlwaysOn is paused"
+        case .off: first = "AlwaysOn is off"
+        }
+        if let source, state != .off { first += " (\(source))" }
+        if state == .active, let endsAt { first += " until \(clock.string(from: endsAt))" }
+        if state == .paused, let resumesAt { first += ", resuming at \(clock.string(from: resumesAt))" }
+        var lines = [first + "."]
+        if isSuspended { lines.append("Input is on hold while the Mac is asleep, locked, or switched to another user.") }
+        if !profile.isEmpty { lines.append("Profile: \(profile)") }
+        if !hasAccessibilityPermission { lines.append("Accessibility permission is missing.") }
+        return lines
+    }
+}
