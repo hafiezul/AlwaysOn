@@ -67,6 +67,7 @@ final class AppState: NSObject, ObservableObject {
     @Published var simulateOnlyWhenIdle: Bool {
         didSet {
             UserDefaults.standard.set(simulateOnlyWhenIdle, forKey: Keys.simulateOnlyWhenIdle)
+            syncActiveProfileSettings()
             activitySimulator.gate.idleOnlyEnabled = simulateOnlyWhenIdle
         }
     }
@@ -75,6 +76,7 @@ final class AppState: NSObject, ObservableObject {
     @Published var requireTargetApp: Bool {
         didSet {
             UserDefaults.standard.set(requireTargetApp, forKey: Keys.requireTargetApp)
+            syncActiveProfileSettings()
             activitySimulator.gate.requireTargetApp = requireTargetApp
             runningAppMonitor.setEnabled(requireTargetApp)
         }
@@ -94,6 +96,7 @@ final class AppState: NSObject, ObservableObject {
     @Published var awayLimit: AwayLimit {
         didSet {
             UserDefaults.standard.set(awayLimit.rawValue, forKey: Keys.awayLimit)
+            syncActiveProfileSettings()
             activitySimulator.tracksRealInput = awayLimit != .off
         }
     }
@@ -102,6 +105,7 @@ final class AppState: NSObject, ObservableObject {
     @Published var batteryStopThreshold: BatteryStopThreshold {
         didSet {
             UserDefaults.standard.set(batteryStopThreshold.rawValue, forKey: Keys.batteryStopThreshold)
+            syncActiveProfileSettings()
             powerSourceMonitor.setEnabled(batteryStopThreshold != .off)
             if isActive, batteryStopThreshold.shouldStop(powerSourceMonitor.state) {
                 performSafetyStop(.lowBattery(percent: powerSourceMonitor.state.percent ?? 0))
@@ -166,6 +170,7 @@ final class AppState: NSObject, ObservableObject {
     @Published var targetApps: Set<String> {
         didSet {
             UserDefaults.standard.set(Array(targetApps), forKey: Keys.targetApps)
+            syncActiveProfileSettings()
             activitySimulator.gate.targetBundleIDs = targetApps
         }
     }
@@ -212,6 +217,7 @@ final class AppState: NSObject, ObservableObject {
     @Published var pulsePacing: PulsePacing {
         didSet {
             UserDefaults.standard.set(pulsePacing.rawValue, forKey: Keys.pulsePacing)
+            syncActiveProfileSettings()
             if isActive { restartActivitySimulatorWithCurrentSettings() }
         }
     }
@@ -220,6 +226,7 @@ final class AppState: NSObject, ObservableObject {
     @Published var adaptivePostAfter: AdaptivePostAfter {
         didSet {
             UserDefaults.standard.set(adaptivePostAfter.rawValue, forKey: Keys.adaptivePostAfter)
+            syncActiveProfileSettings()
             activitySimulator.schedule = currentPulseSchedule
         }
     }
@@ -236,6 +243,7 @@ final class AppState: NSObject, ObservableObject {
     @Published var sleepPrevention: SleepPrevention {
         didSet {
             UserDefaults.standard.set(sleepPrevention.rawValue, forKey: Keys.sleepPrevention)
+            syncActiveProfileSettings()
         }
     }
 
@@ -479,9 +487,11 @@ final class AppState: NSObject, ObservableObject {
     override init() {
         let defaults = UserDefaults.standard
         ProfileManager.migrateIfNeeded(defaults: defaults)
+        ProfileManager.migrateBehaviorIfNeeded(defaults: defaults)
 
         let profileManager = ProfileManager(defaults: defaults)
         let initialProfile = profileManager.activeProfile ?? Profile.makeDefault(from: defaults)
+        let initialBehavior = initialProfile.behavior ?? ProfileBehavior(legacyDefaults: defaults)
 
         self.profileManager = profileManager
         self.workScheduleManager = WorkScheduleManager(schedule: initialProfile.workSchedule)
@@ -493,23 +503,23 @@ final class AppState: NSObject, ObservableObject {
         self._activityInterval = Published(initialValue: initialProfile.activityInterval > 0 ? initialProfile.activityInterval : Defaults.activityInterval)
         self._activityMethod = Published(initialValue: initialProfile.activityMethod)
         self._defaultTimerDuration = Published(initialValue: initialProfile.defaultTimerDuration)
-        self._simulateOnlyWhenIdle = Published(initialValue: defaults.bool(forKey: Keys.simulateOnlyWhenIdle))
-        self._requireTargetApp = Published(initialValue: defaults.bool(forKey: Keys.requireTargetApp))
-        self._targetApps = Published(initialValue: Set(defaults.stringArray(forKey: Keys.targetApps) ?? []))
+        self._simulateOnlyWhenIdle = Published(initialValue: initialBehavior.simulateOnlyWhenIdle)
+        self._requireTargetApp = Published(initialValue: initialBehavior.requireTargetApp)
+        self._targetApps = Published(initialValue: Set(initialBehavior.targetApps))
         self._customTargetApps = Published(initialValue: defaults.data(forKey: Keys.customTargetApps)
             .flatMap { try? JSONDecoder().decode([TargetApp].self, from: $0) } ?? [])
         self._globalHotKeyEnabled = Published(initialValue: defaults.object(forKey: Keys.globalHotKeyEnabled) as? Bool ?? true)
         self._globalHotKey = Published(initialValue: defaults.data(forKey: Keys.globalHotKey)
             .flatMap { try? JSONDecoder().decode(HotKey.self, from: $0) } ?? .default)
         self._pauseWhileScreenLocked = Published(initialValue: defaults.object(forKey: Keys.pauseWhileScreenLocked) as? Bool ?? true)
-        self._awayLimit = Published(initialValue: AwayLimit(rawValue: defaults.integer(forKey: Keys.awayLimit)) ?? .off)
-        self._batteryStopThreshold = Published(initialValue: BatteryStopThreshold(rawValue: defaults.integer(forKey: Keys.batteryStopThreshold)) ?? .off)
+        self._awayLimit = Published(initialValue: initialBehavior.awayLimit)
+        self._batteryStopThreshold = Published(initialValue: initialBehavior.batteryStopThreshold)
         self._switchProfilesByNetwork = Published(initialValue: defaults.bool(forKey: Keys.switchProfilesByNetwork))
         self._menuBarLabelStyle = Published(initialValue: MenuBarLabelStyle(rawValue: defaults.string(forKey: Keys.menuBarLabelStyle) ?? "") ?? .iconAndTime)
-        self._pulsePacing = Published(initialValue: PulsePacing(rawValue: defaults.string(forKey: Keys.pulsePacing) ?? "") ?? .fixed)
-        self._adaptivePostAfter = Published(initialValue: AdaptivePostAfter(rawValue: defaults.integer(forKey: Keys.adaptivePostAfter)) ?? .twoMinutes)
+        self._pulsePacing = Published(initialValue: initialBehavior.pulsePacing)
+        self._adaptivePostAfter = Published(initialValue: initialBehavior.adaptivePostAfter)
         self._savesEnergyWhenConstrained = Published(initialValue: defaults.object(forKey: Keys.savesEnergyWhenConstrained) as? Bool ?? true)
-        self._sleepPrevention = Published(initialValue: SleepPrevention(rawValue: defaults.string(forKey: Keys.sleepPrevention) ?? "") ?? .off)
+        self._sleepPrevention = Published(initialValue: initialBehavior.sleepPrevention)
         self._energyState = Published(initialValue: EnergyMonitor.readState())
         self._menuAsks = Published(initialValue: defaults.data(forKey: Keys.menuAsks)
             .flatMap { try? JSONDecoder().decode(MenuAsks.self, from: $0) } ?? MenuAsks())
