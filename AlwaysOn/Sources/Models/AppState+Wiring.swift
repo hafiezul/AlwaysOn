@@ -129,10 +129,63 @@ extension AppState {
     func prepareForTermination() {
         activityHistory.closeOpenSegment()
         powerAssertions.hold(nil)
+        removeSessionStatus()
     }
 
     /// Online time today, including the running segment
     var onlineTimeToday: TimeInterval {
         activityHistory.ledger.today(now: Date())
+    }
+
+    // MARK: - Session Status
+
+    /// Only the real app publishes status. Previews and the screenshot
+    /// renderer build these sources too and must not overwrite the file.
+    private var publishesSessionStatus: Bool {
+        Bundle.main.bundleIdentifier == "com.alwayson.app"
+    }
+
+    /// Keeps the status file for the `alwayson` tool up to date. No timer:
+    /// it reacts only to changes the app already makes.
+    func setupSessionStatus() {
+        guard publishesSessionStatus else { return }
+        objectWillChange
+            .debounce(for: .milliseconds(100), scheduler: DispatchQueue.main)
+            .sink { [weak self] (_: Void) in self?.writeSessionStatus() }
+            .store(in: &cancellables)
+        writeSessionStatus()
+    }
+
+    var sessionStatus: SessionStatus {
+        let state: SessionStatus.State = isActive ? .active : (hasActiveOrPausedSession ? .paused : .off)
+        return SessionStatus(version: SessionStatus.currentVersion,
+                             pid: ProcessInfo.processInfo.processIdentifier,
+                             state: state,
+                             source: state == .off ? nil : SessionKind(sessionSource).rawValue,
+                             endsAt: state == .off ? nil : sessionDeadline,
+                             resumesAt: state == .paused ? autoResumeAt : nil,
+                             isSuspended: isActive && systemSuspension != nil,
+                             hasAccessibilityPermission: hasAccessibilityPermission,
+                             profile: profileManager.activeProfile?.name ?? "",
+                             profiles: profileManager.profiles.map(\.name))
+    }
+
+    func writeSessionStatus() {
+        guard publishesSessionStatus else { return }
+        let status = sessionStatus
+        guard status != lastWrittenSessionStatus else { return }
+        do {
+            try status.write(to: SessionStatus.fileURL())
+            lastWrittenSessionStatus = status
+        } catch {
+            #if DEBUG
+            print("[AppState] Status write failed: \(error)")
+            #endif
+        }
+    }
+
+    private func removeSessionStatus() {
+        guard publishesSessionStatus else { return }
+        try? FileManager.default.removeItem(at: SessionStatus.fileURL())
     }
 }
