@@ -180,6 +180,7 @@ Click the activity strip in the menu to open the Pulse Log. It shows totals for 
 - **Skipped: user active** means you used the Mac recently. That's within the last 30 seconds with **Only simulate when idle**, or within the idle time you chose for adaptive pacing.
 - **Skipped: no target app** means none of your chosen chat or meeting apps was running while that option was on.
 - **Input creation failed** means macOS didn't create the input event.
+- **Input had no effect** means AlwaysOn posted the input, but the Mac's idle time didn't reset by the next attempt. See [Your status still goes idle](#your-status-still-goes-idle).
 - **Paused: Mac asleep, locked, or switched user** means simulation stopped until the Mac is in use again.
 - **Stopped: Accessibility permission missing** means someone revoked the permission, so the session stopped.
 - **Stopped: away limit reached** and **Stopped: low battery** mean a [safety stop](#safety-stops) ended the session.
@@ -382,6 +383,8 @@ This can happen once when you move from an older release to one that updates its
 ### Your status still goes idle
 
 Check that Accessibility permission is on and that AlwaysOn shows an active session. Open the Pulse Log to see whether AlwaysOn is posting input or skipping it. Also check whether a custom status in your chat app overrides your presence.
+
+If the Pulse Log shows **Input had no effect**, macOS is dropping AlwaysOn's input even though the permission looks on. Remove AlwaysOn from **System Settings > Privacy & Security > Accessibility**, add `/Applications/AlwaysOn.app` again, turn it on, and relaunch AlwaysOn.
 
 ## License
 

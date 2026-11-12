@@ -58,6 +58,9 @@ final class ActivitySimulator {
     var tracksRealInput = false
     private(set) var inputTracker = RealInputTracker(start: Date())
 
+    /// Confirms at each tick that the previous post reset the idle time
+    private var postVerifier = PostVerifier()
+
     /// Asked at each tick, before posting, with how long the user has been
     /// away (0 when not tracked). Return false to skip the tick because the
     /// session is being stopped.
@@ -81,6 +84,7 @@ final class ActivitySimulator {
         activityMethod = method
         // Starting or resuming happens at the Mac, so the user is present now
         inputTracker = RealInputTracker(start: Date())
+        postVerifier.reset()
         
         // Tick at once; each tick schedules the next
         tick()
@@ -104,6 +108,8 @@ final class ActivitySimulator {
         timer?.invalidate()
         timer = nil
         isRunning = false
+        // A post from before a pause, sleep, or lock can't be judged afterwards
+        postVerifier.reset()
         
         #if DEBUG
         print("[ActivitySimulator] Stopped")
@@ -154,6 +160,12 @@ final class ActivitySimulator {
             return nextDelay()
         }
 
+        // The previous post should have reset the idle time; say so if it didn't
+        if postVerifier.hasPendingPost, !postVerifier.confirm(idleSeconds: idleSeconds(), now: now) {
+            pulseLog.record(.inputNotRegistered)
+            onInputFailed?()
+        }
+
         if tracksRealInput { inputTracker.observe(idleSeconds: idleSeconds(), now: now) }
         if let shouldContinue,
            !shouldContinue(tracksRealInput ? inputTracker.awayDuration(now: now) : 0) {
@@ -183,7 +195,10 @@ final class ActivitySimulator {
         }
         if activityMethod == .alternating { lastMethodWasMouse.toggle() }
         
-        if posted { inputTracker.recordSyntheticPost(at: now) }
+        if posted {
+            inputTracker.recordSyntheticPost(at: now)
+            postVerifier.recordPost(at: now)
+        }
         pulseLog.record(posted ? .posted : .inputCreationFailed)
         if !posted { onInputFailed?() }
         #if DEBUG
