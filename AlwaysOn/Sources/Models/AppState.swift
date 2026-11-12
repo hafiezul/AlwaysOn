@@ -380,6 +380,9 @@ final class AppState: NSObject, ObservableObject {
     }
     private var sessionStartTime: Date?
     var cancellables = Set<AnyCancellable>()
+
+    /// The status last written to disk, so an unchanged state isn't rewritten
+    var lastWrittenSessionStatus: SessionStatus?
     
     /// Accumulated session duration when paused (for pause/resume functionality)
     private var pausedSessionDuration: TimeInterval = 0
@@ -578,6 +581,7 @@ final class AppState: NSObject, ObservableObject {
         setupPacingAndPower()
         setupFocusRestore()
         setupTelemetry()
+        setupSessionStatus()
         accessibilityPermission.refresh()
         // Pick up a Focus that is already on, or one that ended while AlwaysOn was closed
         refreshFocusFilter(onlyIfFocusOwnsSomething: false)
