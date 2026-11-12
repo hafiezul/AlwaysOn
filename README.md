@@ -261,6 +261,8 @@ AlwaysOn adds these actions to the Shortcuts app:
 - **Keep Online Until** a date and time, with an optional label
 - **Pause or Resume**, which returns whether AlwaysOn is now active
 - **Pause For**, with optional minutes (1 to 1440), which resumes on its own
+- **Resume Session**, which resumes a paused session and returns whether AlwaysOn is now active
+- **Add Time**, with minutes (1 to 1440), which moves the session's end later or gives an unlimited session an end
 - **Stop Session**
 - **Switch Profile**, which stops the current session, the same as switching from the menu
 - **Get Status**, which returns whether AlwaysOn is active
@@ -276,6 +278,8 @@ AlwaysOn registers the `alwayson://` URL scheme, so launchers like Raycast and A
 - `alwayson://toggle` starts or pauses.
 - `alwayson://timer?minutes=30` keeps you online for 30 minutes. Leave out `minutes` to use the profile's default.
 - `alwayson://pause?minutes=15` pauses a running session and resumes it after 15 minutes (1 to 1440). Leave out `minutes` to pause until you resume.
+- `alwayson://resume` resumes a paused session.
+- `alwayson://add?minutes=15` adds 15 minutes (1 to 1440) to the current session, running or paused.
 - `alwayson://until?date=2026-11-09T17:30:00Z` keeps you online until an ISO 8601 date and time in the future.
 - `alwayson://profile?name=Work` switches to the profile with that name, which stops the current session. Names match without regard to case, and an unknown name does nothing.
 
@@ -307,6 +311,8 @@ alwayson stop
 alwayson toggle
 alwayson timer 30        # whole minutes, 1 to 1440
 alwayson pause [15]      # optional whole minutes, 1 to 1440
+alwayson resume
+alwayson add 15          # whole minutes, 1 to 1440
 alwayson until 17:30     # or an ISO 8601 date and time
 alwayson status          # add --json for scripts
 alwayson profile [NAME]  # switch profile, or list profiles with no name
