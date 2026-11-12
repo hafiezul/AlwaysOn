@@ -198,6 +198,7 @@ The list shows the newest 200 entries. The totals count from launch or the last 
 - **Hours by Day** gives a weekday its own hours, such as a shorter Friday. Other days use the default start and end.
 - **Break** pauses work hours at the same time every day, such as lunch. A session that work hours started stops at the break and starts again when the break ends.
 - **Days Off** lists dates with no work hours, such as holidays. **Skip Today** in the menu adds today. AlwaysOn clears past dates on its own.
+  - **Find Days Off in Calendar…** looks at the next 60 days and lists workdays whose work hours are fully covered by an out-of-office event or an all-day event. Out-of-office days start ticked; other all-day events start unticked. Only the days you choose are added, and AlwaysOn saves the dates, not the events. It asks for calendar access the first time you use it, and never reads your calendar otherwise.
 
 Work hours wake AlwaysOn only at the next start, break, or end.
 
