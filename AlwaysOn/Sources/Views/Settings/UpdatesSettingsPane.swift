@@ -48,7 +48,7 @@ private struct AutomaticUpdatesForm: View {
             }
 
             Section {
-                Text("Updates come from GitHub Releases. AlwaysOn installs one only after checking its signature, and every release is signed with the same certificate, so Accessibility access carries over to the new version.")
+                Text("Updates come from GitHub Releases, through the AlwaysOn site. The site counts each check with only your AlwaysOn version, macOS version, and chip, and no ID. AlwaysOn installs an update only after checking its signature, and every release is signed with the same certificate, so Accessibility access carries over to the new version.")
                     .font(.caption)
                     .foregroundColor(.secondary)
             } header: {

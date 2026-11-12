@@ -61,4 +61,15 @@ final class TelemetryTests: XCTestCase {
         XCTAssertEqual(sent["app_version"] as? String, "2.1.0")
         XCTAssertEqual(sent["source"] as? String, "settings")
     }
+
+    func testUpdateCheckSendsOnlyVersionsAndChip() {
+        let parameters = UpdateCheckCount.feedParameters(
+            appVersion: "2.1.0",
+            osVersion: OperatingSystemVersion(majorVersion: 15, minorVersion: 2, patchVersion: 1))
+        XCTAssertEqual(parameters.map { $0["key"] }, ["v", "os", "arch"])
+        XCTAssertEqual(parameters[0]["value"], "2.1.0")
+        XCTAssertEqual(parameters[1]["value"], "15.2", "patch version is dropped")
+        XCTAssertTrue(["arm64", "x86_64"].contains(parameters[2]["value"] ?? ""))
+        XCTAssertTrue(parameters.allSatisfy { Set($0.keys) == ["key", "value"] })
+    }
 }

@@ -15,6 +15,7 @@ The landing page, served by a Cloudflare Worker with static assets. It fits in t
   - `/download/dmg` redirects to the newest DMG, or to the Releases page if the appcast can't be read.
   - `/latest.json` returns `{ "version", "dmg", "stars" }` for the page. The star count comes from the GitHub API and is cached for 30 minutes; if GitHub refuses, the last known count is used. Set a `GITHUB_TOKEN` secret if lookups fail often.
   - `/e` takes the page's visit counts and passes them to PostHog.
+  - `/appcast.xml` is the app's update feed (`SUFeedURL`). It counts the check and redirects to the appcast on the latest GitHub release. See [Update checks](#update-checks).
 
 ## Visit counts
 
@@ -24,6 +25,12 @@ Nothing is stored in the browser. Visitors are counted by a hash of their addres
 
 - To make the hash impossible to reverse by guessing addresses, set a secret: `npx wrangler secret put ANALYTICS_SALT`.
 - To turn the counts off, remove `POSTHOG_KEY` from `wrangler.jsonc`.
+
+## Update checks
+
+Release builds from 1.16.0 on read their Sparkle feed from `/appcast.xml`, about once a day. Sparkle adds `v` (the app version), `os` (macOS major.minor) and `arch` (`arm64` or `x86_64`) to the URL. The Worker sends an `update_check` event with those three, the country, and `$lib` set to `alwayson-updater`, under the same daily-changing hash as the page's visits. A request without all three in the expected shape is still redirected but not counted. Every request is redirected to GitHub, so a PostHog outage never blocks updates. The route must stay deployed: an app that can't reach it can't find updates.
+
+Because the hash changes daily and Macs on one network running one version share it, unique users undercount. To estimate active installs for a day, count `update_check` events rather than unique users.
 
 ## Develop
 
