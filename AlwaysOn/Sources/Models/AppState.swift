@@ -170,6 +170,14 @@ final class AppState: NSObject, ObservableObject {
         }
     }
 
+    /// Apps the user added to the target list, beyond TargetApp.catalog
+    @Published var customTargetApps: [TargetApp] {
+        didSet {
+            guard customTargetApps != oldValue, let data = try? JSONEncoder().encode(customTargetApps) else { return }
+            UserDefaults.standard.set(data, forKey: Keys.customTargetApps)
+        }
+    }
+
     /// Whether the system-wide hotkey toggles the session
     @Published var globalHotKeyEnabled: Bool {
         didSet {
@@ -397,6 +405,7 @@ final class AppState: NSObject, ObservableObject {
         static let simulateOnlyWhenIdle = "simulateOnlyWhenIdle"
         static let requireTargetApp = "requireTargetApp"
         static let targetApps = "targetApps"
+        static let customTargetApps = "customTargetApps"
         static let globalHotKeyEnabled = "globalHotKeyEnabled"
         static let globalHotKey = "globalHotKey"
         static let pauseWhileScreenLocked = "pauseWhileScreenLocked"
@@ -484,6 +493,8 @@ final class AppState: NSObject, ObservableObject {
         self._simulateOnlyWhenIdle = Published(initialValue: defaults.bool(forKey: Keys.simulateOnlyWhenIdle))
         self._requireTargetApp = Published(initialValue: defaults.bool(forKey: Keys.requireTargetApp))
         self._targetApps = Published(initialValue: Set(defaults.stringArray(forKey: Keys.targetApps) ?? []))
+        self._customTargetApps = Published(initialValue: defaults.data(forKey: Keys.customTargetApps)
+            .flatMap { try? JSONDecoder().decode([TargetApp].self, from: $0) } ?? [])
         self._globalHotKeyEnabled = Published(initialValue: defaults.object(forKey: Keys.globalHotKeyEnabled) as? Bool ?? true)
         self._globalHotKey = Published(initialValue: defaults.data(forKey: Keys.globalHotKey)
             .flatMap { try? JSONDecoder().decode(HotKey.self, from: $0) } ?? .default)
@@ -582,6 +593,24 @@ final class AppState: NSObject, ObservableObject {
         }
     }
     
+    // MARK: - Target Apps
+
+    /// Adds the app at `url` to the target list and selects it.
+    /// - Returns: false when `url` isn't a readable app, or is AlwaysOn itself
+    @discardableResult
+    func addTargetApp(at url: URL) -> Bool {
+        guard let app = TargetApp.custom(fromAppAt: url), app.bundleID != TargetApp.ownBundleID else { return false }
+        customTargetApps = TargetApp.adding(app, to: customTargetApps)
+        targetApps.insert(app.bundleID)
+        return true
+    }
+
+    /// Removes an app the user added, and deselects it
+    func removeCustomTargetApp(_ app: TargetApp) {
+        customTargetApps.removeAll { $0.bundleID == app.bundleID }
+        targetApps.remove(app.bundleID)
+    }
+
     // MARK: - Public Methods
     
     /// Toggle the active state (pause/resume)
