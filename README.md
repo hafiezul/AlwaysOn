@@ -79,9 +79,11 @@ A local build has no update signing key, so it can't update itself. **Settings >
 
 Every 45 seconds by default, AlwaysOn sends one of these inputs:
 
-- Mouse moves the cursor 1 pixel and moves it straight back.
+- Mouse sends a mouse event at the pointer's current position, without moving it.
 - Keyboard presses and releases the Shift key.
 - Alternating switches between the two.
+
+While another app plays video (anything keeping the display awake, such as a browser, QuickTime, IINA or VLC), AlwaysOn sends the Shift key instead of mouse input, so video players don't show their controls.
 
 Many workplace apps set your status from the macOS idle time. Each input resets it.
 
