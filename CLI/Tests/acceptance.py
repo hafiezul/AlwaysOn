@@ -160,7 +160,9 @@ class CommandHelperAcceptance(unittest.TestCase):
                                (('toggle',), 'alwayson://toggle'),
                                (('timer', '30'), 'alwayson://timer?minutes=30'),
                                (('pause',), 'alwayson://pause'),
-                               (('pause', '15'), 'alwayson://pause?minutes=15')]:
+                               (('pause', '15'), 'alwayson://pause?minutes=15'),
+                               (('resume',), 'alwayson://resume'),
+                               (('add', '15'), 'alwayson://add?minutes=15')]:
             result = self.invoke(*args)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn('request', result.stdout)
@@ -176,12 +178,21 @@ class CommandHelperAcceptance(unittest.TestCase):
                      ('timer', '0'), ('timer', '1441'), ('timer', '1.5'),
                      ('timer', '+1'), ('until', '00:00'), ('until', '25:00'),
                      ('pause', '0'), ('pause', '1441'), ('pause', '1.5'), ('pause', '5', '6'),
+                     ('resume', 'x'), ('add',), ('add', '0'), ('add', '1441'), ('add', '1.5'), ('add', '5', '6'),
                      ('until', '2000-01-01T00:00:00Z'), ('until', 'nope'),
                      ('status', 'extra'), ('status', '--json', 'extra'),
                      ('profile', 'a', 'b'), ('profile', ' ')]:
             self.assertNotEqual(self.invoke(*args).returncode, 0, args)
         self.assertEqual(self.events(), [])
         self.assertEqual(self.invoke('help').returncode, 0)
+
+    def test_resume_and_add_are_confirmed(self):
+        self.write_status(state='paused', source='manual', endsAt=None)
+        result = self.invoke('resume', env=dict(self.env, OPEN_STATUS=self.status_json(source='manual', endsAt=None)))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.write_status(source='timer', endsAt=self.iso(30))
+        result = self.invoke('add', '15', env=dict(self.env, OPEN_STATUS=self.status_json(source='timer', endsAt=self.iso(45))))
+        self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_stdin_is_inherited(self):
         result = self.invoke('run', '--', sys.executable, '-c',

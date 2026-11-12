@@ -62,4 +62,18 @@ final class URLCommandTests: XCTestCase {
             XCTAssertNil(parse("alwayson://profile\(query)"), query)
         }
     }
+
+    func testResume() {
+        XCTAssertEqual(parse("alwayson://resume"), .resume)
+        XCTAssertEqual(parse("ALWAYSON://RESUME"), .resume)
+    }
+
+    func testAddRequiresOneMinutesValueInRange() {
+        XCTAssertEqual(parse("alwayson://add?minutes=15"), .addTime(minutes: 15))
+        XCTAssertEqual(parse("alwayson://add?MINUTES=1440"), .addTime(minutes: 1440))
+        for query in ["", "?minutes=", "?minutes=0", "?minutes=1441", "?minutes=abc", "?minutes=-5",
+                      "?minutes=5&minutes=10"] {
+            XCTAssertNil(parse("alwayson://add\(query)"), query)
+        }
+    }
 }
