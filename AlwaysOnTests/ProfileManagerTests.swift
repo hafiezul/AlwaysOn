@@ -237,6 +237,142 @@ final class ProfileManagerTests: XCTestCase {
         manager.removeNetwork("Acme", from: id)
         XCTAssertEqual(manager.profiles[0].wifiNetworks, [])
     }
+
+    // MARK: - Per-profile behavior
+
+    private func makeBehavior(pacing: PulsePacing = .adaptive, targets: [String] = ["com.example.chat"]) -> ProfileBehavior {
+        ProfileBehavior(pulsePacingId: pacing.rawValue, adaptivePostAfterSeconds: 240,
+                        simulateOnlyWhenIdle: true, requireTargetApp: true, targetApps: targets,
+                        sleepPreventionId: SleepPrevention.system.rawValue, awayLimitHours: 4, batteryStopPercent: 20)
+    }
+
+    func testProfilesSavedBeforeBehaviorStillLoadWithoutOne() throws {
+        let legacy = """
+        [{"id":"\(UUID().uuidString)","name":"Old","activityInterval":45,"activityMethodId":"mouse",
+          "defaultTimerDurationId":"none","wifiNetworks":["Office"],
+          "workSchedule":{"isEnabled":false,"activeDays":[2],"startTimeMinutes":540,"endTimeMinutes":1020}}]
+        """
+        let profiles = try JSONDecoder().decode([Profile].self, from: Data(legacy.utf8))
+        XCTAssertEqual(profiles.first?.wifiNetworks, ["Office"])
+        XCTAssertNil(profiles.first?.behavior)
+    }
+
+    func testBehaviorSurvivesEncoding() throws {
+        var profile = makeProfile("Office")
+        profile.behavior = makeBehavior()
+        let decoded = try JSONDecoder().decode([Profile].self, from: ProfileManager.encodeProfiles([profile]))
+        XCTAssertEqual(decoded, [profile])
+        XCTAssertEqual(decoded[0].behavior?.pulsePacing, .adaptive)
+        XCTAssertEqual(decoded[0].behavior?.adaptivePostAfter, .fourMinutes)
+        XCTAssertEqual(decoded[0].behavior?.sleepPrevention, .system)
+        XCTAssertEqual(decoded[0].behavior?.awayLimit, .fourHours)
+        XCTAssertEqual(decoded[0].behavior?.batteryStopThreshold, .twenty)
+    }
+
+    func testUnknownRawValuesFallBackToDefaults() {
+        let behavior = ProfileBehavior(pulsePacingId: "warp", adaptivePostAfterSeconds: 7,
+                                       simulateOnlyWhenIdle: false, requireTargetApp: false, targetApps: [],
+                                       sleepPreventionId: "forever", awayLimitHours: 3, batteryStopPercent: 99)
+        XCTAssertEqual(behavior.pulsePacing, .fixed)
+        XCTAssertEqual(behavior.adaptivePostAfter, .twoMinutes)
+        XCTAssertEqual(behavior.sleepPrevention, .off)
+        XCTAssertEqual(behavior.awayLimit, .off)
+        XCTAssertEqual(behavior.batteryStopThreshold, .off)
+    }
+
+    func testLegacyDefaultsWithNothingSavedMatchTheAppDefaults() {
+        XCTAssertEqual(ProfileBehavior(legacyDefaults: defaults),
+                       ProfileBehavior(pulsePacingId: "fixed", adaptivePostAfterSeconds: 120,
+                                       simulateOnlyWhenIdle: false, requireTargetApp: false, targetApps: [],
+                                       sleepPreventionId: "off", awayLimitHours: 0, batteryStopPercent: 0))
+    }
+
+    func testLegacyDefaultsReadTheGlobalKeys() {
+        defaults.set("adaptive", forKey: "pulsePacing")
+        defaults.set(60, forKey: "adaptivePostAfterSeconds")
+        defaults.set(true, forKey: "simulateOnlyWhenIdle")
+        defaults.set(true, forKey: "requireTargetApp")
+        defaults.set(["us.zoom.xos", "com.example.chat"], forKey: "targetApps")
+        defaults.set("systemAndDisplay", forKey: "sleepPrevention")
+        defaults.set(8, forKey: "awayLimitHours")
+        defaults.set(30, forKey: "batteryStopThreshold")
+
+        XCTAssertEqual(ProfileBehavior(legacyDefaults: defaults),
+                       ProfileBehavior(pulsePacingId: "adaptive", adaptivePostAfterSeconds: 60,
+                                       simulateOnlyWhenIdle: true, requireTargetApp: true,
+                                       targetApps: ["com.example.chat", "us.zoom.xos"],
+                                       sleepPreventionId: "systemAndDisplay", awayLimitHours: 8, batteryStopPercent: 30))
+    }
+
+    func testBehaviorMigrationFillsOnlyProfilesWithoutOne() {
+        defaults.set("adaptive", forKey: "pulsePacing")
+        var kept = makeProfile("Kept")
+        kept.behavior = makeBehavior(pacing: .fixed)
+        let old = makeProfile("Old", networks: ["Office"])
+        defaults.set(ProfileManager.encodeProfiles([old, kept]), forKey: "alwayson.profiles")
+
+        ProfileManager.migrateBehaviorIfNeeded(defaults: defaults)
+
+        let loaded = ProfileManager.loadProfiles(from: defaults)
+        XCTAssertEqual(loaded?.map(\.name), ["Old", "Kept"])
+        XCTAssertEqual(loaded?[0].behavior, ProfileBehavior(legacyDefaults: defaults))
+        XCTAssertEqual(loaded?[0].behavior?.pulsePacing, .adaptive)
+        XCTAssertEqual(loaded?[0].wifiNetworks, ["Office"])
+        XCTAssertEqual(loaded?[1], kept)
+    }
+
+    func testBehaviorMigrationWritesNothingWhenNotNeeded() {
+        let recordingDefaults = RecordingDefaults(suiteName: suiteName)!
+        ProfileManager.migrateBehaviorIfNeeded(defaults: recordingDefaults)
+        XCTAssertTrue(recordingDefaults.writes.isEmpty)
+
+        var profile = makeProfile("Done")
+        profile.behavior = makeBehavior()
+        recordingDefaults.set(ProfileManager.encodeProfiles([profile]), forKey: "alwayson.profiles")
+        recordingDefaults.writes.removeAll()
+        ProfileManager.migrateBehaviorIfNeeded(defaults: recordingDefaults)
+        XCTAssertTrue(recordingDefaults.writes.isEmpty)
+    }
+
+    func testNewInstallDefaultProfileHasBehavior() {
+        XCTAssertEqual(Profile.makeDefault(from: defaults).behavior, ProfileBehavior(legacyDefaults: defaults))
+    }
+
+    func testUpdatingSettingsSavesBehaviorAndNilLeavesIt() {
+        let manager = ProfileManager(defaults: defaults)
+        let profile = manager.profiles[0]
+        let behavior = makeBehavior()
+
+        manager.updateProfileSettings(profile.id, activityInterval: profile.activityInterval,
+                                      activityMethod: profile.activityMethod,
+                                      defaultTimerDuration: profile.defaultTimerDuration,
+                                      workSchedule: profile.workSchedule, behavior: behavior)
+        XCTAssertEqual(manager.profiles[0].behavior, behavior)
+        XCTAssertEqual(ProfileManager.loadProfiles(from: defaults)?.first?.behavior, behavior)
+
+        manager.updateProfileSettings(profile.id, activityInterval: profile.activityInterval,
+                                      activityMethod: profile.activityMethod,
+                                      defaultTimerDuration: profile.defaultTimerDuration,
+                                      workSchedule: profile.workSchedule)
+        XCTAssertEqual(manager.profiles[0].behavior, behavior)
+    }
+
+    func testDuplicateCopiesSettingsButNotNetworks() {
+        let manager = ProfileManager(defaults: defaults)
+        var office = makeProfile("Office", networks: ["Office Wi-Fi"])
+        office.behavior = makeBehavior()
+        manager.addProfile(office)
+
+        let copy = manager.duplicateProfile(office.id)
+        XCTAssertEqual(copy?.name, "Office Copy")
+        XCTAssertNotEqual(copy?.id, office.id)
+        XCTAssertEqual(copy?.behavior, office.behavior)
+        XCTAssertEqual(copy?.wifiNetworks, [])
+        XCTAssertEqual(manager.duplicateProfile(office.id)?.name, "Office Copy 2")
+        XCTAssertNil(manager.duplicateProfile(UUID()))
+        XCTAssertEqual(ProfileManager.loadProfiles(from: defaults)?.count, 4)
+        XCTAssertEqual(manager.profiles.first { $0.id == office.id }?.wifiNetworks, ["Office Wi-Fi"])
+    }
 }
 
 private final class RecordingDefaults: UserDefaults {

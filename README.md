@@ -45,7 +45,7 @@ If you find this app useful, consider supporting its development:
 - Stop on its own after you've been away too long or the battery runs low.
 - Control sessions from Shortcuts, Spotlight, Siri, and `alwayson://` links.
 - Launch at login and show optional notifications.
-- Save profiles for different setups, and switch profiles when you join a Wi-Fi network.
+- Save profiles for different setups, each with its own pacing, target apps, sleep prevention, safety stops, and work hours, and switch profiles when you join a Wi-Fi network.
 
 ## Getting started
 
@@ -208,6 +208,14 @@ Add AlwaysOn to a Focus in **System Settings > Focus > (a Focus) > Focus Filters
 - When the Focus turns on, AlwaysOn switches to the chosen profile. Like any profile switch, this stops the current session. With **Keep Me Online**, AlwaysOn then starts a session if none is running.
 - When the Focus turns off, AlwaysOn stops the session the Focus started and returns to the previous profile, unless you picked another profile in the meantime. If your own session is running, the switch back waits until it ends, and the menu says so. If you pause and resume a Focus session yourself, it becomes yours and keeps running.
 - AlwaysOn re-reads the Focus at launch, after the Mac wakes, and when you open the menu, so it catches changes it missed.
+
+## Profiles
+
+A profile holds the settings for one place or setup. **Settings > Profiles** lists them; click one to switch to it, which stops the current session. Changes you make in Settings are saved to the active profile.
+
+Each profile keeps its own activity interval and input method, pacing, **Only simulate when idle**, auto-disable timer, target apps, **Prevent sleep**, both safety stops, work hours, and Wi-Fi networks. The global hotkey, the menu bar style, permissions, notifications, and launch at login are the same for every profile.
+
+Right-click a profile and choose **Duplicate** to copy it. The copy has the same settings but no Wi-Fi networks, because a network belongs to one profile. When you update from a version where these settings were shared, every profile starts with the values you had.
 
 ## Switch profiles by Wi-Fi network
 
