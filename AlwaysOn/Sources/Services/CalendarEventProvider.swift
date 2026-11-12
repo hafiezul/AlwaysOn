@@ -122,6 +122,32 @@ final class CalendarEventProvider: ObservableObject {
         return accessState
     }
 
+    /// Events from the start of today through `days` days, reduced to
+    /// CalendarBlock. Asks for access only if the user hasn't answered yet;
+    /// call it only from an explicit button. Nil when access isn't granted.
+    @MainActor
+    func loadDayOffBlocks(days: Int = CalendarDaysOff.lookAheadDays) async -> [CalendarBlock]? {
+        if Self.currentAccessState() == .notDetermined { try? await requestAccess() }
+        accessState = Self.currentAccessState()
+        guard accessState == .granted else { return nil }
+        let start = Calendar.current.startOfDay(for: Date())
+        let end = Calendar.current.date(byAdding: .day, value: days, to: start) ?? start
+        return store.events(matching: store.predicateForEvents(withStart: start, end: end, calendars: nil))
+            .filter { $0.status != .canceled }
+            .map { event in
+                let availability: CalendarBlock.Availability
+                switch event.availability {
+                case .unavailable: availability = .outOfOffice
+                case .busy: availability = .busy
+                case .tentative: availability = .tentative
+                case .free: availability = .free
+                default: availability = .unknown
+                }
+                return CalendarBlock(title: event.title ?? "", start: event.startDate, end: event.endDate,
+                                     isAllDay: event.isAllDay, availability: availability)
+            }
+    }
+
     static func openCalendarSettings() {
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars") {
             NSWorkspace.shared.open(url)

@@ -4,6 +4,7 @@ import SwiftUI
 struct SmartFeaturesSettingsPane: View {
     @EnvironmentObject var appState: AppState
     @State private var newDayOff = Calendar.current.startOfDay(for: Date())
+    @State private var showingCalendarDaysOff = false
 
     private var schedule: WorkSchedule { appState.workScheduleManager.schedule }
 
@@ -247,11 +248,20 @@ struct SmartFeaturesSettingsPane: View {
                 }
                 .disabled(schedule.isSkipped(newDayOff))
             }
-            Text("Work hours don't run on days off, such as holidays or vacation. Skip Today in the menu adds today.")
+            Button("Find Days Off in Calendar…") { showingCalendarDaysOff = true }
+            Text("Work hours don't run on days off, such as holidays or vacation. Skip Today in the menu adds today. Find Days Off in Calendar suggests days your calendar shows you're out; nothing is added until you choose.")
                 .font(.caption)
                 .foregroundColor(.secondary)
         } header: {
             Text("Days Off")
+        }
+        .sheet(isPresented: $showingCalendarDaysOff) {
+            CalendarDaysOffSheet(schedule: schedule) { dates in
+                updateSchedule { schedule in
+                    schedule.pruneSkippedDays(before: Date())
+                    for date in dates { schedule.setSkipped(true, on: date) }
+                }
+            }
         }
     }
 

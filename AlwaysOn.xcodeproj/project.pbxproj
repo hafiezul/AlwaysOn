@@ -111,6 +111,9 @@
 		1000000000000035 /* URLCommandTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000035 /* URLCommandTests.swift */; };
 		1000000000000036 /* SessionSourceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000036 /* SessionSourceTests.swift */; };
 		1000000000000040 /* WorkSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000040 /* WorkSchedule.swift */; };
+		AE00000000000001 /* CalendarDaysOff.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF00000000000001 /* CalendarDaysOff.swift */; };
+		AE00000000000002 /* CalendarDaysOff.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF00000000000002 /* CalendarDaysOff.swift */; };
+		AE00000000000004 /* CalendarDaysOffSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF00000000000004 /* CalendarDaysOffSheet.swift */; };
 		1000000000000041 /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000041 /* Profile.swift */; };
 		1000000000000042 /* QuickTimerDuration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000042 /* QuickTimerDuration.swift */; };
 		1000000000000043 /* ActivityMethod.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000000000000043 /* ActivityMethod.swift */; };
@@ -216,6 +219,9 @@
 		2000000000000036 /* SessionSourceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSourceTests.swift; sourceTree = "<group>"; };
 		3000000000000002 /* AlwaysOnTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AlwaysOnTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		2000000000000040 /* WorkSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = WorkSchedule.swift; path = ../AlwaysOn/Sources/Models/WorkSchedule.swift; sourceTree = "<group>"; };
+		AF00000000000001 /* CalendarDaysOff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarDaysOff.swift; sourceTree = "<group>"; };
+		AF00000000000002 /* CalendarDaysOff.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CalendarDaysOff.swift; path = ../AlwaysOn/Sources/Models/CalendarDaysOff.swift; sourceTree = "<group>"; };
+		AF00000000000004 /* CalendarDaysOffSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarDaysOffSheet.swift; sourceTree = "<group>"; };
 		2000000000000041 /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = Profile.swift; path = ../AlwaysOn/Sources/Models/Profile.swift; sourceTree = "<group>"; };
 		2000000000000042 /* QuickTimerDuration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = QuickTimerDuration.swift; path = ../AlwaysOn/Sources/Models/QuickTimerDuration.swift; sourceTree = "<group>"; };
 		2000000000000043 /* ActivityMethod.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = ActivityMethod.swift; path = ../AlwaysOn/Sources/Models/ActivityMethod.swift; sourceTree = "<group>"; };
@@ -312,6 +318,7 @@
 				2000000000000017 /* QuickTimerDuration.swift */,
 				2000000000000010 /* SettingsNavigationItem.swift */,
 				2000000000000018 /* WorkSchedule.swift */,
+				AF00000000000001 /* CalendarDaysOff.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -388,6 +395,7 @@
 				2000000000000021 /* ProfilesSettingsPane.swift */,
 				2000000000000011 /* SettingsView.swift */,
 				200000000000001D /* SmartFeaturesSettingsPane.swift */,
+				AF00000000000004 /* CalendarDaysOffSheet.swift */,
 				2000000000000013 /* UpdatesSettingsPane.swift */,
 			);
 			path = Settings;
@@ -428,6 +436,7 @@
 				B200000000000004 /* RunningAppMonitor.swift */,
 				B200000000000002 /* PowerPolicy.swift */,
 				2000000000000030 /* WorkScheduleTests.swift */,
+				AF00000000000002 /* CalendarDaysOff.swift */,
 				F200000000000005 /* TelemetryTests.swift */,
 				AD00000000000002 /* Diagnostics.swift */,
 				AD00000000000004 /* DiagnosticsTests.swift */,
@@ -599,8 +608,10 @@
 				1000000000000015 /* ActivityMethod.swift in Sources */,
 				1000000000000016 /* QuickTimerDuration.swift in Sources */,
 				1000000000000017 /* WorkSchedule.swift in Sources */,
+				AE00000000000001 /* CalendarDaysOff.swift in Sources */,
 				1000000000000018 /* WorkScheduleManager.swift in Sources */,
 				100000000000001C /* SmartFeaturesSettingsPane.swift in Sources */,
+				AE00000000000004 /* CalendarDaysOffSheet.swift in Sources */,
 				100000000000001D /* NotificationManager.swift in Sources */,
 				100000000000001E /* Profile.swift in Sources */,
 				100000000000001F /* ProfileManager.swift in Sources */,
@@ -639,6 +650,7 @@
 				B100000000000004 /* RunningAppMonitor.swift in Sources */,
 				B100000000000002 /* PowerPolicy.swift in Sources */,
 				1000000000000030 /* WorkScheduleTests.swift in Sources */,
+				AE00000000000002 /* CalendarDaysOff.swift in Sources */,
 				1000000000000031 /* UpdateCheckerTests.swift in Sources */,
 				1000000000000032 /* ProfileManagerTests.swift in Sources */,
 				1000000000000033 /* QuickTimerDurationTests.swift in Sources */,
