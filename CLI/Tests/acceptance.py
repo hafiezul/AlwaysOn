@@ -16,6 +16,11 @@ from urllib.parse import urlsplit, parse_qs
 
 HELPER = Path(sys.argv.pop(1)).resolve()
 
+# Children that handle a signal write with os.write: a handler that prints can interrupt
+# the flush of "ready" and fail with a reentrant-call RuntimeError. They wait with short
+# sleeps: a signal that lands just before one long sleep begins is not handled until it ends.
+WAIT_FOR_SIGNAL = 'for _ in range(600): time.sleep(0.05)'
+
 class CommandHelperAcceptance(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -442,14 +447,14 @@ class CommandHelperAcceptance(unittest.TestCase):
         return proc
 
     def test_sigterm_is_forwarded_and_session_released(self):
-        code = ('import signal,sys,time\n'
-                'signal.signal(signal.SIGTERM, lambda *a: (print("child got term", flush=True), sys.exit(5)))\n'
-                'print("ready", flush=True)\n'
-                'time.sleep(30)')
+        code = ('import os,signal,sys,time\n'
+                'signal.signal(signal.SIGTERM, lambda *a: (os.write(1, b"child got term\\n"), sys.exit(5)))\n'
+                'os.write(1, b"ready\\n")\n'
+                + WAIT_FOR_SIGNAL)
         proc = self.start_ready_child(code)
         proc.send_signal(signal.SIGTERM)
         out, err = proc.communicate(timeout=10)
-        self.assertIn('child got term', out)
+        self.assertIn('child got term', out, (proc.returncode, err))
         self.assertEqual(proc.returncode, 5, err)
         self.pair(self.events())
 
@@ -462,19 +467,19 @@ class CommandHelperAcceptance(unittest.TestCase):
 
     def test_sigint_waits_for_child_cleanup(self):
         # Ctrl-C reaches the whole foreground process group; the helper must not kill the child mid-cleanup
-        code = ('import signal,sys,time\n'
+        code = ('import os,signal,sys,time\n'
                 'def stop(*a):\n'
-                '    time.sleep(0.3); print("cleaned up", flush=True); sys.exit(0)\n'
+                '    time.sleep(0.3); os.write(1, b"cleaned up\\n"); sys.exit(0)\n'
                 'signal.signal(signal.SIGINT, stop)\n'
-                'print("ready", flush=True)\n'
-                'time.sleep(30)')
+                'os.write(1, b"ready\\n")\n'
+                + WAIT_FOR_SIGNAL)
         proc = subprocess.Popen([str(self.helper), 'run', '--', sys.executable, '-c', code], env=self.env, text=True,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
         self.addCleanup(lambda: proc.poll() is None and proc.kill())
         self.assertEqual(proc.stdout.readline().strip(), 'ready')
         os.killpg(proc.pid, signal.SIGINT)
         out, err = proc.communicate(timeout=10)
-        self.assertIn('cleaned up', out)
+        self.assertIn('cleaned up', out, (proc.returncode, err))
         self.assertEqual(proc.returncode, 0, err)
         self.pair(self.events())
 
