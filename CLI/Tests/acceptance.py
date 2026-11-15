@@ -517,6 +517,26 @@ class CommandHelperAcceptance(unittest.TestCase):
         self.assertEqual(helper.returncode, 0, err)
         self.assertIn('Waiting anyway.', err)
         self.assertNotIn('runs anyway', err)
+        self.assertNotIn('keeping you online until', err)
+
+    @unittest.skipUnless(sys.platform == 'darwin', 'run --pid needs macOS')
+    def test_run_pid_signal_during_confirmation_still_finishes(self):
+        # A status that never matches keeps the helper in its 2 second confirmation wait
+        self.write_status(state='off', source=None, endsAt=None)
+        sleeper = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])
+        self.addCleanup(lambda: sleeper.poll() is None and sleeper.kill())
+        helper = subprocess.Popen([str(self.helper), 'run', '--pid', str(sleeper.pid)], env=self.env, text=True,
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.addCleanup(lambda: helper.poll() is None and helper.kill())
+        deadline = time.time() + 5
+        while len(self.events()) < 1 and time.time() < deadline:
+            time.sleep(0.01)
+        self.assertEqual(len(self.events()), 1)
+        helper.send_signal(signal.SIGTERM)
+        out, err = helper.communicate(timeout=10)
+        self.assertEqual(helper.returncode, 128 + signal.SIGTERM, err)
+        self.assertIsNone(sleeper.poll())
+        self.pair(self.events())
 
     def test_child_killed_by_forwarded_signal_reports_shell_status(self):
         proc = self.start_ready_child('import time; print("ready", flush=True); time.sleep(30)')
