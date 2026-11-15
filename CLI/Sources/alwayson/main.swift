@@ -26,6 +26,35 @@ func executable(_ name: String) -> String? {
         .first { FileManager.default.isExecutableFile(atPath: $0) }
 }
 
+#if canImport(Darwin)
+/// Waits for `pid` to exit. Returns nil when it exited, or the number of the
+/// SIGINT, SIGTERM or SIGHUP that interrupted the wait.
+func waitForExit(of pid: pid_t) -> Int32? {
+    let handled: [Int32] = [SIGINT, SIGTERM, SIGHUP]
+    let previous = handled.map { ($0, signal($0, SIG_IGN)) }
+    defer { for (number, handler) in previous { signal(number, handler) } }
+    let queue = kqueue()
+    guard queue >= 0 else { diagnostic("kqueue failed"); return nil }
+    defer { close(queue) }
+    var signals = handled.map {
+        kevent(ident: UInt($0), filter: Int16(EVFILT_SIGNAL), flags: UInt16(EV_ADD), fflags: 0, data: 0, udata: nil)
+    }
+    _ = kevent(queue, &signals, Int32(signals.count), nil, 0, nil)
+    var exit = kevent(ident: UInt(pid), filter: Int16(EVFILT_PROC), flags: UInt16(EV_ADD | EV_ONESHOT),
+                      fflags: UInt32(NOTE_EXIT), data: 0, udata: nil)
+    // ESRCH: it exited between the existence check and now
+    if kevent(queue, &exit, 1, nil, 0, nil) < 0 { return nil }
+    var event = kevent()
+    while true {
+        let count = kevent(queue, nil, 0, &event, 1, nil)
+        if count < 0 { if errno == EINTR { continue }; diagnostic("wait failed"); return nil }
+        if count == 0 { continue }
+        if event.filter == Int16(EVFILT_PROC) { return nil }
+        if event.filter == Int16(EVFILT_SIGNAL) { return Int32(event.ident) }
+    }
+}
+#endif
+
 func spawnAndWait(_ arguments: [String], forwarding: Bool = false) -> Int32 {
     guard let path = executable(arguments[0]) else { diagnostic("executable not found: \(arguments[0])"); return 127 }
     var blocked = sigset_t()
@@ -167,6 +196,7 @@ Usage: alwayson start|stop|toggle
        alwayson add MINUTES             (1...1440; adds to the current session)
        alwayson until HH:MM|ISO8601      (future; HH:MM is today locally)
        alwayson run -- COMMAND [args...]
+       alwayson run --pid PID           (until that running process exits)
        alwayson status [--json]
        alwayson profile [NAME]          (omit NAME to list profiles)
        alwayson install [--directory PATH]
@@ -212,13 +242,13 @@ func waitForStatus(timeout: TimeInterval = 2, latest: inout SessionStatus?,
 
 /// After a `run` request, waits briefly for the app to report the command
 /// session. Only meaningful when the app was already running and reporting.
-func confirmCommandSession() {
+func confirmCommandSession(otherwise: String = "The command runs anyway.") {
     var latest: SessionStatus?
     if waitForStatus(latest: &latest, { $0.state == .active && $0.source == "command" }) != nil { return }
     if latest?.hasAccessibilityPermission == false {
-        diagnostic("AlwaysOn needs Accessibility permission, so it isn't keeping you online. The command runs anyway.")
+        diagnostic("AlwaysOn needs Accessibility permission, so it isn't keeping you online. \(otherwise)")
     } else {
-        diagnostic("AlwaysOn didn't confirm the session. The command runs anyway.")
+        diagnostic("AlwaysOn didn't confirm the session. \(otherwise)")
     }
 }
 
@@ -359,6 +389,27 @@ func main(_ args: [String]) throws -> Int32 {
         guard rest.count == 1, let date = parseDate(rest[0]), date.timeIntervalSince1970.isFinite, date > Date() else { throw CLIError.message("until requires a future local time today or ISO8601 datetime") }
         return sendAndConfirm(action, query: [URLQueryItem(name: "date", value: ISO8601DateFormatter().string(from: date))])
     case "run":
+        if rest.first == "--pid" {
+            guard rest.count == 2, rest[1].range(of: #"^[0-9]+$"#, options: .regularExpression) != nil,
+                  let value = Int32(rest[1]), value > 1, value != getpid() else {
+                throw CLIError.message("run --pid requires the PID of a running process")
+            }
+            #if canImport(Darwin)
+            guard kill(value, 0) == 0 || errno == EPERM else {
+                throw CLIError.message("no running process has PID \(value)")
+            }
+            let token = [URLQueryItem(name: "token", value: UUID().uuidString)]
+            let reportsStatus = currentStatus() != nil
+            guard send("run", query: token) else { return 1 }
+            if reportsStatus { confirmCommandSession(otherwise: "Waiting anyway.") }
+            diagnostic("keeping you online until process \(value) exits")
+            let interruptedBy = waitForExit(of: value)
+            _ = send("finish", query: token)
+            return interruptedBy.map { 128 + $0 } ?? 0
+            #else
+            throw CLIError.message("run --pid needs macOS")
+            #endif
+        }
         guard rest.count >= 2, rest[0] == "--" else { throw CLIError.message(usage) }
         let token = [URLQueryItem(name: "token", value: UUID().uuidString)]
         // A status from before the request means the app can confirm it
