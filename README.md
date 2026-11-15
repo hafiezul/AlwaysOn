@@ -318,6 +318,7 @@ alwayson until 17:30     # or an ISO 8601 date and time
 alwayson status          # add --json for scripts
 alwayson profile [NAME]  # switch profile, or list profiles with no name
 alwayson run -- make test
+alwayson run --pid 4242  # until process 4242 exits
 ```
 
 `until HH:MM` must be later today. It never rolls over to tomorrow.
@@ -343,6 +344,8 @@ alwayson run -- python3 long_job.py
 
 The helper runs the command with its arguments unchanged and without a shell. Output streams to your terminal as the command writes it, and the helper exits with the command's exit status. If a signal kills the command, the exit status is 128 plus the signal number, as in a shell.
 
+To cover a command that's already running, pass its process ID instead: `alwayson run --pid 4242`. Find the ID with `pgrep -f long_job.py`, or `echo $!` right after starting a job in the background. The helper holds the same command session as `run --` and releases it when that process exits, then exits 0. Ctrl-C, SIGTERM, or SIGHUP stop the wait and release the session without touching the process, and the helper exits with 128 plus the signal number.
+
 ### How the helper starts and stops sessions
 
 Before the command starts, the helper opens `alwayson://run?token=UUID`. After the command exits, it opens `alwayson://finish?token=UUID` with the same token. Each run gets a new token. AlwaysOn ignores a `run` or `finish` URL with a missing, malformed, or reused token.
@@ -360,6 +363,7 @@ Ctrl-C goes straight to the command. The helper waits for the command to exit, t
 - Confirmation comes from the status file, not a reply from the app. A request that matches the state AlwaysOn was already in (for example, `start` while active) counts as confirmed.
 - If the helper exits without sending `finish` (after SIGKILL, for example), the session stops at its 24-hour safety end time.
 - Command sessions don't resume after AlwaysOn relaunches.
+- `run --pid` can't report the process's own exit status, and like any command session it stops at the 24-hour safety end time.
 - AlwaysOn prevents idle sleep during a command only when **Settings > General > Power > Prevent sleep** is on, or when its input keeps the Mac awake. Closing the lid always puts the Mac to sleep.
 
 ### Develop the CLI
