@@ -45,3 +45,7 @@ PROGRESS.md
 # Release signing material (see CODESIGNING.md); never commit it
 release-signing/
 *.p12
+
+# Python
+__pycache__/
+*.pyc
