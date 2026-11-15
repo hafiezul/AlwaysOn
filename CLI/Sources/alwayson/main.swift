@@ -27,30 +27,56 @@ func executable(_ name: String) -> String? {
 }
 
 #if canImport(Darwin)
-/// Waits for `pid` to exit. Returns nil when it exited, or the number of the
-/// SIGINT, SIGTERM or SIGHUP that interrupted the wait.
-func waitForExit(of pid: pid_t) -> Int32? {
-    let handled: [Int32] = [SIGINT, SIGTERM, SIGHUP]
-    let previous = handled.map { ($0, signal($0, SIG_IGN)) }
-    defer { for (number, handler) in previous { signal(number, handler) } }
-    let queue = kqueue()
-    guard queue >= 0 else { diagnostic("kqueue failed"); return nil }
-    defer { close(queue) }
-    var signals = handled.map {
-        kevent(ident: UInt($0), filter: Int16(EVFILT_SIGNAL), flags: UInt16(EV_ADD), fflags: 0, data: 0, udata: nil)
+/// Catches SIGINT, SIGTERM and SIGHUP in a kqueue, so none of them kills the
+/// process, and waits for another process to exit. A signal that arrives before
+/// `wait()` stays queued, so `arm()` can come first.
+struct ExitWatch {
+    enum Registration { case watching, exited, failed }
+    private static let handled: [Int32] = [SIGINT, SIGTERM, SIGHUP]
+    private let queue: Int32
+    private let previous: [(Int32, sig_t?)]
+
+    /// nil when the kqueue can't be set up; the handlers are then as they were
+    static func arm() -> ExitWatch? {
+        let previous = handled.map { ($0, signal($0, SIG_IGN)) }
+        func undo() { for (number, handler) in previous { signal(number, handler) } }
+        let queue = kqueue()
+        guard queue >= 0 else { diagnostic("kqueue failed"); undo(); return nil }
+        var signals = handled.map {
+            kevent(ident: UInt($0), filter: Int16(EVFILT_SIGNAL), flags: UInt16(EV_ADD), fflags: 0, data: 0, udata: nil)
+        }
+        guard kevent(queue, &signals, Int32(signals.count), nil, 0, nil) >= 0 else {
+            diagnostic("can't watch for signals"); close(queue); undo(); return nil
+        }
+        return ExitWatch(queue: queue, previous: previous)
     }
-    _ = kevent(queue, &signals, Int32(signals.count), nil, 0, nil)
-    var exit = kevent(ident: UInt(pid), filter: Int16(EVFILT_PROC), flags: UInt16(EV_ADD | EV_ONESHOT),
-                      fflags: UInt32(NOTE_EXIT), data: 0, udata: nil)
-    // ESRCH: it exited between the existence check and now
-    if kevent(queue, &exit, 1, nil, 0, nil) < 0 { return nil }
-    var event = kevent()
-    while true {
-        let count = kevent(queue, nil, 0, &event, 1, nil)
-        if count < 0 { if errno == EINTR { continue }; diagnostic("wait failed"); return nil }
-        if count == 0 { continue }
-        if event.filter == Int16(EVFILT_PROC) { return nil }
-        if event.filter == Int16(EVFILT_SIGNAL) { return Int32(event.ident) }
+
+    /// Starts watching `pid`. `.exited` means it is already gone (ESRCH).
+    func watch(_ pid: pid_t) -> Registration {
+        var exit = kevent(ident: UInt(pid), filter: Int16(EVFILT_PROC), flags: UInt16(EV_ADD | EV_ONESHOT),
+                          fflags: UInt32(NOTE_EXIT), data: 0, udata: nil)
+        if kevent(queue, &exit, 1, nil, 0, nil) >= 0 { return .watching }
+        return errno == ESRCH ? .exited : .failed
+    }
+
+    /// 0 when the watched process exited, 128 + the number of the signal that
+    /// interrupted the wait, or 1 when waiting failed
+    func wait() -> Int32 {
+        var event = kevent()
+        while true {
+            let count = kevent(queue, nil, 0, &event, 1, nil)
+            if count < 0 { if errno == EINTR { continue }; diagnostic("wait failed"); return 1 }
+            if count == 0 { continue }
+            if event.filter == Int16(EVFILT_PROC) { return 0 }
+            if event.filter == Int16(EVFILT_SIGNAL) { return 128 + Int32(event.ident) }
+        }
+    }
+
+    /// Puts the old handlers back. Call it after the final request, so a second
+    /// signal can't kill the process before that request goes out.
+    func end() {
+        for (number, handler) in previous { signal(number, handler) }
+        close(queue)
     }
 }
 #endif
@@ -242,14 +268,17 @@ func waitForStatus(timeout: TimeInterval = 2, latest: inout SessionStatus?,
 
 /// After a `run` request, waits briefly for the app to report the command
 /// session. Only meaningful when the app was already running and reporting.
-func confirmCommandSession(otherwise: String = "The command runs anyway.") {
+/// Returns whether the app confirmed it.
+@discardableResult
+func confirmCommandSession(otherwise: String = "The command runs anyway.") -> Bool {
     var latest: SessionStatus?
-    if waitForStatus(latest: &latest, { $0.state == .active && $0.source == "command" }) != nil { return }
+    if waitForStatus(latest: &latest, { $0.state == .active && $0.source == "command" }) != nil { return true }
     if latest?.hasAccessibilityPermission == false {
         diagnostic("AlwaysOn needs Accessibility permission, so it isn't keeping you online. \(otherwise)")
     } else {
         diagnostic("AlwaysOn didn't confirm the session. \(otherwise)")
     }
+    return false
 }
 
 /// What the app's status must show once it has applied `action`
@@ -398,14 +427,25 @@ func main(_ args: [String]) throws -> Int32 {
             guard kill(value, 0) == 0 || errno == EPERM else {
                 throw CLIError.message("no running process has PID \(value)")
             }
+            // Armed before `run` goes out, so a signal during the confirmation still ends the session
+            guard let watch = ExitWatch.arm() else { return 1 }
             let token = [URLQueryItem(name: "token", value: UUID().uuidString)]
             let reportsStatus = currentStatus() != nil
-            guard send("run", query: token) else { return 1 }
-            if reportsStatus { confirmCommandSession(otherwise: "Waiting anyway.") }
-            diagnostic("keeping you online until process \(value) exits")
-            let interruptedBy = waitForExit(of: value)
+            guard send("run", query: token) else { watch.end(); return 1 }
+            let confirmed = reportsStatus ? confirmCommandSession(otherwise: "Waiting anyway.") : true
+            var code: Int32 = 0
+            switch watch.watch(value) {
+            case .watching:
+                diagnostic(confirmed ? "keeping you online until process \(value) exits" : "waiting for process \(value) to exit")
+                code = watch.wait()
+            case .exited: break
+            case .failed:
+                diagnostic("can't watch process \(value)")
+                code = 1
+            }
             _ = send("finish", query: token)
-            return interruptedBy.map { 128 + $0 } ?? 0
+            watch.end()
+            return code
             #else
             throw CLIError.message("run --pid needs macOS")
             #endif
