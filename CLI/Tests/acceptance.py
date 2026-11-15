@@ -186,7 +186,10 @@ class CommandHelperAcceptance(unittest.TestCase):
                      ('resume', 'x'), ('add',), ('add', '0'), ('add', '1441'), ('add', '1.5'), ('add', '5', '6'),
                      ('until', '2000-01-01T00:00:00Z'), ('until', 'nope'),
                      ('status', 'extra'), ('status', '--json', 'extra'),
-                     ('profile', 'a', 'b'), ('profile', ' ')]:
+                     ('profile', 'a', 'b'), ('profile', ' '),
+                     ('run', '--pid'), ('run', '--pid', 'abc'), ('run', '--pid', '1'),
+                     ('run', '--pid', '0'), ('run', '--pid', '-5'), ('run', '--pid', '5', 'extra'),
+                     ('run', '--pid', '99999999999')]:
             self.assertNotEqual(self.invoke(*args).returncode, 0, args)
         self.assertEqual(self.events(), [])
         self.assertEqual(self.invoke('help').returncode, 0)
@@ -457,6 +460,63 @@ class CommandHelperAcceptance(unittest.TestCase):
         self.assertIn('child got term', out, (proc.returncode, err))
         self.assertEqual(proc.returncode, 5, err)
         self.pair(self.events())
+
+    def start_pid_watcher(self):
+        sleeper = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])
+        self.addCleanup(lambda: sleeper.poll() is None and sleeper.kill())
+        helper = subprocess.Popen([str(self.helper), 'run', '--pid', str(sleeper.pid)], env=self.env, text=True,
+                                  stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.addCleanup(lambda: helper.poll() is None and helper.kill())
+        deadline = time.time() + 5
+        while len(self.events()) < 1 and time.time() < deadline:
+            time.sleep(0.05)
+        events = self.events()
+        self.assertEqual(len(events), 1)
+        self.token(events[0], 'run')
+        self.assertIsNone(helper.poll())
+        return sleeper, helper
+
+    @unittest.skipUnless(sys.platform == 'darwin', 'run --pid needs macOS')
+    def test_run_pid_refuses_a_dead_process(self):
+        result = self.invoke('run', '--pid', str(self.dead_pid()))
+        self.assertEqual(result.returncode, 2)
+        self.assertIn('no running process', result.stderr)
+        self.assertEqual(self.events(), [])
+
+    @unittest.skipUnless(sys.platform == 'darwin', 'run --pid needs macOS')
+    def test_run_pid_releases_when_the_process_exits(self):
+        sleeper, helper = self.start_pid_watcher()
+        sleeper.terminate()
+        sleeper.wait()
+        out, err = helper.communicate(timeout=10)
+        self.assertEqual(helper.returncode, 0, err)
+        self.assertIn('until process', err)
+        self.pair(self.events())
+
+    @unittest.skipUnless(sys.platform == 'darwin', 'run --pid needs macOS')
+    def test_run_pid_signal_releases_without_touching_the_process(self):
+        for sig in (signal.SIGTERM, signal.SIGHUP, signal.SIGINT):
+            with self.subTest(signal=sig.name):
+                self.log.unlink(missing_ok=True)
+                sleeper, helper = self.start_pid_watcher()
+                helper.send_signal(sig)
+                out, err = helper.communicate(timeout=10)
+                self.assertEqual(helper.returncode, 128 + sig, err)
+                self.assertIsNone(sleeper.poll())
+                sleeper.kill()
+                sleeper.wait()
+                self.pair(self.events())
+
+    @unittest.skipUnless(sys.platform == 'darwin', 'run --pid needs macOS')
+    def test_run_pid_confirmation_wording(self):
+        self.write_status(state='off', source=None, endsAt=None, hasAccessibilityPermission=False)
+        sleeper, helper = self.start_pid_watcher()
+        sleeper.terminate()
+        sleeper.wait()
+        out, err = helper.communicate(timeout=15)
+        self.assertEqual(helper.returncode, 0, err)
+        self.assertIn('Waiting anyway.', err)
+        self.assertNotIn('runs anyway', err)
 
     def test_child_killed_by_forwarded_signal_reports_shell_status(self):
         proc = self.start_ready_child('import time; print("ready", flush=True); time.sleep(30)')
